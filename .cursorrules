@@ -1,0 +1,12 @@
+# Cursor Rules for SATVIGIL
+
+Always read and follow the instructions in the `.ai/` directory:
+- Master Guide & Tenets: .ai/README.md
+- Live Status & Priorities: .ai/CURRENT_STATE.md
+- Architecture: .ai/ARCHITECTURE.md
+- Database Models: .ai/DATABASE_AND_MODELS.md
+- Coding Standards: .ai/CODING_STANDARDS.md
+- Team & Backlog: .ai/TEAM_AND_TASKS.md
+
+MANDATORY:
+Whenever you finish a task, modify architecture, or make code changes, update `.ai/CURRENT_STATE.md` with what you did and what comes next!
