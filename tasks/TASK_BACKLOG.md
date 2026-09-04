@@ -8,7 +8,7 @@
 *Ideal for juniors to get hands-on without breaking core architecture.*
 
 - [ ] **[AVAILABLE]** **TASK-J01: Local Environment Setup & Smoke Test**
-  - **Goal:** Clone repo, follow [docs/deployment/DEPLOYMENT.md](file:///c:/MY%20Coding/SATVIGIL/docs/deployment/DEPLOYMENT.md), verify `docker-compose up` runs PostgreSQL + PostGIS, Redis, FastAPI, and Frontend.
+  - **Goal:** Clone repo, follow [docs/deployment/DEPLOYMENT.md](../docs/deployment/DEPLOYMENT.md), verify `docker-compose up` runs PostgreSQL + PostGIS, Redis, FastAPI, and Frontend.
   - **Deliverable:** Note down any missing setup steps or errors in a setup notes doc.
 
 - [ ] **[AVAILABLE]** **TASK-J02: Unit Tests for Alert Pydantic Schemas**

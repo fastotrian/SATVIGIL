@@ -11,7 +11,8 @@
 
 - [x] End-to-end architecture design (HLD, LLD, Database schema, Docker stack)
 - [x] Repository setup and initial Git commit pushed to GitHub
-- [ ] Task delegation board and teammate onboarding setup
+- [x] Task delegation board and teammate onboarding setup
+- [x] AI context system (`.ai/` directory and entrypoint hooks)
 - [ ] Code review and architecture governance
 - [ ] Core integration between Pipeline, FastAPI, and Frontend
 
@@ -28,5 +29,5 @@
 ---
 
 ## 📝 Team Coordination Notes
-- Assign bite-sized tasks from [TASK_BACKLOG.md](file:///c:/MY%20Coding/SATVIGIL/tasks/TASK_BACKLOG.md) to Joy, Saksham, Arayan, Krishika, and Akshar.
+- Assign bite-sized tasks from [TASK_BACKLOG.md](TASK_BACKLOG.md) to Joy, Saksham, Arayan, Krishika, and Akshar.
 - Update individual status sheets during daily standups.
