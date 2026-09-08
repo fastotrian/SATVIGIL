@@ -1,175 +1,155 @@
-# SATVIGIL — Master Task Backlog
+# SATVIGIL — Master Task Backlog & Engineering Roadmap
 
-> **For Teammates:** If you finish your assigned tasks and your lead (Ravi) is busy or away,
-> pick any task marked `[AVAILABLE]` below. Mark it as `[CLAIMED by <Your Name>]` and add it
-> to your individual task markdown file.
->
-> **Priority order for Sprint 2:**
-> Maritime (PS 143) → Fire Classification (PS 162) → Frontend Map → Landslide (last)
-
----
-
-## 🔴 Sprint 2 Priority: Maritime Pipeline (PS 143 — Core Deliverable)
-
-- [x] **[DONE — Akshar]** **TASK-M01: Pydantic Schemas — Vessel, Alert, Hotspot**
-  - **Goal:** Create request/response schemas in `backend/app/schemas/`:
-    - `VesselSchema`, `SpillAlertSchema`, `ThermalHotspotSchema`, `AlertListResponse`
-  - **Reference:** See `backend/app/models/alert.py` for field names.
-  - **Deliverable:** `backend/app/schemas/vessel.py`, `alert.py`, `hotspot.py` with Pydantic v2 models.
-  - **Completed:** 2026-09-08 — All 3 files written + `__init__.py` re-exports. Validated with Pydantic 2.13.5.
-
-- [ ] **[AVAILABLE]** **TASK-M02: Maritime Vessels Endpoint — Real DB Query**
-  - **Goal:** Implement `GET /api/v1/maritime/vessels` in `backend/app/api/routes/maritime.py`
-    with real SQLAlchemy async query on `vessel_risk_records` table, returning list of vessels
-    sorted by `risk_score DESC`.
-  - **Reference:** See `.ai/API_REFERENCE.md` for exact response schema expected.
-  - **Deliverable:** Working endpoint returning real DB data.
-
-- [ ] **[AVAILABLE]** **TASK-M03: AIS Data Flow — Fetcher → Persist to DB**
-  - **Goal:** Connect `ais_fetcher.fetch_ais_vessels()` (already written) to a DB write function
-    that upserts vessel data into `vessel_risk_records` table using MMSI as the unique key.
-  - **Note:** The fetcher returns raw vessel dicts; you need to call `calculate_vessel_risk_score()`
-    and persist the result.
-  - **Deliverable:** `backend/app/services/maritime/ais_processor.py` with `process_and_persist_vessels()`.
-
-- [ ] **[AVAILABLE]** **TASK-M04: AIS Mock Data Generator (Dark Vessel Demo)**
-  - **Goal:** Write `scripts/simulate_ais_feed.py` — a script that POSTs fake vessel data directly
-    to the API, simulating 2–3 "dark transponder" scenarios:
-    - Scenario 1: Tanker goes dark 30min near Gulf of Kutch MPA → risk score spikes
-    - Scenario 2: Vessel loitering off Mumbai coast near Bombay High for 2 hours
-    - Scenario 3: Cargo ship with high AIS gap in JNPT approach zone
-  - **Deliverable:** `scripts/simulate_ais_feed.py` that runs standalone and seeds demo data.
-
-- [ ] **[AVAILABLE]** **TASK-M05: Alerts DB Query — Replace Mock Response**
-  - **Goal:** In `backend/app/api/routes/alerts.py`, replace the mock return with a real
-    SQLAlchemy async query on the `alerts` table supporting:
-    - Filter by `alert_type`, `risk_level`
-    - Pagination via `limit` + `offset`
-    - Order by `created_at DESC`
-  - **Deliverable:** Fully working paginated alerts endpoint.
-
-- [ ] **[AVAILABLE]** **TASK-M06: Spatial Radius Search Endpoint**
-  - **Goal:** Add `GET /api/v1/alerts/near?lat=...&lon=...&radius_km=...` using PostGIS `ST_DWithin`.
-  - **Reference:** See `.ai/DATABASE_AND_MODELS.md` for the correct SQL pattern.
-  - **Deliverable:** Fast radius search endpoint, tested with India coordinates.
+> **For Team Members:** All tasks are categorized by domain, complexity, and priority.
+> - When picking a task, change status from `[AVAILABLE]` to `[CLAIMED by <Your Name>]`.
+> - Add the task to your personal file (`tasks/<your_name>.md`).
+> - Create a dedicated Git branch: `feat/<your-name>-<task-id>` (e.g., `feat/akshar-task-m05`).
+> - Even when accelerating development with AI tools, ensure code meets `.ai/CODING_STANDARDS.md` and passes tests before creating PRs.
 
 ---
 
-## 🟠 Sprint 2: Fire Classification Pipeline (PS 162)
+## ✅ Completed Tasks (Sprint 1 & Sprint 2 PS 143 MVP)
 
-- [ ] **[AVAILABLE]** **TASK-F01: FIRMS Fetcher — Live Data → DB Persist**
-  - **Goal:** The FIRMS fetcher in `backend/app/services/fire/firms_fetcher.py` already fetches
-    and classifies fire data. Connect it to a DB write that persists each classified hotspot
-    into the `thermal_hotspots` table.
-  - **Include:** Set `near_cpcb_cluster` boolean by checking against the `CPCB_CLUSTERS` list in the file.
-  - **Deliverable:** `backend/app/services/fire/firms_processor.py` with `process_and_persist_hotspots()`.
-
-- [ ] **[AVAILABLE]** **TASK-F02: Fire Hotspots Endpoint**
-  - **Goal:** Implement `GET /api/v1/fire/hotspots` in `backend/app/api/routes/fire.py`
-    with filtering by `fire_type` (industrial, wildfire, stubble, gas_flare, mining, unknown)
-    and optional `near_cpcb_only=true` query param.
-  - **Deliverable:** Working filtered endpoint returning classified hotspot data.
-
-- [ ] **[AVAILABLE]** **TASK-F03: Industrial Recurrence Tracker**
-  - **Goal:** Implement logic that groups `thermal_hotspots` by coordinates (rounded to 0.01 degree)
-    and counts occurrences per location per month. Expose via `GET /api/v1/pollution/clusters`.
-  - **Deliverable:** Query that returns locations with `recurrence_count >= 3` flagged as chronic polluters.
-
-- [ ] **[AVAILABLE]** **TASK-F04: VIIRS Nightfire (Gas Flare) Dataset Integration**
-  - **Goal:** Download VIIRS Nightfire (VNF) CSV data from NOAA/Earth Observation Group for
-    India (lat 7–36, lon 68–98) for the past 30 days. Parse and cross-reference against
-    FIRMS hotspots to improve gas flare vs. industrial fire classification.
-  - **Dataset:** https://eogdata.mines.edu/products/vnf/
-  - **Deliverable:** Script in `data_pipeline/fetchers/vnf_fetcher.py`.
+- [x] **[DONE — Akshar]** **TASK-M01: Pydantic v2 Schemas** (`alert.py`, `vessel.py`, `hotspot.py`, `__init__.py`)
+- [x] **[DONE — Ravi / AI]** **TASK-M02: Maritime Vessels Endpoint & Scenario Fallback** (`backend/app/api/routes/maritime.py`)
+- [x] **[DONE — Ravi / AI]** **TASK-M04: AIS Mock Data Generator & Dark Scenario** (`scripts/simulate_ais_feed.py`, `data/demo/ais_demo_scenario.json`)
+- [x] **[DONE — Ravi / AI]** **TASK-ML01: 4-Signal ML Oil Spill Attribution Pipeline** (`backend/app/services/maritime/spill_attribution.py`)
+- [x] **[DONE — Ravi / AI]** **TASK-UI01: WebGL Maritime Map Layer with India Base** (`frontend/src/components/map/MapView.tsx`)
+- [x] **[DONE — Ravi / AI]** **TASK-UI02: Live Vessel Risk Markers & Animated Pulses** (`frontend/src/components/map/MapView.tsx`, `riskColors.ts`)
+- [x] **[DONE — Ravi / AI]** **TASK-UI03: Real-Time Threat Alerts Panel** (`frontend/src/components/alerts/AlertPanel.tsx`)
+- [x] **[DONE — Ravi / AI]** **TASK-UI04: Interactive Layer Control Toolbar** (Vessels, Spills, MPAs, Density Heatmap)
+- [x] **[DONE — Ravi / AI]** **TASK-D02: SIH 5-Minute Live Presentation Runbook** (`docs/demo/DEMO_RUNBOOK.md`)
 
 ---
 
-## 🟡 Sprint 2: Frontend Map & UI
+## 🔴 Sprint 3 Priority: Fire & Thermal Hotspot Classification (PS 162)
 
-- [ ] **[AVAILABLE]** **TASK-UI01: Mapbox GL JS Map — India Base Map**
-  - **Goal:** Implement `frontend/src/components/map/MapView.tsx` with Mapbox GL JS:
-    - Dark map style (`mapbox://styles/mapbox/dark-v11`)
-    - Centered on India `[78.9629, 20.5937]`, zoom 4.5
-    - Bounded to India: `[[68.1, 7.9], [97.4, 35.5]]` (disable pan/zoom outside India)
-  - **Tech:** Use `react-map-gl` wrapper (already in `package.json`).
-  - **Deliverable:** Working India map that renders in the app.
+- [ ] **[CLAIMED by Joy]** **TASK-F01: FIRMS Live Data Fetcher & Database Ingestion Engine**
+  - **Goal:** Connect `firms_fetcher.py` to an asynchronous database writer that upserts real-time satellite fire hotspots into the `thermal_hotspots` PostGIS table.
+  - **Requirements:**
+    - Parse MODIS (1km) and VIIRS (375m) CSV/JSON streams from NASA FIRMS API.
+    - Prevent duplicate inserts using `(latitude, longitude, acquired_at)` compound uniqueness.
+    - Check spatial distance against CPCB polluted clusters and tag `near_cpcb_cluster=True` if within 10 km.
+    - Fallback gracefully to offline sample data if `FIRMS_MAP_KEY` is not provided.
+  - **Deliverable:** `backend/app/services/fire/firms_processor.py` with unit test.
 
-- [ ] **[AVAILABLE]** **TASK-UI02: Vessel Risk Markers on Map**
-  - **Goal:** Fetch vessels from `GET /api/v1/maritime/vessels` and render them on the map as
-    circle markers colored by risk score (green < 0.3, yellow 0.3–0.7, red > 0.7).
-    Use Mapbox `addSource` + `addLayer` (NOT React DOM markers for performance).
-  - **Deliverable:** Live vessel layer on the map.
+- [ ] **[CLAIMED by Akshar]** **TASK-F02: Fire Classification & Hotspots API Routes**
+  - **Goal:** Implement `GET /api/v1/fire/hotspots` and `GET /api/v1/fire/hotspots/{id}` in `backend/app/api/routes/fire.py`.
+  - **Requirements:**
+    - Support query parameters: `fire_type` (industrial, gas_flare, stubble, wildfire, mining), `min_frp`, `start_date`, `end_date`, and `near_cpcb_only`.
+    - Enrich responses with `responding_agency` and `recommended_action` using the decision matrix.
+    - Return paginated `HotspotListResponse` (using schemas in `backend/app/schemas/hotspot.py`).
+  - **Deliverable:** Functional endpoints with Swagger documentation.
 
-- [ ] **[AVAILABLE]** **TASK-UI03: Alert Sidebar Component**
-  - **Goal:** Build `frontend/src/components/alerts/AlertPanel.tsx` — a scrollable sidebar showing
-    the 20 most recent alerts from the Zustand store, each showing: alert type icon, title,
-    risk badge (CRITICAL/HIGH/MEDIUM/LOW), timestamp, coordinates.
-  - **Deliverable:** Working scrollable alert feed.
+- [ ] **[CLAIMED by Joy]** **TASK-F05: FIRMS Offline Mock Seed Generator**
+  - **Goal:** Create a realistic sample dataset of 50+ thermal hotspots across India (stubble burning, industrial furnaces, gas flaring, wildfires).
+  - **Deliverable:** `data/demo/firms_demo_scenario.json` and seeding script in `scripts/seed_hotspots.py`.
 
-- [ ] **[AVAILABLE]** **TASK-UI04: Layer Toggle Controls**
-  - **Goal:** Build `frontend/src/components/map/LayerControls.tsx` — a toolbar with toggle buttons
-    for: Oil Spills, Illegal Fishing, Fire/Thermal, Industrial Pollution, Landslide.
-    Toggling a layer shows/hides its Mapbox layer on the map.
-  - **Deliverable:** Working layer switcher.
+- [ ] **[CLAIMED by Arayan]** **TASK-F03: Chronic Industrial Pollution & Recurrence Tracker**
+  - **Goal:** Build the spatial recurrence clustering engine exposed via `GET /api/v1/pollution/clusters`.
+  - **Requirements:**
+    - Group hotspots spatially by 0.01° grid cells (~1.1 km resolution).
+    - Aggregate recurrence counts over a rolling 30-day window.
+    - Flag locations with `recurrence_count >= 3` as chronic industrial violators (e.g. brick kilns, unmonitored furnaces).
+    - Return cluster centroids, bounding boxes, dominant fire type, and responsible regional CPCB office.
+  - **Deliverable:** `backend/app/services/pollution/cluster_analyzer.py` and connected API route.
 
-- [ ] **[AVAILABLE]** **TASK-UI05: Alert Detail Drawer**
-  - **Goal:** When user clicks a map marker, show a slide-in drawer with full alert details:
-    fire type, FRP, agency responsible, recommended action, coordinates, timestamp.
+- [ ] **[CLAIMED by Arayan]** **TASK-F04: VIIRS Nightfire (Gas Flare) Dataset Integration**
+  - **Goal:** Ingest and parse VIIRS Nightfire (VNF) combustion data from NOAA/Colorado School of Mines.
+  - **Requirements:**
+    - Download and process daily VNF M10/SWIR detections for India offshore & onshore oil refineries (Bombay High, Assam, Gujarat).
+    - Calculate combustion temperature (Kelvin) and cross-reference against FIRMS hotspots to distinguish routine gas flaring from unexpected refinery fires.
+  - **Deliverable:** `data_pipeline/fetchers/vnf_fetcher.py` and test dataset in `data/vnf/`.
+
+---
+
+## 🟠 Sprint 3 Priority: Maritime DB Persistence & Real PostGIS Flow
+
+- [ ] **[CLAIMED by Akshar]** **TASK-M05: Alerts Database Persistence & Real Query Route**
+  - **Goal:** Replace in-memory mock responses in `backend/app/api/routes/alerts.py` with live async SQLAlchemy database queries.
+  - **Requirements:**
+    - Read from `alerts` table with filters for `alert_type`, `risk_level`, and `is_active`.
+    - Implement pagination via `limit` (default 50, max 200) and `offset`.
+    - Implement `POST /api/v1/alerts/{id}/acknowledge` to update `acknowledged_at` and `acknowledged_by`.
+    - Stream newly created alerts to active WebSocket connections (`/api/v1/alerts/live`).
+  - **Deliverable:** Fully functional alerts route with real DB integration and WebSocket push.
+
+- [ ] **[CLAIMED by Akshar]** **TASK-M06: PostGIS Spatial Radius Search Endpoint**
+  - **Goal:** Implement `GET /api/v1/alerts/near?lat=...&lon=...&radius_km=...` using PostGIS spatial indexing.
+  - **Requirements:**
+    - Use `ST_DWithin` with geography cast for precise kilometer radius calculation on WGS84 (SRID 4326).
+    - Return matching alerts, vessels, and thermal hotspots within the target zone, sorted by proximity.
+  - **Deliverable:** Spatial query function in `alerts.py` and query execution time benchmark (<50ms).
+
+- [ ] **[CLAIMED by Akshar]** **TASK-M07: AIS Pipeline Background Worker & PostGIS Upsert**
+  - **Goal:** Connect `ais_fetcher.py` to a Celery or APScheduler background task that runs every 15 minutes.
+  - **Requirements:**
+    - Ingest live AIS feed (or simulate live feed from `ais_demo_scenario.json`).
+    - Compute temporal gap (`ais_gap_minutes`) by comparing current timestamp against last recorded timestamp for the same MMSI.
+    - Write/update records into `vessel_risk_records` table with geometry points `ST_SetSRID(ST_MakePoint(lon, lat), 4326)`.
+  - **Deliverable:** `backend/app/tasks/ais_worker.py` with automated scheduler integration.
+
+---
+
+## 🟡 Sprint 3 Priority: Frontend Intelligence & Analytics UI
+
+- [ ] **[CLAIMED by Akshar]** **TASK-UI05: Vessel & Alert Detail Slide-In Drawer**
+  - **Goal:** When a user clicks a vessel, spill polygon, or alert card, slide open a detailed inspection drawer from the right.
+  - **Requirements:**
+    - Display vessel metadata: Name, Flag, IMO/MMSI, Dimensions, Draft, Speed, Course.
+    - Risk Factor Breakdown bars: Distance (40%), Vessel Type (25%), Course Alignment (20%), Anomaly (15%).
+    - Action buttons: `Acknowledge Alert`, `Dispatch Coast Guard Notice`, `Download Evidence PDF`.
+    - Use Tailwind CSS v3 with smooth transition animations.
   - **Deliverable:** `frontend/src/components/alerts/AlertDetailsDrawer.tsx`.
 
-- [ ] **[AVAILABLE]** **TASK-UI06: WebSocket Notification Toasts**
-  - **Goal:** When a new `critical` or `high` risk alert comes in via WebSocket, show a toast
-    notification (brief popup, top-right corner) with the alert title and type icon.
-  - **Deliverable:** Toast notification provider integrated into App.tsx.
+- [ ] **[CLAIMED by Akshar]** **TASK-UI08: Fire & Thermal Hotspots WebGL Map Layer**
+  - **Goal:** Render thermal hotspots on `MapView.tsx` when the "Fire/Thermal" layer toggle is enabled.
+  - **Requirements:**
+    - Color code hotspots by classification: Gas Flare (Violet), Industrial (Orange), Stubble (Yellow), Wildfire (Red).
+    - Clustered circles at low zoom levels, individual glowing heat dots at high zoom levels.
+    - Hover tooltip displaying fire type, FRP in MW, and satellite confidence.
+  - **Deliverable:** Integrated layer in `MapView.tsx`.
+
+- [ ] **[CLAIMED by Akshar]** **TASK-UI07: Audio Alarm & Desktop Notification System**
+  - **Goal:** Provide audible and visual alarms when a `CRITICAL` risk threat is detected.
+  - **Requirements:**
+    - Short tactical sonar pulse audio when a new dark ship or oil spill is pushed via WebSocket.
+    - Browser `Notification` API integration with user opt-in toggle in the header.
+    - Mute/Unmute audio button in `DashboardHeader.tsx`.
+  - **Deliverable:** `frontend/src/services/soundEffects.ts` and header controls.
+
+- [ ] **[CLAIMED by Saksham]** **TASK-UI06: Historical Telemetry & Trend Charts (Recharts)**
+  - **Goal:** Add graphical telemetry analytics inside the inspection drawer using Recharts.
+  - **Requirements:**
+    - 24-hour Speed vs. Time line chart showing deceleration / loitering zones.
+    - Fire Radiative Power (FRP) trend chart for recurring industrial clusters.
+    - Dark mode styled axes, tooltips, and custom risk-colored stroke lines.
+  - **Deliverable:** `frontend/src/components/analytics/VesselSpeedChart.tsx` and `HotspotFRPChart.tsx`.
+
+- [ ] **[CLAIMED by Saksham]** **TASK-UI09: Global Search & Autocomplete Header Bar**
+  - **Goal:** Add a search bar to `DashboardHeader.tsx` allowing users to search by Vessel Name, MMSI, or Port.
+  - **Requirements:**
+    - Autocomplete dropdown with matching vessels and ports.
+    - Selecting a result automatically centers and zooms the map (`flyTo`) onto the target coordinates.
+  - **Deliverable:** `frontend/src/components/dashboard/SearchBar.tsx`.
 
 ---
 
-## 🟢 Category A: Junior & Beginner Friendly Tasks
+## 🟢 Testing, QA & Delivery Assets
 
-- [ ] **[AVAILABLE]** **TASK-J01: Local Environment Setup & Smoke Test**
-  - **Goal:** Clone repo, follow [docs/deployment/DEPLOYMENT.md](../docs/deployment/DEPLOYMENT.md),
-    verify `docker-compose up` runs PostgreSQL + PostGIS, Redis, FastAPI, and Frontend.
-  - **Deliverable:** Note down any missing setup steps or errors in a setup notes doc.
+- [ ] **[CLAIMED by Krishika]** **TASK-J02: Automated Pytest Suite for Pydantic Models & API Routes**
+  - **Goal:** Write comprehensive unit and integration tests using `pytest` and `httpx`.
+  - **Requirements:**
+    - Validate all schema field validators in `backend/app/schemas/`.
+    - Test boundary checks: Latitude [-90, 90], Longitude [-180, 180], Risk Score [0.0, 1.0].
+    - Test API endpoints: `/health`, `/maritime/vessels`, `/maritime/simulate-spill`, `/alerts`.
+    - Ensure 100% test pass rate with `pytest backend/tests/`.
+  - **Deliverable:** `backend/tests/unit/test_schemas.py` and `backend/tests/integration/test_api.py`.
 
-- [ ] **[AVAILABLE]** **TASK-J02: Unit Tests for Alert Pydantic Schemas**
-  - **Goal:** Write unit tests in `backend/tests/unit/` testing valid/invalid input validation.
-  - **Note:** Schemas are now implemented (TASK-M01 done) — test `AlertSummary`, `VesselSchema`, `ThermalHotspotSchema`, boundary validators, and `VesselSchema.risk_level` computed field.
-  - **Deliverable:** Test file `test_schemas.py` passing with `pytest`.
-
-- [ ] **[AVAILABLE]** **TASK-J03: Sample GeoJSON Boundaries for Marine Protected Areas**
-  - **Goal:** Find and collect full GeoJSON polygon boundaries (not just bounding boxes) for:
-    Gulf of Kutch MNP, Gulf of Mannar MNP, Sundarbans buffer zone.
-  - **Deliverable:** Valid GeoJSON files in `data_pipeline/data/mpas/` with EPSG:4326 coordinates.
-
-- [ ] **[AVAILABLE]** **TASK-J04: CPCB Industrial Clusters — Expand to All 43**
-  - **Goal:** The `firms_fetcher.py` currently has only 10 of the 43 CPCB critically polluted
-    clusters. Compile the remaining 33 from public CPCB data.
-  - **Deliverable:** Full 43-entry list added to `CPCB_CLUSTERS` in `firms_fetcher.py` + a CSV
-    backup in `data_pipeline/data/cpcb_clusters.csv`.
-
-- [ ] **[AVAILABLE]** **TASK-J05: Backend Health Check Route Tests**
-  - **Goal:** Write automated API tests for `GET /api/v1/health` and database connectivity check.
-  - **Deliverable:** Working test in `backend/tests/integration/test_health.py`.
-
----
-
-## 🔵 Category D: Documentation & Presentation
-
-- [ ] **[AVAILABLE]** **TASK-D01: API Documentation & Postman Collection**
-  - **Goal:** Create an exportable Postman/Bruno collection with example requests for all endpoints.
-  - **Reference:** See `.ai/API_REFERENCE.md` for all routes.
-  - **Deliverable:** `docs/api/satvigil_postman_collection.json`.
-
-- [ ] **[AVAILABLE]** **TASK-D02: Demo Script & Walkthrough**
-  - **Goal:** Prepare a 5-minute hackathon demo walkthrough script. Should cover:
-    1. Open map → show India coastline
-    2. Point out a dark-vessel risk alert off Bombay High
-    3. Zoom to a recurring industrial hotspot near Vapi (CPCB cluster)
-    4. Show fire classification sidebar: industrial vs. stubble vs. wildfire
-    5. Show the Wayanad/Joshimath SAR deformation overlay
-  - **Deliverable:** `docs/presentation/DEMO_SCRIPT.md`.
-
-- [ ] **[AVAILABLE]** **TASK-D03: Collect Sentinel-1 Historical Pairs for Joshimath/Wayanad**
-  - **Goal:** Download 2–3 Sentinel-1 SAR image pairs (same area, different dates, 1–3 months apart)
-    for either Joshimath (Uttarakhand) or Wayanad (Kerala) from ESA Copernicus Hub.
-  - **Deliverable:** Files in `ml/data/sar_pairs/` with metadata note on acquisition dates.
+- [ ] **[CLAIMED by Krishika]** **TASK-D01: Official Postman / Bruno API Collection**
+  - **Goal:** Create an exportable, production-ready Postman/Bruno collection covering all SATVIGIL endpoints.
+  - **Requirements:**
+    - Include environment variables (`baseUrl = http://localhost:8000`).
+    - Include realistic request bodies for `/simulate-spill`, `/simulate-dark-vessel`, and `/alerts/{id}/acknowledge`.
+    - Include saved response examples for demo documentation.
+  - **Deliverable:** `docs/api/SATVIGIL_API_Collection.json`.

@@ -131,14 +131,31 @@
 
 ---
 
-## 🎯 Immediate Next Task (What to Do RIGHT NOW)
+## 🎯 Immediate Next Tasks (Sprint 3 Active Allocations)
 
-- [x] **PS 143 (Oil Spill & Dark Vessel Attribution):** 100% Complete & Verified End-to-End.
-- [ ] **Track 3: Fire Classification (PS 162 — Next Sprint Goal):**
-  - [ ] Connect FIRMS fetcher → DB write → classification query
-  - [ ] Implement `GET /api/v1/fire/hotspots` with real data + 5-class XGBoost/heuristic classifier
-  - [ ] Add recurrence tracking logic in `GET /api/v1/pollution/clusters` (CPCB brick kiln & crop burning clusters)
-  - [ ] Add Fire/Thermal hotspot WebGL layers and alert cards in frontend UI
+- [x] **PS 143 (Oil Spill & Dark Vessel Attribution):** 100% Complete, Verified End-to-End, and merged to `main`.
+- [ ] **Track 1: Core Full-Stack Engineering (Akshar — Heavy Focus):**
+  - **Backend:**
+    - [ ] `TASK-M05`: Live SQLAlchemy async queries in `routes/alerts.py` with pagination + WebSocket broadcast.
+    - [ ] `TASK-M06`: Spatial radius search endpoint using PostGIS `ST_DWithin` (`/api/v1/alerts/near`).
+    - [ ] `TASK-F02`: `GET /api/v1/fire/hotspots` with 5-class filtering and responding agency routing.
+    - [ ] `TASK-M07`: AIS Background Worker & PostGIS upsert task.
+  - **Frontend:**
+    - [ ] `TASK-UI05`: Vessel & Alert slide-in detail drawer in Tailwind CSS.
+    - [ ] `TASK-UI08`: Fire & Thermal Hotspots WebGL Map Layer on `MapView.tsx`.
+    - [ ] `TASK-UI07`: Tactical audio alarms & browser push notifications for critical threats.
+- [ ] **Track 2: FIRMS Sensor Ingestion Pipeline (Joy):**
+  - [ ] `TASK-F01`: FIRMS live data stream fetcher → PostGIS DB upsert with CPCB 10km proximity tag.
+  - [ ] `TASK-F05`: FIRMS offline demo dataset generator (`scripts/seed_hotspots.py`).
+- [ ] **Track 3: Industrial Pollution & Gas Flaring (Arayan):**
+  - [ ] `TASK-F03`: 30-day spatial recurrence tracker (`GET /api/v1/pollution/clusters`).
+  - [ ] `TASK-F04`: VIIRS Nightfire combustion temperature integration.
+- [ ] **Track 4: Frontend Telemetry & Global Search (Saksham):**
+  - [ ] `TASK-UI06`: Recharts telemetry curves (speed over time, FRP trends).
+  - [ ] `TASK-UI09`: Global Search & Autocomplete toolbar in `DashboardHeader.tsx`.
+- [ ] **Track 5: QA Automation & Documentation (Krishika):**
+  - [ ] `TASK-J02`: Pytest automated suite for schemas and API integration.
+  - [ ] `TASK-D01`: Production Postman/Bruno API Collection.
 
 ---
 
