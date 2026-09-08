@@ -11,11 +11,12 @@
 
 ## 🔴 Sprint 2 Priority: Maritime Pipeline (PS 143 — Core Deliverable)
 
-- [ ] **[AVAILABLE]** **TASK-M01: Pydantic Schemas — Vessel, Alert, Hotspot**
+- [x] **[DONE — Akshar]** **TASK-M01: Pydantic Schemas — Vessel, Alert, Hotspot**
   - **Goal:** Create request/response schemas in `backend/app/schemas/`:
     - `VesselSchema`, `SpillAlertSchema`, `ThermalHotspotSchema`, `AlertListResponse`
   - **Reference:** See `backend/app/models/alert.py` for field names.
   - **Deliverable:** `backend/app/schemas/vessel.py`, `alert.py`, `hotspot.py` with Pydantic v2 models.
+  - **Completed:** 2026-09-08 — All 3 files written + `__init__.py` re-exports. Validated with Pydantic 2.13.5.
 
 - [ ] **[AVAILABLE]** **TASK-M02: Maritime Vessels Endpoint — Real DB Query**
   - **Goal:** Implement `GET /api/v1/maritime/vessels` in `backend/app/api/routes/maritime.py`
@@ -132,7 +133,8 @@
 
 - [ ] **[AVAILABLE]** **TASK-J02: Unit Tests for Alert Pydantic Schemas**
   - **Goal:** Write unit tests in `backend/tests/unit/` testing valid/invalid input validation.
-  - **Deliverable:** Test file `test_alert_schemas.py` passing with `pytest`.
+  - **Note:** Schemas are now implemented (TASK-M01 done) — test `AlertSummary`, `VesselSchema`, `ThermalHotspotSchema`, boundary validators, and `VesselSchema.risk_level` computed field.
+  - **Deliverable:** Test file `test_schemas.py` passing with `pytest`.
 
 - [ ] **[AVAILABLE]** **TASK-J03: Sample GeoJSON Boundaries for Marine Protected Areas**
   - **Goal:** Find and collect full GeoJSON polygon boundaries (not just bounding boxes) for:

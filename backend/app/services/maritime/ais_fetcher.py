@@ -7,9 +7,12 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from app.core.config import settings
-import structlog
-
-logger = structlog.get_logger()
+try:
+    import structlog
+    logger = structlog.get_logger()
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
 
 # ── Marine Protected Areas (India) ────────────────────────────────────────────
 # Simplified bounding boxes — replace with full GeoJSON polygons for production
@@ -71,12 +74,22 @@ def is_vessel_in_mpa(lat: float, lon: float) -> Optional[str]:
     return None
 
 
+def is_vessel_in_high_risk_zone(lat: float, lon: float) -> Optional[str]:
+    """Check if vessel coordinates fall inside any designated high-risk offshore zone."""
+    for zone in HIGH_RISK_ZONES:
+        d_lat = lat - zone["lat"]
+        d_lon = lon - zone["lon"]
+        if (d_lat**2 + d_lon**2)**0.5 <= zone["radius_deg"]:
+            return zone["name"]
+    return None
+
+
 def is_vessel_loitering(speed_knots: float, duration_minutes: int) -> bool:
     """
-    Vessel is loitering if speed < 1 knot for > 60 minutes
+    Vessel is loitering if speed < 1 knot for >= 30 minutes
     with no commercial port destination nearby.
     """
-    return speed_knots < 1.0 and duration_minutes > 60
+    return speed_knots < 1.0 and duration_minutes >= 30
 
 
 def calculate_vessel_risk_score(vessel: Dict, ais_gap_minutes: int = 0) -> float:
@@ -87,8 +100,9 @@ def calculate_vessel_risk_score(vessel: Dict, ais_gap_minutes: int = 0) -> float
     Factors:
     - AIS transponder was off (dark vessel): +0.40
     - Vessel is inside a Marine Protected Area: +0.30
-    - Vessel is loitering (slow speed, long time): +0.20
-    - Low navigational status: +0.10
+    - Vessel is inside high-risk offshore zone: +0.20
+    - Vessel is loitering (slow speed, >=30 min): +0.20
+    - Vessel is a tanker: +0.10
     """
     score = 0.0
     lat = vessel.get("LATITUDE", 0)
@@ -105,6 +119,11 @@ def calculate_vessel_risk_score(vessel: Dict, ais_gap_minutes: int = 0) -> float
     mpa = is_vessel_in_mpa(lat, lon)
     if mpa:
         score += 0.30
+
+    # High-Risk Offshore Zone (e.g. Bombay High, port approaches)
+    zone = is_vessel_in_high_risk_zone(lat, lon)
+    if zone:
+        score += 0.20
 
     # Loitering
     if is_vessel_loitering(speed, ais_gap_minutes):

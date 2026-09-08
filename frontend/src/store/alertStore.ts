@@ -1,42 +1,89 @@
 /**
- * SATVIGIL — Global Alert State (Zustand)
- * Stores all active alerts and selected alert for map drill-down.
+ * SATVIGIL — Global Alert & Maritime State (Zustand)
+ * Stores active alerts, live vessels, layer filters, and telemetry.
  */
 import { create } from "zustand";
+import type { Vessel, Alert as MaritimeAlert } from "../types/maritime";
 
-export interface Alert {
-  id: number;
-  alert_type: string;
-  risk_level: "low" | "medium" | "high" | "critical";
-  risk_score: number;
-  latitude: number;
-  longitude: number;
-  title: string;
-  description?: string;
-  source_dataset?: string;
-  confidence?: string;
-  is_active: boolean;
-  created_at: string;
+export type { Alert } from "../types/maritime";
+
+export interface ActiveFilters {
+  showVessels: boolean;
+  showSpillZones: boolean;
+  showMPABoundaries: boolean;
+  showDensityHeatmap: boolean;
 }
 
 interface AlertStore {
-  alerts: Alert[];
-  selectedAlert: Alert | null;
-  setAlerts: (alerts: Alert[]) => void;
-  addAlert: (alert: Alert) => void;
-  selectAlert: (alert: Alert | null) => void;
+  alerts: MaritimeAlert[];
+  selectedAlert: MaritimeAlert | null;
+  vessels: Vessel[];
+  selectedVessel: Vessel | null;
+  activeFilters: ActiveFilters;
+  isConnected: boolean;
+
+  setAlerts: (alerts: MaritimeAlert[]) => void;
+  addAlert: (alert: MaritimeAlert) => void;
+  selectAlert: (alert: MaritimeAlert | null) => void;
+  acknowledgeAlert: (id: string) => void;
+  setVessels: (vessels: Vessel[]) => void;
+  selectVessel: (vessel: Vessel | null) => void;
+  toggleFilter: (key: keyof ActiveFilters) => void;
+  setIsConnected: (connected: boolean) => void;
+
+  // Computed helper getters
+  getCriticalCount: () => number;
+  getWarningCount: () => number;
+  getNormalCount: () => number;
 }
 
-export const useAlertStore = create<AlertStore>((set) => ({
+export const useAlertStore = create<AlertStore>((set, get) => ({
   alerts: [],
   selectedAlert: null,
+  vessels: [],
+  selectedVessel: null,
+  activeFilters: {
+    showVessels: true,
+    showSpillZones: true,
+    showMPABoundaries: false,
+    showDensityHeatmap: false,
+  },
+  isConnected: true,
 
   setAlerts: (alerts) => set({ alerts }),
 
   addAlert: (alert) =>
     set((state) => ({
-      alerts: [alert, ...state.alerts].slice(0, 500), // Keep last 500 alerts
+      alerts: [alert, ...state.alerts].slice(0, 500),
     })),
 
   selectAlert: (alert) => set({ selectedAlert: alert }),
+
+  acknowledgeAlert: (id) =>
+    set((state) => ({
+      alerts: state.alerts.map((a) =>
+        a.id === id ? { ...a, acknowledged: true } : a
+      ),
+    })),
+
+  setVessels: (vessels) => set({ vessels }),
+
+  selectVessel: (vessel) => set({ selectedVessel: vessel }),
+
+  toggleFilter: (key) =>
+    set((state) => ({
+      activeFilters: {
+        ...state.activeFilters,
+        [key]: !state.activeFilters[key],
+      },
+    })),
+
+  setIsConnected: (isConnected) => set({ isConnected }),
+
+  getCriticalCount: () =>
+    get().vessels.filter((v) => v.risk_level === 'CRITICAL').length,
+  getWarningCount: () =>
+    get().vessels.filter((v) => v.risk_level === 'WARNING').length,
+  getNormalCount: () =>
+    get().vessels.filter((v) => v.risk_level === 'NORMAL').length,
 }));

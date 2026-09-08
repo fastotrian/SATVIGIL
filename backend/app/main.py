@@ -11,16 +11,36 @@ from app.api.routes import alerts, maritime, fire, landslide, pollution, health
 from app.tasks.scheduler import start_scheduler, shutdown_scheduler
 
 
+import logging
+
+logger = logging.getLogger("satvigil")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown events."""
-    # Startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    start_scheduler()
+    """Startup and shutdown events with graceful degradation if DB is offline."""
+    # Startup: attempt DB connection and table synchronization
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database connection established and tables verified.")
+    except Exception as exc:
+        logger.warning(
+            "PostgreSQL database unavailable (%s). Running with in-memory & demo fallback data.",
+            exc,
+        )
+
+    try:
+        start_scheduler()
+    except Exception as exc:
+        logger.warning("Background scheduler failed to start (%s). Continuing without scheduler.", exc)
+
     yield
+
     # Shutdown
-    shutdown_scheduler()
+    try:
+        shutdown_scheduler()
+    except Exception:
+        pass
 
 
 app = FastAPI(

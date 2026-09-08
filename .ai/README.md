@@ -23,8 +23,9 @@
 
 | File | Purpose / What It Contains |
 |---|---|
-| 📌 **[CURRENT_STATE.md](CURRENT_STATE.md)** | **Start here!** Live project status, what is finished, what is currently being built, next immediate priorities. |
-| 🏛️ **[ARCHITECTURE.md](ARCHITECTURE.md)** | System architecture, confirmed tech stack, folder-to-layer mapping, 5 detection modules, what is written vs. empty. |
+| 📖 **[PROJECT_WALKTHROUGH.md](PROJECT_WALKTHROUGH.md)** | **New to the project? Start here.** Full plain-English explanation of every module, tech stack, build order, and pitch. Ideal for juniors. |
+| 📌 **[CURRENT_STATE.md](CURRENT_STATE.md)** | Live project status — what is finished, what is empty, next immediate priorities. |
+| 🏛️ **[ARCHITECTURE.md](ARCHITECTURE.md)** | System architecture, confirmed tech stack, folder-to-layer mapping, what is written vs. empty. |
 | 🗄️ **[DATABASE_AND_MODELS.md](DATABASE_AND_MODELS.md)** | PostgreSQL + PostGIS schemas, spatial indexes, tables (`alerts`, `vessel_risk_records`, `thermal_hotspots`). |
 | 📏 **[CODING_STANDARDS.md](CODING_STANDARDS.md)** | Code conventions (FastAPI, React, Tailwind CSS, GeoPandas), role-to-tech mapping, security. |
 | 👥 **[TEAM_AND_TASKS.md](TEAM_AND_TASKS.md)** | Team structure, task delegation in `tasks/`, junior guidance protocol. |

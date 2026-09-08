@@ -1,0 +1,98 @@
+[
+  {
+    "MMSI": "419000001",
+    "NAME": "MT GUJARAT PRIDE",
+    "TYPE": 80,
+    "LATITUDE": 19.15,
+    "LONGITUDE": 71.45,
+    "SPEED": 2,
+    "COURSE": 210.0,
+    "HEADING": 208.0,
+    "ais_gap_minutes": 45,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  },
+  {
+    "MMSI": "419000002",
+    "NAME": "MV MUMBAI EXPRESS",
+    "TYPE": 71,
+    "LATITUDE": 18.95,
+    "LONGITUDE": 72.85,
+    "SPEED": 85,
+    "COURSE": 95.0,
+    "HEADING": 96.0,
+    "ais_gap_minutes": 0,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  },
+  {
+    "MMSI": "419000003",
+    "NAME": "FV KUTCH FISHERMAN",
+    "TYPE": 30,
+    "LATITUDE": 22.5,
+    "LONGITUDE": 69.2,
+    "SPEED": 5,
+    "COURSE": 45.0,
+    "HEADING": 42.0,
+    "ais_gap_minutes": 20,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  },
+  {
+    "MMSI": "419000004",
+    "NAME": "MV LAKSHADWEEP QUEEN",
+    "TYPE": 60,
+    "LATITUDE": 10.5,
+    "LONGITUDE": 72.8,
+    "SPEED": 120,
+    "COURSE": 330.0,
+    "HEADING": 332.0,
+    "ais_gap_minutes": 0,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  },
+  {
+    "MMSI": "419000005",
+    "NAME": "MT CHENNAI SPIRIT",
+    "TYPE": 82,
+    "LATITUDE": 21.8,
+    "LONGITUDE": 69.1,
+    "SPEED": 105,
+    "COURSE": 25.0,
+    "HEADING": 24.0,
+    "ais_gap_minutes": 0,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  },
+  {
+    "MMSI": "419000006",
+    "NAME": "MV KONKAN TRADER",
+    "TYPE": 70,
+    "LATITUDE": 15.4,
+    "LONGITUDE": 73.6,
+    "SPEED": 140,
+    "COURSE": 160.0,
+    "HEADING": 158.0,
+    "ais_gap_minutes": 0,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  },
+  {
+    "MMSI": "419000007",
+    "NAME": "MV BENGAL GLORY",
+    "TYPE": 72,
+    "LATITUDE": 20.15,
+    "LONGITUDE": 86.85,
+    "SPEED": 60,
+    "COURSE": 310.0,
+    "HEADING": 310.0,
+    "ais_gap_minutes": 0,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  },
+  {
+    "MMSI": "419000008",
+    "NAME": "ICGS VARUNA",
+    "TYPE": 55,
+    "LATITUDE": 9.9,
+    "LONGITUDE": 76.15,
+    "SPEED": 180,
+    "COURSE": 190.0,
+    "HEADING": 192.0,
+    "ais_gap_minutes": 0,
+    "TIME": "2026-09-07T20:35:56.383565+00:00"
+  }
+]

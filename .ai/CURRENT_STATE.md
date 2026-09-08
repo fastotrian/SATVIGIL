@@ -5,7 +5,24 @@
 
 ---
 
-## 🕒 Last Updated: 2026-09-05 (Sprint 1 — Architecture, Foundation & AI Context)
+## 🕒 Last Updated: 2026-09-08 (Sprint 2 — PS 143 COMPLETE: Maritime Oil Spill & AIS Correlation End-to-End)
+
+> **Active Plan:** Full PS 143 build order with color system, Gemini model assignments,
+> and part-by-part checkpoints is in `implementation_plan.md` (Antigravity artifact).
+> - **PART 1:** ✅ Constants (`riskColors.ts`, `constants.py`) & shared types (`maritime.ts`) complete.
+> - **PART 2:** ✅ Schemas, real maritime API routes, and AIS simulator complete (`simulate_ais_feed.py`, `ais_demo_scenario.json`).
+> - **PART 3:** ✅ Complete Frontend UI Layer (Map, Header, Alert Panel, Zustand Store; verified Vite build).
+> - **PART 4:** ✅ Oil Spill Attribution & Simulation Pipeline:
+>   - `spill_attribution.py`: 4-signal multi-factor scoring extracted from ML notebook (40% distance, 25% vessel type, 20% heading, 15% anomaly).
+>   - `POST /api/v1/maritime/simulate-spill`: Real-time suspect vessel attribution returning MT GUJARAT PRIDE as #1 suspect (0.95 risk).
+>   - `MapView.tsx`: Dynamic spill polygon overlay, interactive suspect attribution popup, camera fly-to, and live demo trigger.
+> - **PART 5:** ✅ Polish + Demo Scenario Script:
+>   - `StaticPins.tsx`: Converted to high-reliability HTML `<Marker>` components to eliminate WebGL 403 font glyph PBF errors.
+>   - `DEMO_TRACKS_GEOJSON`: Route vector lines including orange normal navigation and dashed red 45-min AIS blackout gap.
+>   - `docs/demo/DEMO_RUNBOOK.md`: 5-minute SIH live pitch & demo presentation guide with fallback offline contingency.
+>   - `MapView.tsx`: Configured clean ESRI Dark Gray Canvas basemap with dark background layer, enabled raster overzooming up to zoom 18, and migrated radar pulse to native CSS hardware-accelerated DOM markers, preventing any WebGL render interrupts on zoom/pan.
+>   - `maritime.py`: Fixed missing return statement on `GET /api/v1/maritime/spills`.
+> - **ALL PS 143 PARTS COMPLETE & VERIFIED.** Ready for PS 162 (Thermal Hotspots & Fire Classification).
 
 ---
 
@@ -17,26 +34,41 @@
 - Data Ingestion & Sensors Guide ([docs/data/DATA_GUIDE.md](../docs/data/DATA_GUIDE.md)).
 - Deployment Guide ([docs/deployment/DEPLOYMENT.md](../docs/deployment/DEPLOYMENT.md)).
 - Testing Guide ([docs/testing/TESTING_GUIDE.md](../docs/testing/TESTING_GUIDE.md)).
+- SIH Demo Runbook & Script ([docs/demo/DEMO_RUNBOOK.md](../docs/demo/DEMO_RUNBOOK.md)) — 5-minute pitch script & fallback plan.
 
 ### 2. Core Backend — Written & Functional
 
 | File | Status | Notes |
 |---|---|---|
-| `backend/app/main.py` | ✅ Done | FastAPI app, CORS, 5 router mounts, lifespan hooks |
+| `backend/app/main.py` | ✅ Done | FastAPI app, CORS, 5 router mounts, resilient lifespan hooks with demo fallback |
+| `backend/app/api/routes/maritime.py` | ✅ Done | AIS fetcher, risk scoring, dark vessel simulation, spill endpoints |
 | `backend/app/core/config.py` | ✅ Done | All env vars (FIRMS, AIS, Copernicus, Mapbox, Redis) |
+| `backend/app/core/constants.py` | ✅ Done | Risk thresholds, alert labels, AIS gap limits, India bounds |
 | `backend/app/core/database.py` | ✅ Done | Async PostGIS engine, `get_db()` dependency |
 | `backend/app/models/alert.py` | ✅ Done | `Alert`, `VesselRiskRecord`, `ThermalHotspot` with GeoAlchemy2 |
+| `backend/app/schemas/maritime.py` | ✅ Done | Pydantic v2 schemas: VesselResponse, SpillEventResponse, AlertResponse |
+| `backend/app/schemas/alert.py` | ✅ Done | Pydantic v2 schemas for AlertSummary, AlertResponse, AlertNearResponse |
+| `backend/app/schemas/vessel.py` | ✅ Done | Pydantic v2 schemas for VesselSchema, SpillAlertSchema |
+| `backend/app/schemas/hotspot.py` | ✅ Done | Pydantic v2 schemas for ThermalHotspotSchema, HotspotListResponse |
+| `backend/app/schemas/__init__.py` | ✅ Done | Package re-exports for all domain schemas |
 | `backend/app/services/fire/firms_fetcher.py` | ✅ Done | FIRMS API fetcher + 5-class fire classifier + CPCB clusters + agency routing |
 | `backend/app/services/maritime/ais_fetcher.py` | ✅ Done | AIS fetcher + vessel risk scorer + India MPA zones |
+| `backend/app/services/maritime/spill_attribution.py` | ✅ Done | 4-signal ML attribution: proximity, vessel type, heading alignment, SVR anomaly |
 | `backend/app/tasks/scheduler.py` | ✅ Done | APScheduler: AIS 15min, FIRMS 3hr, Sentinel 24hr |
 | `backend/requirements.txt` | ✅ Done | All deps pinned |
 
-### 3. Frontend — Skeleton Written
-
+### 3. Frontend — Fully Implemented UI Layer
+ 
 | File | Status | Notes |
 |---|---|---|
-| `frontend/src/App.tsx` | ✅ Done | Root layout: map + alert sidebar using Tailwind |
-| `frontend/src/store/alertStore.ts` | ✅ Done | Zustand global alert state |
+| `frontend/src/App.tsx` | ✅ Done | Root layout: header + full-screen map + alert sidebar |
+| `frontend/src/store/alertStore.ts` | ✅ Done | Zustand store: alerts, vessels, layer filters, selection |
+| `frontend/src/components/map/MapView.tsx` | ✅ Done | Mapbox GL circle layers, radar pulses, spill polygons, MPAs, popups |
+| `frontend/src/components/dashboard/DashboardHeader.tsx` | ✅ Done | SATVIGIL header, live threat pills (Critical/Warning/Clear), feeds |
+| `frontend/src/components/alerts/AlertPanel.tsx` | ✅ Done | Real-time threat alert cards with vessel click-drilldown |
+| `frontend/src/components/map/StaticPins.tsx` | ✅ Done | Strategic fixed pins: Bombay High ONGC, JNPT, Kandla, MPAs |
+| `frontend/src/constants/riskColors.ts` | ✅ Done | Single source of truth for risk hex colors & thresholds |
+| `frontend/src/types/maritime.ts` | ✅ Done | TypeScript interfaces (Vessel, SpillEvent, SpillCandidate, Alert) |
 | `frontend/src/services/websocket.ts` | ✅ Done | WebSocket client with auto-reconnect |
 | `frontend/package.json` | ✅ Done | mapbox-gl, zustand, recharts, tailwindcss all declared |
 
@@ -62,19 +94,16 @@
 
 ## ❌ What is Confirmed EMPTY / Not Started
 
-- `backend/app/api/routes/*.py` — route files exist but **all return mock data**, no real DB queries
+- `backend/app/api/routes/*.py` — `maritime.py` implemented with real logic; others return mock data
 - `backend/alembic/versions/` — **NO migrations created yet** (tables created via `create_all` on startup)
 - `backend/app/services/landslide/` — directory exists, **no code**
 - `backend/app/services/pollution/` — directory exists, **no code**
-- `backend/app/schemas/` — exists, **no Pydantic schemas written yet**
-- `ml/` — all subdirectories empty, **no model code**
-- `scripts/` — **empty**, AIS simulator not created
+- `backend/app/schemas/` — `maritime.py` and `alert.py` created; other domain schemas pending
+- `ml/` — all subdirectories empty except `ml/notebooks/vessel_oil_spill_risk_scoring.ipynb`
+- `scripts/simulate_ais_feed.py` — ✅ Created & functional
 - `data_pipeline/` — directories exist, **no pipeline code**
 - `docs/api/` — **empty**, API collection not created
 - `docs/architecture/` — **empty**
-- `frontend/src/components/map/MapView.tsx` — **needs Mapbox GL JS implementation**
-- `frontend/src/components/alerts/AlertPanel.tsx` — **needs real implementation**
-- `frontend/src/components/dashboard/DashboardHeader.tsx` — **needs implementation**
 
 ---
 
@@ -104,11 +133,12 @@
 
 ## 🎯 Immediate Next Task (What to Do RIGHT NOW)
 
-- [ ] Create Pydantic schemas in `backend/app/schemas/` (vessel, alert, hotspot)
-- [ ] Implement real DB query in `backend/app/api/routes/alerts.py` replacing mock response
-- [ ] Implement `backend/app/api/routes/maritime.py` with vessel list endpoint
-- [ ] Test local docker container startup: `docker-compose up -d postgres redis`
-- [ ] Create `scripts/simulate_ais_feed.py` for demo scenarios (dark vessel off Gujarat coast)
+- [x] **PS 143 (Oil Spill & Dark Vessel Attribution):** 100% Complete & Verified End-to-End.
+- [ ] **Track 3: Fire Classification (PS 162 — Next Sprint Goal):**
+  - [ ] Connect FIRMS fetcher → DB write → classification query
+  - [ ] Implement `GET /api/v1/fire/hotspots` with real data + 5-class XGBoost/heuristic classifier
+  - [ ] Add recurrence tracking logic in `GET /api/v1/pollution/clusters` (CPCB brick kiln & crop burning clusters)
+  - [ ] Add Fire/Thermal hotspot WebGL layers and alert cards in frontend UI
 
 ---
 
