@@ -6,7 +6,7 @@ import React from 'react';
 import { useAlertStore } from '../../store/alertStore';
 
 export function DashboardHeader() {
-  const { vessels, isConnected } = useAlertStore();
+  const { vessels, isConnected, isAudioMuted, toggleAudio } = useAlertStore();
 
   const criticalCount = vessels.filter((v) => v.risk_level === 'CRITICAL').length;
   const warningCount = vessels.filter((v) => v.risk_level === 'WARNING').length;
@@ -66,6 +66,17 @@ export function DashboardHeader() {
               <span>OFFLINE</span>
             </div>
           )}
+
+          {/* Audio Alarm Toggle */}
+          <button
+            onClick={toggleAudio}
+            className={`p-1.5 rounded transition-colors ${
+              isAudioMuted ? 'text-red-400 bg-red-950/50 hover:bg-red-900/50' : 'text-emerald-400 bg-emerald-950/50 hover:bg-emerald-900/50'
+            }`}
+            title={isAudioMuted ? "Unmute Alarms" : "Mute Alarms"}
+          >
+            {isAudioMuted ? '🔇' : '🔊'}
+          </button>
         </div>
       </div>
     </header>

@@ -110,3 +110,9 @@ class HotspotListResponse(BaseModel):
     total:    int  = Field(..., description="Total hotspot records before pagination")
     limit:    int  = Field(50,  description="Page size requested")
     offset:   int  = Field(0,   description="Page offset requested")
+
+# -- HotspotNearResponse � proximity search result -----------------------------
+
+class HotspotNearResponse(ThermalHotspotSchema):
+    """Hotspot with computed distance � returned by GET /api/v1/alerts/near."""
+    distance_km: float = Field(..., ge=0, description="Great-circle distance from query point in km")
