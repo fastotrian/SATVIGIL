@@ -29,7 +29,7 @@
      - Return matching alerts, vessels, and hotspots within the radius, sorted by distance.
    - **Deliverable:** Spatial query function in `alerts.py` with sub-50ms benchmark.
 
-3. [ ] **TASK-F02: Fire Classification & Hotspots API Routes**
+3. [x] **TASK-F02: Fire Classification & Hotspots API Routes**
    - **Priority:** 🔴 High
    - **Goal:** Implement `GET /api/v1/fire/hotspots` and `GET /api/v1/fire/hotspots/{id}` in `backend/app/api/routes/fire.py`.
    - **Requirements:**
@@ -38,7 +38,7 @@
      - Return paginated `HotspotListResponse` using `backend/app/schemas/hotspot.py`.
    - **Deliverable:** Fully functional `fire.py` route connected to PostGIS.
 
-4. [ ] **TASK-M07: AIS Background Worker & PostGIS Upsert**
+4. [x] **TASK-M07: AIS Background Worker & PostGIS Upsert**
    - **Priority:** 🟡 Medium
    - **Goal:** Connect `ais_fetcher.py` to APScheduler or Celery to run every 15 minutes.
    - **Requirements:**
@@ -51,7 +51,7 @@
 
 ### 🔹 Part 2: Frontend UI & Interactive Analytics
 
-5. [ ] **TASK-UI05: Vessel & Alert Detail Slide-In Drawer**
+5. [x] **TASK-UI05: Vessel & Alert Detail Slide-In Drawer**
    - **Priority:** 🔴 High
    - **Goal:** When a user clicks a vessel marker or alert card, slide open a detailed inspection drawer from the right.
    - **Requirements:**
@@ -61,7 +61,7 @@
      - Styled with Tailwind CSS v3 with smooth transition animations.
    - **Deliverable:** `frontend/src/components/alerts/AlertDetailsDrawer.tsx`.
 
-6. [ ] **TASK-UI08: Fire & Thermal Hotspots WebGL Map Layer**
+6. [x] **TASK-UI08: Fire & Thermal Hotspots WebGL Map Layer**
    - **Priority:** 🔴 High
    - **Goal:** Render thermal hotspots on `MapView.tsx` when the "Fire/Thermal" layer toggle is enabled.
    - **Requirements:**
@@ -70,7 +70,7 @@
      - Hover tooltip displaying fire type, FRP in MW, and satellite confidence.
    - **Deliverable:** Integrated layer in `MapView.tsx`.
 
-7. [ ] **TASK-UI07: Tactical Audio Alarm & Desktop Notifications**
+7. [x] **TASK-UI07: Tactical Audio Alarm & Desktop Notifications**
    - **Priority:** 🟡 Medium
    - **Goal:** Provide audible and visual alarms when a `CRITICAL` risk threat is received.
    - **Requirements:**
@@ -88,11 +88,11 @@
 | TASK-M01  | Pydantic v2 Schemas — `alert.py`, `vessel.py`, `hotspot.py`, `__init__.py` | 🔴 High   | 2026-09-08    | ✅ Done   | Merged into `main`        |
 | TASK-M05  | Alerts DB Query & WebSocket broadcast                                      | 🔴 High   | 2026-09-08    | ✅ Done   | Completed and implemented |
 | TASK-M06  | Spatial Radius Search via PostGIS `ST_DWithin`                             | 🔴 High   | 2026-09-08    | ✅ Done   | Spatial endpoint implemented |
-| TASK-F02  | Fire Classification & Hotspots API Routes                                  | 🔴 High   | 2026-09-08    | ⏳ Queued | Backend API               |
-| TASK-UI05 | Vessel & Alert Detail Slide-In Drawer                                      | 🔴 High   | 2026-09-08    | ⏳ Queued | Frontend UI               |
-| TASK-UI08 | Thermal Hotspots WebGL Map Layer                                           | 🔴 High   | 2026-09-08    | ⏳ Queued | Frontend Mapbox           |
-| TASK-M07  | AIS Background Worker & PostGIS Upsert                                     | 🟡 Medium | 2026-09-08    | ⏳ Queued | Worker Pipeline           |
-| TASK-UI07 | Tactical Audio Alarm & Desktop Notifications                               | 🟡 Medium | 2026-09-08    | ⏳ Queued | Frontend Sound/Push       |
+| TASK-F02  | Fire Classification & Hotspots API Routes                                  | 🔴 High   | 2026-09-08    | ✅ Done   | Completed and implemented |
+| TASK-UI05 | Vessel & Alert Detail Slide-In Drawer                                      | 🔴 High   | 2026-09-08    | ✅ Done   | Completed and implemented |
+| TASK-UI08 | Thermal Hotspots WebGL Map Layer                                           | 🔴 High   | 2026-09-08    | ✅ Done   | Completed and implemented |
+| TASK-M07  | AIS Background Worker & PostGIS Upsert                                     | 🟡 Medium | 2026-09-08    | ✅ Done   | Completed and implemented |
+| TASK-UI07 | Tactical Audio Alarm & Desktop Notifications                               | 🟡 Medium | 2026-09-08    | ✅ Done   | Completed and implemented |
 
 ---
 
