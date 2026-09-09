@@ -22,6 +22,8 @@ from app.schemas.alert import (
     AlertNearResponse,
     WebSocketAlertMessage,
 )
+from app.schemas.spatial import SpatialRadiusResponse
+from app.services.spatial.radius_search import get_entities_near_point
 
 router = APIRouter()
 
@@ -85,6 +87,29 @@ async def get_alerts(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/near", response_model=SpatialRadiusResponse)
+async def get_alerts_near(
+    lat: float = Query(..., ge=-90.0, le=90.0, description="Latitude"),
+    lon: float = Query(..., ge=-180.0, le=180.0, description="Longitude"),
+    radius_km: float = Query(..., gt=0, le=500, description="Radius in km"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Find alerts, vessels, and hotspots within a given radius using PostGIS.
+    Max radius is 500km to prevent full table scans.
+    """
+    alerts, vessels, hotspots = await get_entities_near_point(db, lat, lon, radius_km)
+    
+    return SpatialRadiusResponse(
+        query_lat=lat,
+        query_lon=lon,
+        radius_km=radius_km,
+        alerts=alerts,
+        vessels=vessels,
+        hotspots=hotspots,
     )
 
 

@@ -21,7 +21,7 @@
      - Broadcast newly created alerts to active WebSocket connections (`/api/v1/alerts/live`).
    - **Deliverable:** Working `alerts.py` with real DB integration and WebSocket push.
 
-2. [ ] **TASK-M06: PostGIS Spatial Radius Search Endpoint**
+2. [x] **TASK-M06: PostGIS Spatial Radius Search Endpoint**
    - **Priority:** 🔴 High
    - **Goal:** Implement `GET /api/v1/alerts/near?lat=...&lon=...&radius_km=...` using PostGIS `ST_DWithin`.
    - **Requirements:**
@@ -83,29 +83,31 @@
 
 ## 📋 Task History & Queue
 
-| Task ID | Description | Priority | Assigned Date | Status | PR / Notes |
-|---|---|---|---|---|---|
-| TASK-M01 | Pydantic v2 Schemas — `alert.py`, `vessel.py`, `hotspot.py`, `__init__.py` | 🔴 High | 2026-09-08 | ✅ Done | Merged into `main` |
-| TASK-M05 | Alerts DB Query & WebSocket broadcast | 🔴 High | 2026-09-08 | ✅ Done | Completed and implemented |
-| TASK-M06 | Spatial Radius Search via PostGIS `ST_DWithin` | 🔴 High | 2026-09-08 | ⏳ Queued | Up next after M05 |
-| TASK-F02 | Fire Classification & Hotspots API Routes | 🔴 High | 2026-09-08 | ⏳ Queued | Backend API |
-| TASK-UI05 | Vessel & Alert Detail Slide-In Drawer | 🔴 High | 2026-09-08 | ⏳ Queued | Frontend UI |
-| TASK-UI08 | Thermal Hotspots WebGL Map Layer | 🔴 High | 2026-09-08 | ⏳ Queued | Frontend Mapbox |
-| TASK-M07 | AIS Background Worker & PostGIS Upsert | 🟡 Medium | 2026-09-08 | ⏳ Queued | Worker Pipeline |
-| TASK-UI07 | Tactical Audio Alarm & Desktop Notifications | 🟡 Medium | 2026-09-08 | ⏳ Queued | Frontend Sound/Push |
+| Task ID   | Description                                                                | Priority  | Assigned Date | Status    | PR / Notes                |
+| --------- | -------------------------------------------------------------------------- | --------- | ------------- | --------- | ------------------------- |
+| TASK-M01  | Pydantic v2 Schemas — `alert.py`, `vessel.py`, `hotspot.py`, `__init__.py` | 🔴 High   | 2026-09-08    | ✅ Done   | Merged into `main`        |
+| TASK-M05  | Alerts DB Query & WebSocket broadcast                                      | 🔴 High   | 2026-09-08    | ✅ Done   | Completed and implemented |
+| TASK-M06  | Spatial Radius Search via PostGIS `ST_DWithin`                             | 🔴 High   | 2026-09-08    | ✅ Done   | Spatial endpoint implemented |
+| TASK-F02  | Fire Classification & Hotspots API Routes                                  | 🔴 High   | 2026-09-08    | ⏳ Queued | Backend API               |
+| TASK-UI05 | Vessel & Alert Detail Slide-In Drawer                                      | 🔴 High   | 2026-09-08    | ⏳ Queued | Frontend UI               |
+| TASK-UI08 | Thermal Hotspots WebGL Map Layer                                           | 🔴 High   | 2026-09-08    | ⏳ Queued | Frontend Mapbox           |
+| TASK-M07  | AIS Background Worker & PostGIS Upsert                                     | 🟡 Medium | 2026-09-08    | ⏳ Queued | Worker Pipeline           |
+| TASK-UI07 | Tactical Audio Alarm & Desktop Notifications                               | 🟡 Medium | 2026-09-08    | ⏳ Queued | Frontend Sound/Push       |
 
 ---
 
 ## 🛑 Blockers & Help Needed
-*If stuck: Follow the 15-minute rule before pinging Ravi.*
+
+_If stuck: Follow the 15-minute rule before pinging Ravi._
 
 | Date | Issue / Error | What I Tried | Status |
-|---|---|---|---|
-| — | None | — | — |
+| ---- | ------------- | ------------ | ------ |
+| —    | None          | —            | —      |
 
 ---
 
 ## 📚 Quick Reference
+
 - Master Task Backlog: [TASK_BACKLOG.md](TASK_BACKLOG.md)
 - API Reference: [.ai/API_REFERENCE.md](../.ai/API_REFERENCE.md)
 - DB Models: [backend/app/models/alert.py](../backend/app/models/alert.py)

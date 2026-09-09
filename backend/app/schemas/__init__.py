@@ -55,3 +55,14 @@ __all__ = [
     "ThermalHotspotSchema",
     "HotspotListResponse",
 ]
+
+# -- Spatial schemas -----------------------------------------------------------
+from app.schemas.spatial import SpatialRadiusResponse
+from app.schemas.vessel import VesselNearResponse
+from app.schemas.hotspot import HotspotNearResponse
+
+__all__.extend([
+    "SpatialRadiusResponse",
+    "VesselNearResponse",
+    "HotspotNearResponse"
+])

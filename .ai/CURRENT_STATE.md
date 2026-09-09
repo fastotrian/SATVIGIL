@@ -137,7 +137,7 @@
 - [ ] **Track 1: Core Full-Stack Engineering (Akshar — Heavy Focus):**
   - **Backend:**
     - [x] `TASK-M05`: Live SQLAlchemy async queries in `routes/alerts.py` with pagination + WebSocket broadcast.
-    - [ ] `TASK-M06`: Spatial radius search endpoint using PostGIS `ST_DWithin` (`/api/v1/alerts/near`).
+    - [x] `TASK-M06`: Spatial radius search endpoint using PostGIS `ST_DWithin` (`/api/v1/alerts/near`).
     - [ ] `TASK-F02`: `GET /api/v1/fire/hotspots` with 5-class filtering and responding agency routing.
     - [ ] `TASK-M07`: AIS Background Worker & PostGIS upsert task.
   - **Frontend:**
