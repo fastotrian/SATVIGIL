@@ -76,6 +76,7 @@ class SpillEventResponse(BaseModel):
     sentinel_scene_id: str
     top_candidates: List[SpillCandidateResponse] = []
     geojson_polygon: Dict[str, Any]
+    sar_image_url: Optional[str] = None   # Annotated SAR image URL for popup display
 
 
 class AlertResponse(BaseModel):

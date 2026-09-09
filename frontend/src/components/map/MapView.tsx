@@ -3,16 +3,18 @@
  * High-performance WebGL maritime monitoring display for Indian territorial waters and EEZ.
  * Renders vessel vectors, risk-colored circle layers, radar pulses, MPA zones, and oil spill polygons.
  */
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Map, { Source, Layer, Popup, Marker, NavigationControl, MapRef } from 'react-map-gl';
 import type { CircleLayer, FillLayer, LineLayer, HeatmapLayer } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 import { RISK_COLORS } from '../../constants/riskColors';
 import { useAlertStore } from '../../store/alertStore';
-import type { Vessel, SpillEvent } from '../../types/maritime';
+import type { Vessel, SpillEvent, VesselTrack, TrackPoint } from '../../types/maritime';
 import type { ThermalHotspot } from '../../types/fire';
 import { StaticPinsLayer } from './StaticPins';
+import { VesselTrackPlayer, TrackPlaybackControls, DEMO_TRACK_VESSEL_ID } from './VesselTrackPlayer';
+import { SpillSARPopup } from './SpillSARPopup';
 
 // High-performance clean dark maritime GIS style (Esri Dark Gray Canvas)
 // 100% free, crisp bathymetry & coastlines, zero watermarks, zero API key required
@@ -171,6 +173,23 @@ export function MapView() {
   const [activeSpill, setActiveSpill] = useState<SpillEvent | null>(null);
   const [showSpillPopup, setShowSpillPopup] = useState<boolean>(true);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
+
+  // ── SAR Popup state (click on spill polygon) ────────────────────────────
+  const [sarPopupSpill, setSarPopupSpill] = useState<SpillEvent | null>(null);
+  const [sarPopupScreenPos, setSarPopupScreenPos] = useState({ x: 40, y: 120 });
+
+  // ── Track Playback state ────────────────────────────────────────────────
+  const [showTrackPlayer, setShowTrackPlayer] = useState(false);
+  const [trackVesselId, setTrackVesselId] = useState<string>(DEMO_TRACK_VESSEL_ID);
+  const [vesselTrack, setVesselTrack] = useState<VesselTrack | null>(null);
+  const [trackIsPlaying, setTrackIsPlaying] = useState(false);
+  const [trackFrame, setTrackFrame] = useState(0);
+  const [trackSpeed, setTrackSpeed] = useState(3);
+  const trackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const handleTrackPlay = useCallback(() => setTrackIsPlaying(true), []);
+  const handleTrackPause = useCallback(() => setTrackIsPlaying(false), []);
+  const handleTrackReset = useCallback(() => { setTrackIsPlaying(false); setTrackFrame(0); }, []);
 
   // Trigger oil spill simulation demo
   async function handleSimulateSpillDemo() {
@@ -500,7 +519,8 @@ export function MapView() {
         mapboxAccessToken={MAPBOX_TOKEN}
         interactiveLayerIds={[
           ...(activeFilters.showVessels ? ['vessel-dots'] : []),
-          ...(activeFilters.showFireHotspots ? ['hotspots-layer'] : [])
+          ...(activeFilters.showFireHotspots ? ['hotspots-layer'] : []),
+          ...(activeFilters.showSpillZones ? ['spills-fill'] : []),
         ]}
         onMouseEnter={(e) => {
           const feature = e.features && e.features[0];
@@ -513,6 +533,15 @@ export function MapView() {
           const feature = e.features && e.features[0];
           if (feature?.layer.id === 'vessel-dots') {
             selectVessel(feature.properties as Vessel);
+            setSarPopupSpill(null);
+          } else if (feature?.layer.id === 'spills-fill') {
+            // Find the matching spill and show SAR popup
+            const spillId = feature.properties?.id;
+            const clickedSpill = spills.find((s) => s.id === spillId) ?? spills[0] ?? activeSpill;
+            if (clickedSpill) {
+              setSarPopupSpill(clickedSpill);
+              setSarPopupScreenPos({ x: e.point.x, y: e.point.y });
+            }
           } else {
             selectVessel(null);
           }
@@ -611,6 +640,16 @@ export function MapView() {
             <Layer {...hotspotsLayer} />
           </Source>
         )}
+
+        {/* Layer 6: GFW AIS Vessel Track (animated playback) */}
+        {showTrackPlayer && (
+          <VesselTrackPlayer
+            vesselId={trackVesselId}
+            onTrackLoaded={(t) => { setVesselTrack(t); }}
+            onFrameChange={(point, idx) => setTrackFrame(idx)}
+          />
+        )}
+
 
         {/* Hovered Hotspot Interactive Popup */}
         {hoveredHotspot && activeFilters.showFireHotspots && (
@@ -895,7 +934,47 @@ export function MapView() {
           <span>🛢️</span>
           <span>{isSimulating ? 'Correlating...' : 'Simulate Spill (Demo)'}</span>
         </button>
+
+        {/* GFW AIS Track Playback Button */}
+        <button
+          id="track-demo-btn"
+          type="button"
+          onClick={() => setShowTrackPlayer((v) => !v)}
+          className={`w-full mt-1 px-2.5 py-2 rounded text-xs font-bold transition-all flex items-center justify-center space-x-1.5 border ${
+            showTrackPlayer
+              ? 'bg-sky-700 border-sky-500/50 text-white'
+              : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          <span>📡</span>
+          <span>{showTrackPlayer ? 'Hide AIS Track' : 'Play GFW Track (Demo)'}</span>
+        </button>
       </div>
+
+      {/* ── Playback Controls Panel ── */}
+      {showTrackPlayer && (
+        <TrackPlaybackControls
+          track={vesselTrack}
+          isPlaying={trackIsPlaying}
+          frameIndex={trackFrame}
+          speed={trackSpeed}
+          onPlay={handleTrackPlay}
+          onPause={handleTrackPause}
+          onReset={handleTrackReset}
+          onSpeedChange={setTrackSpeed}
+          onSeek={setTrackFrame}
+        />
+      )}
+
+      {/* ── SAR Image Popup (spill polygon click) ── */}
+      {sarPopupSpill && (
+        <SpillSARPopup
+          spill={sarPopupSpill}
+          screenX={sarPopupScreenPos.x + 20}
+          screenY={sarPopupScreenPos.y - 30}
+          onClose={() => setSarPopupSpill(null)}
+        />
+      )}
     </div>
   );
 }

@@ -225,6 +225,7 @@ async def get_oil_spills():
         area_km2=4.85,
         confidence=0.91,
         sentinel_scene_id="S2B_MSIL2A_20260907T053649_N0510_R005_T43QDA",
+        sar_image_url="/sar_spill_bombay_high.jpg",
         top_candidates=[
             SpillCandidateResponse(
                 mmsi="419000001",
@@ -321,7 +322,107 @@ async def simulate_oil_spill(request: SimulateSpillRequest):
         area_km2=2.40,
         confidence=0.87,
         sentinel_scene_id="S2A_MSIL2A_20260904T054641_N0511_R048",
+        sar_image_url="https://storage.googleapis.com/demo-data/sar-spill-generic.png",
         top_candidates=candidates_response,
         geojson_polygon=slick_polygon,
     )
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VESSEL TRACK — GFW AIS Historical Route
+# ─────────────────────────────────────────────────────────────────────────────
+
+GFW_TRACK_PATH = Path(__file__).resolve().parents[4] / "data" / "demo" / "gfw_vessel_track_july_2026.json"
+
+
+@router.get("/vessels/{vessel_id}/track")
+async def get_vessel_track(vessel_id: str):
+    """
+    Return historical AIS track for a vessel as a GeoJSON FeatureCollection.
+    Contains:
+      - A LineString of the full route
+      - Individual Point features for each observation (with presence_hours, timestamps)
+      - Highlighted dark gap event if present
+
+    Source: Global Fishing Watch (GFW) presence API — Gulf of Kutch July 2026.
+    """
+    if not GFW_TRACK_PATH.exists():
+        raise HTTPException(status_code=404, detail="Track data not available. Run scripts/fetch_gfw_vessel_track.py first.")
+
+    with open(GFW_TRACK_PATH, "r", encoding="utf-8") as f:
+        track_data = json.load(f)
+
+    # Support lookup by vessel_id OR mmsi OR ship_name slug
+    track = track_data if isinstance(track_data, dict) else None
+    observations = []
+
+    if track and "track" in track:
+        observations = track["track"]
+    elif isinstance(track_data, list):
+        # flat list format (from GFW script direct output)
+        observations = track_data
+
+    if not observations:
+        raise HTTPException(status_code=404, detail=f"No track observations for vessel '{vessel_id}'")
+
+    # Build GeoJSON LineString (full route)
+    coords = [[obs["longitude"], obs["latitude"]] for obs in observations]
+
+    # Identify dark gap segment (where ais_gap_minutes > 0 and next point jumps far)
+    dark_gap_event = track.get("dark_gap_event") if track else None
+
+    # Build Point features for each observation
+    point_features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [obs["longitude"], obs["latitude"]]},
+            "properties": {
+                "date": obs.get("date"),
+                "presence_hours": obs.get("presence_hours"),
+                "ais_gap_minutes": obs.get("ais_gap_minutes", 0),
+                "is_dark_gap_point": obs.get("ais_gap_minutes", 0) > 30,
+            },
+        }
+        for obs in observations
+    ]
+
+    feature_collection = {
+        "type": "FeatureCollection",
+        "features": [
+            # Full route line
+            {
+                "type": "Feature",
+                "geometry": {"type": "LineString", "coordinates": coords},
+                "properties": {
+                    "vessel_id": vessel_id,
+                    "mmsi": observations[0].get("mmsi"),
+                    "ship_name": observations[0].get("ship_name"),
+                    "flag": observations[0].get("flag"),
+                    "total_points": len(observations),
+                    "dark_gap_event": dark_gap_event,
+                },
+            },
+            *point_features,
+        ],
+    }
+
+    return {
+        "vessel_id": vessel_id,
+        "mmsi": observations[0].get("mmsi"),
+        "ship_name": observations[0].get("ship_name"),
+        "flag": observations[0].get("flag"),
+        "total_observations": len(observations),
+        "dark_gap_event": dark_gap_event,
+        "geojson": feature_collection,
+        # Flat array for frontend animation playback
+        "track_points": [
+            {
+                "lat": obs["latitude"],
+                "lon": obs["longitude"],
+                "date": obs.get("date"),
+                "presence_hours": obs.get("presence_hours"),
+                "ais_gap_minutes": obs.get("ais_gap_minutes", 0),
+            }
+            for obs in observations
+        ],
+    }

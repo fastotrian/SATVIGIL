@@ -33,6 +33,7 @@ export interface SpillEvent {
   sentinel_scene_id: string;  // Copernicus scene identifier
   top_candidates: SpillCandidate[];  // Ranked vessel candidates
   geojson_polygon: object;    // GeoJSON Polygon for map overlay
+  sar_image_url?: string;     // Annotated SAR satellite image URL
 }
 
 export interface SpillCandidate {
@@ -56,4 +57,32 @@ export interface Alert {
   created_at: string;
   vessel_mmsi?: string;
   acknowledged: boolean;
+}
+
+/** Single AIS position observation from GFW track data */
+export interface TrackPoint {
+  lat: number;
+  lon: number;
+  date: string;                // ISO 8601 datetime
+  presence_hours: number;
+  ais_gap_minutes: number;     // >30 = vessel was dark at this timestamp
+}
+
+/** Full vessel AIS track response from /api/v1/maritime/vessels/{id}/track */
+export interface VesselTrack {
+  vessel_id: string;
+  mmsi: string;
+  ship_name: string;
+  flag: string;
+  total_observations: number;
+  dark_gap_event: {
+    start: string;
+    duration_minutes: number;
+    lat: number;
+    lon: number;
+    reappear_lat: number;
+    reappear_lon: number;
+  } | null;
+  geojson: object;             // Full GeoJSON FeatureCollection
+  track_points: TrackPoint[];  // Flat array for animation playback
 }

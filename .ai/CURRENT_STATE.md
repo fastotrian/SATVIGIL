@@ -5,7 +5,7 @@
 
 ---
 
-## 🕒 Last Updated: 2026-09-08 (Sprint 2 — PS 143 COMPLETE: Maritime Oil Spill & AIS Correlation End-to-End)
+## 🕒 Last Updated: 2026-09-10 (Sprint 3 — GFW Animated Track Player + SAR Image Popup implemented)
 
 > **Active Plan:** Full PS 143 build order with color system, Gemini model assignments,
 > and part-by-part checkpoints is in `implementation_plan.md` (Antigravity artifact).
@@ -134,21 +134,26 @@
 ## 🎯 Immediate Next Tasks (Sprint 3 Active Allocations)
 
 - [x] **PS 143 (Oil Spill & Dark Vessel Attribution):** 100% Complete, Verified End-to-End, and merged to `main`.
-- [ ] **Track 1: Core Full-Stack Engineering (Akshar — Heavy Focus):**
-  - **Backend:**
+- [x] **Akshar Branch Merge (`feat/akshar-part1-backend-database-engine`):** Zero-conflict merge into `main`, pushed to `origin/main` on 2026-09-09.
+- **Track 1: Core Full-Stack Engineering (Akshar — Heavy Focus):**
+  - **Backend (COMPLETED & MERGED):**
     - [x] `TASK-M05`: Live SQLAlchemy async queries in `routes/alerts.py` with pagination + WebSocket broadcast.
-    - [x] `TASK-M06`: Spatial radius search endpoint using PostGIS `ST_DWithin` (`/api/v1/alerts/near`).
-    - [x] `TASK-F02`: `GET /api/v1/fire/hotspots` with 5-class filtering and responding agency routing.
-    - [x] `TASK-M07`: AIS Background Worker & PostGIS upsert task.
-  - **Frontend:**
-    - [x] `TASK-UI05`: Vessel & Alert slide-in detail drawer in Tailwind CSS.
-    - [x] `TASK-UI08`: Fire & Thermal Hotspots WebGL Map Layer on `MapView.tsx`.
-    - [x] `TASK-UI07`: Tactical audio alarms & browser push notifications for critical threats.
+    - [x] `TASK-M06`: Spatial radius search endpoint using PostGIS `ST_DWithin` (`/api/v1/alerts/near`) — `backend/app/services/spatial/radius_search.py`.
+    - [x] `TASK-F02`: `GET /api/v1/fire/hotspots` with 5-class filtering — `backend/app/api/routes/fire.py` + `firms_processor.py`.
+    - [x] `TASK-M07`: AIS Background Worker & PostGIS upsert task — `backend/app/tasks/ais_worker.py`.
+  - **Frontend (COMPLETED & MERGED):**
+    - [x] `TASK-UI05`: Vessel & Alert slide-in detail drawer — `frontend/src/components/alerts/AlertDetailsDrawer.tsx`.
+    - [x] `TASK-UI08`: Fire & Thermal Hotspots WebGL Map Layer — `MapView.tsx` hotspots GeoJSON source + circle layer.
+    - [x] `TASK-UI07`: Tactical audio alarms — `frontend/src/services/soundEffects.ts`.
+  - **Next for Akshar (Sprint 3 continued):**
+    - [ ] `TASK-UI10`: Wire AlertDetailsDrawer to Zustand store for click-to-open from AlertPanel.
+    - [ ] `TASK-M08`: WebSocket broadcast from `alerts.py` on new alert insert.
+    - [ ] `TASK-DB01`: Run Alembic migration to create new tables (VesselAISHistory, CPCBPollutedArea, LandslideRiskZone, LandslideMonitoringZone).
 - [ ] **Track 2: FIRMS Sensor Ingestion Pipeline (Joy):**
-  - [x] `TASK-F01`: FIRMS live data stream fetcher → PostGIS DB upsert with CPCB 10km proximity tag.
-  - [x] `TASK-F05`: FIRMS offline demo dataset generator (`scripts/seed_hotspots.py`).
+  - [ ] `TASK-F01`: FIRMS live data stream fetcher → PostGIS DB upsert with CPCB 10km proximity tag.
+  - [x] `TASK-F05`: FIRMS offline demo dataset generator — `scripts/seed_hotspots.py` (merged from Akshar branch).
 - [ ] **Track 3: Industrial Pollution & Gas Flaring (Arayan):**
-  - [x] `TASK-F03`: 30-day spatial recurrence tracker (`GET /api/v1/pollution/clusters`).
+  - [ ] `TASK-F03`: 30-day spatial recurrence tracker (`GET /api/v1/pollution/clusters`) — stub is now in `pollution.py`.
   - [ ] `TASK-F04`: VIIRS Nightfire combustion temperature integration.
 - [ ] **Track 4: Frontend Telemetry & Global Search (Saksham):**
   - [ ] `TASK-UI06`: Recharts telemetry curves (speed over time, FRP trends).
