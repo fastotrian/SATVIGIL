@@ -23,11 +23,14 @@ Interactive docs: `http://localhost:8000/docs` (FastAPI auto-generated Swagger U
 |---|---|---|
 | `GET` | `/api/v1/alerts` | List all active alerts (paginated) |
 | `GET` | `/api/v1/alerts/near` | Alerts within radius of a coordinate |
+| `GET` | `/api/v1/alerts/{id}` | Get single alert details |
+| `POST` | `/api/v1/alerts/{id}/acknowledge` | Mark alert as resolved and broadcast to WS |
 | `WS` | `/api/v1/alerts/live` | WebSocket — push new alerts to connected clients |
 
 **Query params for `GET /api/v1/alerts`:**
 - `alert_type`: `oil_spill` | `illegal_fishing` | `fire_industrial` | `fire_wildfire` | `fire_stubble` | `fire_gas_flare` | `fire_mining` | `industrial_pollution` | `landslide_risk`
 - `risk_level`: `low` | `medium` | `high` | `critical`
+- `is_active`: bool (default `true`)
 - `limit`: int (default 50)
 - `offset`: int (default 0)
 

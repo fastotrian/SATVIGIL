@@ -45,7 +45,7 @@
 | `backend/app/core/config.py` | ✅ Done | All env vars (FIRMS, AIS, Copernicus, Mapbox, Redis) |
 | `backend/app/core/constants.py` | ✅ Done | Risk thresholds, alert labels, AIS gap limits, India bounds |
 | `backend/app/core/database.py` | ✅ Done | Async PostGIS engine, `get_db()` dependency |
-| `backend/app/models/alert.py` | ✅ Done | `Alert`, `VesselRiskRecord`, `ThermalHotspot` with GeoAlchemy2 |
+| `backend/app/models/alert.py` | ✅ Done | `Alert`, `VesselRiskRecord`, `ThermalHotspot` + `VesselAISHistory`, `CPCBPollutedArea`, `LandslideRiskZone`, `LandslideMonitoringZone` updated per SIH.pdf |
 | `backend/app/schemas/maritime.py` | ✅ Done | Pydantic v2 schemas: VesselResponse, SpillEventResponse, AlertResponse |
 | `backend/app/schemas/alert.py` | ✅ Done | Pydantic v2 schemas for AlertSummary, AlertResponse, AlertNearResponse |
 | `backend/app/schemas/vessel.py` | ✅ Done | Pydantic v2 schemas for VesselSchema, SpillAlertSchema |
@@ -136,7 +136,7 @@
 - [x] **PS 143 (Oil Spill & Dark Vessel Attribution):** 100% Complete, Verified End-to-End, and merged to `main`.
 - [ ] **Track 1: Core Full-Stack Engineering (Akshar — Heavy Focus):**
   - **Backend:**
-    - [ ] `TASK-M05`: Live SQLAlchemy async queries in `routes/alerts.py` with pagination + WebSocket broadcast.
+    - [x] `TASK-M05`: Live SQLAlchemy async queries in `routes/alerts.py` with pagination + WebSocket broadcast.
     - [ ] `TASK-M06`: Spatial radius search endpoint using PostGIS `ST_DWithin` (`/api/v1/alerts/near`).
     - [ ] `TASK-F02`: `GET /api/v1/fire/hotspots` with 5-class filtering and responding agency routing.
     - [ ] `TASK-M07`: AIS Background Worker & PostGIS upsert task.

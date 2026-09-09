@@ -11,7 +11,7 @@
 
 ### 🔹 Part 1: Backend & Database Engine
 
-1. [ ] **TASK-M05: Alerts Database Persistence & Live Query Route**
+1. [x] **TASK-M05: Alerts Database Persistence & Live Query Route**
    - **Priority:** 🔴 Critical
    - **Goal:** Replace in-memory mocks in `backend/app/api/routes/alerts.py` with live async SQLAlchemy queries.
    - **Requirements:**
@@ -86,7 +86,7 @@
 | Task ID | Description | Priority | Assigned Date | Status | PR / Notes |
 |---|---|---|---|---|---|
 | TASK-M01 | Pydantic v2 Schemas — `alert.py`, `vessel.py`, `hotspot.py`, `__init__.py` | 🔴 High | 2026-09-08 | ✅ Done | Merged into `main` |
-| TASK-M05 | Alerts DB Query & WebSocket broadcast | 🔴 High | 2026-09-08 | 🟡 In Progress | Active assignment |
+| TASK-M05 | Alerts DB Query & WebSocket broadcast | 🔴 High | 2026-09-08 | ✅ Done | Completed and implemented |
 | TASK-M06 | Spatial Radius Search via PostGIS `ST_DWithin` | 🔴 High | 2026-09-08 | ⏳ Queued | Up next after M05 |
 | TASK-F02 | Fire Classification & Hotspots API Routes | 🔴 High | 2026-09-08 | ⏳ Queued | Backend API |
 | TASK-UI05 | Vessel & Alert Detail Slide-In Drawer | 🔴 High | 2026-09-08 | ⏳ Queued | Frontend UI |
