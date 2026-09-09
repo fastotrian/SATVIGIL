@@ -11,6 +11,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { RISK_COLORS } from '../../constants/riskColors';
 import { useAlertStore } from '../../store/alertStore';
 import type { Vessel, SpillEvent } from '../../types/maritime';
+import type { ThermalHotspot } from '../../types/fire';
 import { StaticPinsLayer } from './StaticPins';
 
 // High-performance clean dark maritime GIS style (Esri Dark Gray Canvas)
@@ -220,7 +221,10 @@ export function MapView() {
     }
   }
 
-  // Fetch vessels & spills periodically
+  const [hotspots, setHotspots] = useState<ThermalHotspot[]>([]);
+  const [hoveredHotspot, setHoveredHotspot] = useState<ThermalHotspot | null>(null);
+
+  // Fetch vessels, spills, hotspots periodically
   useEffect(() => {
     async function loadMaritimeData() {
       try {
@@ -243,6 +247,16 @@ export function MapView() {
         }
       } catch (err) {
         console.warn('Unable to connect to maritime spills API:', err);
+      }
+
+      try {
+        const hotResp = await fetch('http://localhost:8000/api/v1/fire/hotspots?limit=200');
+        if (hotResp.ok) {
+          const hotData = await hotResp.json();
+          setHotspots(hotData.hotspots || []);
+        }
+      } catch (err) {
+        console.warn('Unable to connect to fire hotspots API:', err);
       }
     }
 
@@ -285,6 +299,23 @@ export function MapView() {
       })),
     };
   }, [spills]);
+
+  // Convert hotspots list to GeoJSON
+  const hotspotsGeoJSON = useMemo<GeoJSON.FeatureCollection>(() => {
+    return {
+      type: 'FeatureCollection',
+      features: hotspots.map((h) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [h.longitude, h.latitude],
+        },
+        properties: {
+          ...h,
+        },
+      })),
+    };
+  }, [hotspots]);
 
   // Mapbox Circle Layer: Fixed subtle glow halo for CRITICAL threats
   const vesselPulseLayer: CircleLayer = {
@@ -426,6 +457,32 @@ export function MapView() {
     },
   };
 
+  // Hotspots Layer
+  const hotspotsLayer: CircleLayer = {
+    id: 'hotspots-layer',
+    type: 'circle',
+    source: 'hotspots',
+    paint: {
+      'circle-radius': [
+        'interpolate', ['linear'], ['get', 'frp'],
+        0, 4,
+        1000, 14
+      ],
+      'circle-color': [
+        'match', ['get', 'fire_type'],
+        'gas_flare', '#8B5CF6',
+        'industrial', '#F97316',
+        'stubble', '#EAB308',
+        'wildfire', '#EF4444',
+        'mining', '#6B7280',
+        '#A1A1AA' // unknown
+      ],
+      'circle-opacity': 0.8,
+      'circle-stroke-width': 1,
+      'circle-stroke-color': '#FFFFFF'
+    }
+  };
+
   return (
     <div className="relative w-full h-full">
       <Map
@@ -441,10 +498,20 @@ export function MapView() {
         style={{ width: '100%', height: '100%' }}
         mapStyle={MAP_STYLE}
         mapboxAccessToken={MAPBOX_TOKEN}
-        interactiveLayerIds={activeFilters.showVessels ? ['vessel-dots'] : []}
+        interactiveLayerIds={[
+          ...(activeFilters.showVessels ? ['vessel-dots'] : []),
+          ...(activeFilters.showFireHotspots ? ['hotspots-layer'] : [])
+        ]}
+        onMouseEnter={(e) => {
+          const feature = e.features && e.features[0];
+          if (feature?.layer.id === 'hotspots-layer') {
+            setHoveredHotspot(feature.properties as ThermalHotspot);
+          }
+        }}
+        onMouseLeave={() => setHoveredHotspot(null)}
         onClick={(e) => {
           const feature = e.features && e.features[0];
-          if (feature && feature.properties) {
+          if (feature?.layer.id === 'vessel-dots') {
             selectVessel(feature.properties as Vessel);
           } else {
             selectVessel(null);
@@ -536,6 +603,45 @@ export function MapView() {
             <Layer {...trackNormalLayer} />
             <Layer {...trackDarkLayer} />
           </Source>
+        )}
+
+        {/* Layer 5: Fire Hotspots */}
+        {activeFilters.showFireHotspots && (
+          <Source id="hotspots" type="geojson" data={hotspotsGeoJSON}>
+            <Layer {...hotspotsLayer} />
+          </Source>
+        )}
+
+        {/* Hovered Hotspot Interactive Popup */}
+        {hoveredHotspot && activeFilters.showFireHotspots && (
+          <Popup
+            longitude={hoveredHotspot.longitude}
+            latitude={hoveredHotspot.latitude}
+            anchor="bottom"
+            closeButton={false}
+            closeOnClick={false}
+            className="satvigil-popup"
+          >
+            <div className="p-2 bg-gray-900 text-white rounded shadow-xl border border-gray-700 min-w-[200px] text-xs">
+              <div className="font-bold text-sm mb-1 uppercase text-gray-200 border-b border-gray-700 pb-1">
+                {hoveredHotspot.fire_type}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">FRP (MW):</span>
+                <span>{hoveredHotspot.frp?.toFixed(1) || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Confidence:</span>
+                <span className="capitalize">{hoveredHotspot.confidence}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Agency:</span>
+                <span className="truncate max-w-[100px]" title={hoveredHotspot.responding_agency || ''}>
+                  {hoveredHotspot.responding_agency || 'Unknown'}
+                </span>
+              </div>
+            </div>
+          </Popup>
         )}
 
         {/* Layer 4: Vessel Vectors & Radar Pulse */}
@@ -761,6 +867,22 @@ export function MapView() {
             <span>Density Heatmap</span>
           </span>
           <span className="text-[10px] font-bold">{activeFilters.showDensityHeatmap ? 'ON' : 'OFF'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => toggleFilter('showFireHotspots')}
+          className={`flex items-center justify-between space-x-3 px-2.5 py-1.5 rounded text-xs transition-colors ${
+            activeFilters.showFireHotspots
+              ? 'bg-orange-600/30 text-orange-300 border border-orange-500/40'
+              : 'bg-gray-800/40 text-gray-400 border border-transparent hover:bg-gray-800'
+          }`}
+        >
+          <span className="flex items-center space-x-1.5">
+            <span>🔥</span>
+            <span>Fire / Thermal</span>
+          </span>
+          <span className="text-[10px] font-bold">{activeFilters.showFireHotspots ? 'ON' : 'OFF'}</span>
         </button>
 
         {/* Hackathon Live Demo Button */}

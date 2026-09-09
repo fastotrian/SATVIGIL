@@ -12,6 +12,7 @@ export interface ActiveFilters {
   showSpillZones: boolean;
   showMPABoundaries: boolean;
   showDensityHeatmap: boolean;
+  showFireHotspots: boolean;
 }
 
 interface AlertStore {
@@ -21,6 +22,7 @@ interface AlertStore {
   selectedVessel: Vessel | null;
   activeFilters: ActiveFilters;
   isConnected: boolean;
+  isAudioMuted: boolean;
 
   setAlerts: (alerts: MaritimeAlert[]) => void;
   addAlert: (alert: MaritimeAlert) => void;
@@ -30,6 +32,7 @@ interface AlertStore {
   selectVessel: (vessel: Vessel | null) => void;
   toggleFilter: (key: keyof ActiveFilters) => void;
   setIsConnected: (connected: boolean) => void;
+  toggleAudio: () => void;
 
   // Computed helper getters
   getCriticalCount: () => number;
@@ -47,8 +50,10 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
     showSpillZones: true,
     showMPABoundaries: false,
     showDensityHeatmap: false,
+    showFireHotspots: true,
   },
   isConnected: true,
+  isAudioMuted: false,
 
   setAlerts: (alerts) => set({ alerts }),
 
@@ -79,6 +84,8 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
     })),
 
   setIsConnected: (isConnected) => set({ isConnected }),
+  
+  toggleAudio: () => set((state) => ({ isAudioMuted: !state.isAudioMuted })),
 
   getCriticalCount: () =>
     get().vessels.filter((v) => v.risk_level === 'CRITICAL').length,
