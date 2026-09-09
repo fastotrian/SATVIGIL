@@ -18,10 +18,9 @@ scheduler = AsyncIOScheduler()
 async def job_fetch_ais():
     """Fetch AIS vessel data and update risk scores."""
     logger.info("scheduler_job_start", job="fetch_ais")
-    from app.services.maritime.ais_fetcher import fetch_ais_vessels
-    vessels = await fetch_ais_vessels()
-    # TODO: Process, score, and persist to DB
-    logger.info("scheduler_job_done", job="fetch_ais", vessels=len(vessels))
+    from app.tasks.ais_worker import run_ais_ingest
+    await run_ais_ingest()
+    logger.info("scheduler_job_done", job="fetch_ais")
 
 
 async def job_fetch_firms():
