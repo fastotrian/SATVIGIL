@@ -129,13 +129,71 @@ def _gfw_type_to_ais(gfw_type: Optional[str]) -> int:
 # GFW 4Wings Presence Fetch — same endpoint as scripts/fetch_gfw_vessel_track.py
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def _fetch_gfw_presence(days_back: int = 3) -> List[Dict]:
-    """
-    Call GFW /v3/4wings/report (the same endpoint the team script uses).
-    Returns normalized list of vessel dicts keyed for parse_vessel().
+async def _gfw_report_call(
+    token: str,
+    start: str,
+    end: str,
+    spatial_res: str,
+    temporal_res: str,
+    geojson: dict,
+) -> List[Dict]:
+    """Single GFW 4wings report POST. Returns parsed vessel list or []."""
+    url = f"{GFW_BASE_URL}/4wings/report"
+    params = {
+        "spatial-resolution": spatial_res,
+        "temporal-resolution": temporal_res,
+        "group-by": "VESSEL_ID",
+        "datasets[0]": "public-global-presence:latest",
+        "date-range": f"{start},{end}",
+        "format": "JSON",
+        "spatial-aggregation": "false",
+    }
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            response = await client.post(url, params=params, json={"geojson": geojson}, headers=headers)
 
-    Uses DAILY resolution over last `days_back` days to get enough vessels
-    across the full Indian Ocean bbox. HOURLY over a large area times out.
+        if response.status_code == 401:
+            logger.error("gfw_unauthorized", hint="Check GFW_API_TOKEN in .env")
+            return []
+        if not response.is_success:
+            logger.warning("gfw_call_failed", status=response.status_code, body=response.text[:200])
+            return []
+
+        return _parse_gfw_response(response.json())
+    except httpx.TimeoutException:
+        logger.warning("gfw_call_timeout", start=start, end=end, res=spatial_res)
+        return []
+    except Exception as e:
+        logger.warning("gfw_call_exception", error=str(e))
+        return []
+
+
+# Gulf of Kutch bbox — smaller, proven to work (friend's script)
+GULF_KUTCH_GEOJSON = {
+    "type": "Polygon",
+    "coordinates": [[
+        [68.5, 22.0], [70.8, 22.0], [70.8, 23.1],
+        [68.5, 23.1], [68.5, 22.0],
+    ]],
+}
+
+
+async def _fetch_gfw_presence(_unused_days_back: int = 3) -> List[Dict]:
+    """
+    Fetch vessel presence from GFW with cascading date-window fallback.
+
+    GFW data has a 3-10 day processing delay, so we try multiple windows
+    going progressively further back until we find processed data.
+
+    Cascade (stops at first window that returns vessels):
+      1. India Ocean bbox — DAILY, 7→14 days back   (broad, recent)
+      2. India Ocean bbox — DAILY, 14→30 days back  (broader time)
+      3. Gulf of Kutch   — DAILY, 30→60 days back   (small bbox, proven)
+      4. Gulf of Kutch   — DAILY, 60→90 days back   (further back)
     """
     token = _gfw_token()
     if not token:
@@ -143,49 +201,32 @@ async def _fetch_gfw_presence(days_back: int = 3) -> List[Dict]:
         return []
 
     today = datetime.now(timezone.utc).date()
-    start = (today - timedelta(days=days_back)).isoformat()
-    end = today.isoformat()
 
-    url = f"{GFW_BASE_URL}/4wings/report"
-    params = {
-        "spatial-resolution": "LOW",          # LOW = faster, broader coverage
-        "temporal-resolution": "DAILY",        # DAILY = one position per vessel per day
-        "group-by": "VESSEL_ID",
-        "datasets[0]": "public-global-presence:latest",
-        "date-range": f"{start},{end}",
-        "format": "JSON",
-        "spatial-aggregation": "false",
-    }
-    body = {"geojson": INDIA_OCEAN_GEOJSON}
+    def date_range(start_days_back: int, end_days_back: int):
+        start = (today - timedelta(days=start_days_back)).isoformat()
+        end   = (today - timedelta(days=end_days_back)).isoformat()
+        return start, end
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
+    # Cascade: (start_days_back, end_days_back, spatial_res, temporal_res, geojson, label)
+    cascade = [
+        (14,  7,  "LOW",  "DAILY",  INDIA_OCEAN_GEOJSON,  "india-7-14d"),
+        (30, 14,  "LOW",  "DAILY",  INDIA_OCEAN_GEOJSON,  "india-14-30d"),
+        (60, 30,  "LOW",  "DAILY",  INDIA_OCEAN_GEOJSON,  "india-30-60d"),
+        (60, 30,  "HIGH", "DAILY",  GULF_KUTCH_GEOJSON,   "kutch-30-60d"),
+        (90, 60,  "HIGH", "DAILY",  GULF_KUTCH_GEOJSON,   "kutch-60-90d"),
+    ]
 
-    logger.info("gfw_fetch_start", start=start, end=end)
+    for (sb, eb, sr, tr, bbox, label) in cascade:
+        start, end = date_range(sb, eb)
+        logger.info("gfw_fetch_attempt", label=label, start=start, end=end)
+        vessels = await _gfw_report_call(token, start, end, sr, tr, bbox)
+        if vessels:
+            logger.info("gfw_fetch_success", label=label, count=len(vessels))
+            return vessels
+        logger.info("gfw_fetch_empty", label=label)
 
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(url, params=params, json=body, headers=headers)
-
-        if response.status_code == 401:
-            logger.error("gfw_unauthorized", hint="Check GFW_API_TOKEN in .env")
-            return []
-
-        if not response.is_success:
-            logger.error("gfw_fetch_failed", status=response.status_code, body=response.text[:300])
-            return []
-
-        data = response.json()
-        return _parse_gfw_response(data)
-
-    except httpx.TimeoutException:
-        logger.error("gfw_fetch_timeout")
-        return []
-    except Exception as e:
-        logger.error("gfw_fetch_exception", error=str(e))
-        return []
+    logger.warning("gfw_all_windows_empty")
+    return []
 
 
 def _parse_gfw_response(data: dict) -> List[Dict]:
