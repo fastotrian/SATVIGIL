@@ -10,7 +10,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 import { RISK_COLORS } from '../../constants/riskColors';
 import { useAlertStore } from '../../store/alertStore';
-import type { Vessel, SpillEvent, VesselTrack, TrackPoint } from '../../types/maritime';
+import type { Vessel, SpillEvent, VesselTrack } from '../../types/maritime';
 import type { ThermalHotspot } from '../../types/fire';
 import { StaticPinsLayer } from './StaticPins';
 import { VesselTrackPlayer, TrackPlaybackControls, DEMO_TRACK_VESSEL_ID } from './VesselTrackPlayer';
@@ -80,12 +80,6 @@ const MAPBOX_TOKEN = hasValidMapboxToken
   : 'pk.eyJ1Ijoic2F0dmlnaWwiLCJhIjoiY2x5eXk5eXhxMG1zZDJqcXZhbm11cGNtMSJ9.placeholder';
 
 const MAP_STYLE = hasValidMapboxToken ? 'mapbox://styles/mapbox/dark-v11' : ESRI_DARK_STYLE;
-
-// Spatial boundaries for Indian maritime search region
-const INDIA_BOUNDS: [[number, number], [number, number]] = [
-  [60.0, 4.0],  // Southwest coordinates (Arabian Sea / Lakshadweep)
-  [102.0, 38.0], // Northeast coordinates (Bay of Bengal / Andaman & Nicobar)
-];
 
 // Statically defined Marine Protected Areas (MPAs) along Indian coastline
 const INDIA_MPAS_GEOJSON: GeoJSON.FeatureCollection = {
@@ -185,7 +179,6 @@ export function MapView() {
   const [trackIsPlaying, setTrackIsPlaying] = useState(false);
   const [trackFrame, setTrackFrame] = useState(0);
   const [trackSpeed, setTrackSpeed] = useState(3);
-  const trackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleTrackPlay = useCallback(() => setTrackIsPlaying(true), []);
   const handleTrackPause = useCallback(() => setTrackIsPlaying(false), []);
@@ -535,7 +528,6 @@ export function MapView() {
             selectVessel(feature.properties as Vessel);
             setSarPopupSpill(null);
           } else if (feature?.layer.id === 'spills-fill') {
-            // Find the matching spill and show SAR popup
             const spillId = feature.properties?.id;
             const clickedSpill = spills.find((s) => s.id === spillId) ?? spills[0] ?? activeSpill;
             if (clickedSpill) {
@@ -605,10 +597,18 @@ export function MapView() {
           </Source>
         )}
 
+        {/* Layer 4: AIS Real-Time Vessel Traffic Dots & Glow */}
+        {activeFilters.showVessels && (
+          <Source id="vessels" type="geojson" data={vesselsGeoJSON}>
+            <Layer {...vesselPulseLayer} />
+            <Layer {...vesselDotsLayer} />
+          </Source>
+        )}
+
         {/* Layer: Strategic Fixed Maritime Pins (Bombay High, Ports, MPAs) */}
         <StaticPinsLayer />
 
-        {/* Animated Radar Pulse Rings for Critical Vessels (Hardware-accelerated CSS on DOM) */}
+        {/* Animated Radar Pulse Rings for Critical Vessels */}
         {activeFilters.showVessels &&
           vessels
             .filter((v) => v.risk_level === 'CRITICAL')
@@ -650,6 +650,236 @@ export function MapView() {
           />
         )}
 
+        {/* Selected Vessel Interactive Popup — Command Center Design */}
+        {selectedVessel && (
+          <Popup
+            longitude={selectedVessel.lon}
+            latitude={selectedVessel.lat}
+            anchor="bottom"
+            onClose={() => selectVessel(null)}
+            closeOnClick={false}
+            className="satvigil-popup"
+          >
+            <div
+              className="p-3.5 rounded-lg shadow-2xl text-xs flex flex-col gap-2 min-w-[260px]"
+              style={{
+                background: 'var(--navy-800)',
+                border: '1px solid var(--navy-400)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b pb-1.5" style={{ borderColor: 'var(--navy-500)' }}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">🛥️</span>
+                  <div>
+                    <div className="font-bold text-sm tracking-wide text-white">
+                      {selectedVessel.vessel_name || 'UNKNOWN VESSEL'}
+                    </div>
+                    <div className="text-[10px] font-mono" style={{ color: 'var(--text-mono)' }}>
+                      MMSI: {selectedVessel.mmsi} · {selectedVessel.vessel_type_label || 'Vessel'}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                  style={{
+                    backgroundColor:
+                      selectedVessel.risk_level === 'CRITICAL' ? 'rgba(239, 68, 68, 0.25)' :
+                      selectedVessel.risk_level === 'WARNING' ? 'rgba(245, 158, 11, 0.25)' :
+                      'rgba(0, 212, 232, 0.2)',
+                    color:
+                      selectedVessel.risk_level === 'CRITICAL' ? 'var(--red-400)' :
+                      selectedVessel.risk_level === 'WARNING' ? 'var(--amber-400)' :
+                      'var(--teal-500)',
+                    border: `1px solid ${
+                      selectedVessel.risk_level === 'CRITICAL' ? 'var(--red-500)' :
+                      selectedVessel.risk_level === 'WARNING' ? 'var(--amber-500)' :
+                      'var(--teal-500)'
+                    }`,
+                  }}
+                >
+                  {selectedVessel.risk_level}
+                </span>
+              </div>
+
+              {/* Threat / Risk Score Bar */}
+              <div>
+                <div className="flex justify-between text-[11px] mb-1">
+                  <span style={{ color: 'var(--text-secondary)' }}>Threat Index</span>
+                  <span className="font-mono font-bold" style={{ color: selectedVessel.risk_score > 0.7 ? 'var(--red-400)' : 'var(--teal-500)' }}>
+                    {(selectedVessel.risk_score * 100).toFixed(0)}% ({selectedVessel.risk_score.toFixed(2)})
+                  </span>
+                </div>
+                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--navy-950)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${Math.min(100, Math.max(5, selectedVessel.risk_score * 100))}%`,
+                      backgroundColor:
+                        selectedVessel.risk_score > 0.7 ? 'var(--red-500)' :
+                        selectedVessel.risk_score > 0.4 ? 'var(--amber-500)' :
+                        'var(--teal-500)',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Data Grid */}
+              <div className="grid grid-cols-2 gap-2 text-[11px] bg-black/25 p-2 rounded border" style={{ borderColor: 'var(--navy-500)' }}>
+                <div>
+                  <span className="block text-[10px]" style={{ color: 'var(--text-secondary)' }}>SPEED (SOG)</span>
+                  <span className="font-mono font-semibold">{selectedVessel.speed_knots?.toFixed(1) ?? '—'} kts</span>
+                </div>
+                <div>
+                  <span className="block text-[10px]" style={{ color: 'var(--text-secondary)' }}>COURSE (COG)</span>
+                  <span className="font-mono font-semibold">{selectedVessel.course_deg != null ? `${selectedVessel.course_deg.toFixed(0)}°` : '—'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px]" style={{ color: 'var(--text-secondary)' }}>TYPE</span>
+                  <span className="font-semibold text-white capitalize">{selectedVessel.vessel_type_label || 'Vessel'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px]" style={{ color: 'var(--text-secondary)' }}>COORDINATES</span>
+                  <span className="font-mono text-[10px]" style={{ color: 'var(--text-mono)' }}>
+                    {selectedVessel.lat.toFixed(3)}°N, {selectedVessel.lon.toFixed(3)}°E
+                  </span>
+                </div>
+              </div>
+
+              {/* Anomaly Badge if Dark / Anomaly */}
+              {selectedVessel.is_dark && (
+                <div className="p-1.5 rounded bg-red-950/40 border border-red-500/40 text-[10px] text-red-300 flex items-center gap-1">
+                  <span>⚠️</span>
+                  <span><strong>Dark Vessel Alert:</strong> AIS Gap of {selectedVessel.ais_gap_minutes} mins</span>
+                </div>
+              )}
+
+              {selectedVessel.in_mpa && (
+                <div className="p-1.5 rounded bg-amber-950/40 border border-amber-500/40 text-[10px] text-amber-300 flex items-center gap-1">
+                  <span>🛡️</span>
+                  <span><strong>MPA Zone:</strong> Inside {selectedVessel.mpa_name || 'Protected Sanctuary'}</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-1.5 mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTrackPlayer(true);
+                    setTrackVesselId(DEMO_TRACK_VESSEL_ID);
+                  }}
+                  className="flex-1 py-1.5 px-2 rounded text-[10px] font-semibold flex items-center justify-center gap-1 transition-colors"
+                  style={{
+                    background: 'var(--navy-600)',
+                    border: '1px solid var(--teal-500)',
+                    color: 'var(--teal-500)',
+                  }}
+                >
+                  📡 GFW Track Replay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    mapRef.current?.flyTo({
+                      center: [selectedVessel.lon, selectedVessel.lat],
+                      zoom: 11,
+                      duration: 1500,
+                    });
+                  }}
+                  className="py-1.5 px-2.5 rounded text-[10px] font-semibold transition-colors"
+                  style={{
+                    background: 'var(--teal-500)',
+                    color: 'var(--navy-950)',
+                  }}
+                >
+                  🎯 Focus
+                </button>
+              </div>
+            </div>
+          </Popup>
+        )}
+
+        {/* Active Simulated Spill Popup */}
+        {activeSpill && showSpillPopup && (
+          <Popup
+            longitude={activeSpill.lon}
+            latitude={activeSpill.lat}
+            anchor="top"
+            onClose={() => setShowSpillPopup(false)}
+            closeOnClick={false}
+            className="satvigil-popup"
+          >
+            <div
+              className="p-3.5 rounded-lg shadow-2xl text-xs flex flex-col gap-2 min-w-[270px]"
+              style={{
+                background: 'var(--navy-800)',
+                border: '1px solid var(--red-500)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <div className="flex items-center justify-between border-b pb-1.5" style={{ borderColor: 'var(--navy-500)' }}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">🛢️</span>
+                  <div>
+                    <div className="font-bold text-sm tracking-wide text-red-400">OIL SPILL DETECTED</div>
+                    <div className="text-[10px] font-mono" style={{ color: 'var(--text-secondary)' }}>
+                      ID: {activeSpill.id}
+                    </div>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-600/30 text-red-300 border border-red-500 animate-pulse-red">
+                  CRITICAL
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px] bg-black/25 p-2 rounded border" style={{ borderColor: 'var(--navy-500)' }}>
+                <div>
+                  <span className="block text-[10px]" style={{ color: 'var(--text-secondary)' }}>SLICK AREA</span>
+                  <span className="font-mono font-bold text-white">{activeSpill.area_km2} km²</span>
+                </div>
+                <div>
+                  <span className="block text-[10px]" style={{ color: 'var(--text-secondary)' }}>SAR CONFIDENCE</span>
+                  <span className="font-mono font-bold text-amber-400">{Math.round(activeSpill.confidence * 100)}%</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="block text-[10px]" style={{ color: 'var(--text-secondary)' }}>SENSOR / SCENE</span>
+                  <span className="font-mono text-[10px] text-gray-300">{activeSpill.sentinel_scene_id}</span>
+                </div>
+              </div>
+
+              {activeSpill.top_candidates && activeSpill.top_candidates.length > 0 && (
+                <div className="p-2 rounded bg-red-950/40 border border-red-500/50">
+                  <div className="text-[10px] font-bold text-red-300 uppercase tracking-wider mb-1">
+                    🎯 Primary Suspect Attributed
+                  </div>
+                  <div className="flex justify-between font-bold text-white text-xs">
+                    <span>{activeSpill.top_candidates[0].vessel_name}</span>
+                    <span className="text-red-400">Risk: {activeSpill.top_candidates[0].risk_score}</span>
+                  </div>
+                  <div className="text-[10px] flex justify-between mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    <span>Distance: {activeSpill.top_candidates[0].distance_km} km</span>
+                    <span>Heading Align: {Math.round(activeSpill.top_candidates[0].heading_score * 100)}%</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const suspect = vessels.find((v) => v.mmsi === activeSpill.top_candidates[0].mmsi);
+                      if (suspect) {
+                        selectVessel(suspect);
+                      }
+                      setSarPopupSpill(activeSpill);
+                    }}
+                    className="w-full mt-2 py-1 px-2 rounded text-[10px] font-bold uppercase tracking-wider bg-red-600 hover:bg-red-500 text-white transition-colors"
+                  >
+                    View Forensic SAR Evidence →
+                  </button>
+                </div>
+              )}
+            </div>
+          </Popup>
+        )}
 
         {/* Hovered Hotspot Interactive Popup */}
         {hoveredHotspot && activeFilters.showFireHotspots && (
@@ -661,294 +891,155 @@ export function MapView() {
             closeOnClick={false}
             className="satvigil-popup"
           >
-            <div className="p-2 bg-gray-900 text-white rounded shadow-xl border border-gray-700 min-w-[200px] text-xs">
-              <div className="font-bold text-sm mb-1 uppercase text-gray-200 border-b border-gray-700 pb-1">
-                {hoveredHotspot.fire_type}
+            <div
+              className="p-2.5 rounded shadow-xl min-w-[200px] text-xs flex flex-col gap-1"
+              style={{
+                background: 'var(--navy-800)',
+                border: '1px solid var(--navy-400)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <div className="font-bold text-xs uppercase border-b pb-1 flex justify-between items-center" style={{ borderColor: 'var(--navy-500)' }}>
+                <span>🔥 {hoveredHotspot.fire_type}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono">
+                  {hoveredHotspot.confidence}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">FRP (MW):</span>
-                <span>{hoveredHotspot.frp?.toFixed(1) || 'N/A'}</span>
+              <div className="flex justify-between text-[11px]">
+                <span style={{ color: 'var(--text-secondary)' }}>FRP (MW):</span>
+                <span className="font-mono font-bold text-amber-400">{hoveredHotspot.frp?.toFixed(1) || 'N/A'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Confidence:</span>
-                <span className="capitalize">{hoveredHotspot.confidence}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Agency:</span>
-                <span className="truncate max-w-[100px]" title={hoveredHotspot.responding_agency || ''}>
+              <div className="flex justify-between text-[11px]">
+                <span style={{ color: 'var(--text-secondary)' }}>Agency:</span>
+                <span className="truncate max-w-[110px]" title={hoveredHotspot.responding_agency || ''}>
                   {hoveredHotspot.responding_agency || 'Unknown'}
                 </span>
               </div>
             </div>
           </Popup>
         )}
-
-        {/* Layer 4: Vessel Vectors & Radar Pulse */}
-        {activeFilters.showVessels && (
-          <Source id="vessels" type="geojson" data={vesselsGeoJSON}>
-            <Layer {...vesselPulseLayer} />
-            <Layer {...vesselDotsLayer} />
-          </Source>
-        )}
-
-        {/* Selected Vessel Interactive Popup */}
-        {selectedVessel && (
-          <Popup
-            longitude={selectedVessel.lon}
-            latitude={selectedVessel.lat}
-            anchor="bottom"
-            onClose={() => selectVessel(null)}
-            closeOnClick={false}
-            className="satvigil-popup"
-          >
-            <div className="p-3 bg-gray-900 text-white rounded-lg shadow-xl border border-gray-700 min-w-[240px] text-xs">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-2 mb-2">
-                <div className="font-bold text-sm text-gray-100">{selectedVessel.vessel_name}</div>
-                <span
-                  className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide"
-                  style={{
-                    backgroundColor:
-                      selectedVessel.risk_level === 'CRITICAL'
-                        ? 'rgba(239, 68, 68, 0.25)'
-                        : selectedVessel.risk_level === 'WARNING'
-                        ? 'rgba(249, 115, 22, 0.25)'
-                        : 'rgba(34, 197, 94, 0.25)',
-                    color:
-                      selectedVessel.risk_level === 'CRITICAL'
-                        ? RISK_COLORS.CRITICAL
-                        : selectedVessel.risk_level === 'WARNING'
-                        ? RISK_COLORS.HIGH
-                        : RISK_COLORS.NORMAL,
-                    border: `1px solid ${
-                      selectedVessel.risk_level === 'CRITICAL'
-                        ? RISK_COLORS.CRITICAL
-                        : selectedVessel.risk_level === 'WARNING'
-                        ? RISK_COLORS.HIGH
-                        : RISK_COLORS.NORMAL
-                    }`,
-                  }}
-                >
-                  {selectedVessel.risk_level}
-                </span>
-              </div>
-
-              <div className="space-y-1.5 text-gray-300">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">MMSI:</span>
-                  <span className="font-mono text-gray-200">{selectedVessel.mmsi}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Type:</span>
-                  <span>{selectedVessel.vessel_type_label}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Speed:</span>
-                  <span>{selectedVessel.speed_knots} kts</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Risk Score:</span>
-                  <span className="font-bold">{selectedVessel.risk_score}</span>
-                </div>
-                {selectedVessel.is_dark && (
-                  <div className="flex justify-between text-red-400 font-semibold bg-red-950/50 p-1 rounded">
-                    <span>⚠️ Dark Vessel:</span>
-                    <span>Gap: {selectedVessel.ais_gap_minutes}m</span>
-                  </div>
-                )}
-                {selectedVessel.in_mpa && (
-                  <div className="flex justify-between text-purple-400 font-semibold bg-purple-950/50 p-1 rounded">
-                    <span>Protected Area:</span>
-                    <span>{selectedVessel.mpa_name}</span>
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                className="w-full mt-3 bg-blue-600 hover:bg-blue-500 text-white font-medium py-1 px-2 rounded transition-colors"
-                onClick={() => alert(`Tracking vessel ${selectedVessel.mmsi} telemetry.`)}
-              >
-                Correlate Spill Tracks
-              </button>
-            </div>
-          </Popup>
-        )}
-
-        {/* Active Oil Spill Interactive Attribution Popup */}
-        {activeSpill && showSpillPopup && activeFilters.showSpillZones && (
-          <Popup
-            longitude={activeSpill.lon}
-            latitude={activeSpill.lat}
-            anchor="top"
-            onClose={() => setShowSpillPopup(false)}
-            closeOnClick={false}
-            className="satvigil-popup"
-          >
-            <div className="p-3 bg-gray-950 text-white rounded-lg shadow-2xl border border-red-700 min-w-[260px] text-xs">
-              <div className="flex items-center justify-between border-b border-red-900/60 pb-2 mb-2">
-                <span className="font-bold text-sm text-red-400 flex items-center space-x-1.5">
-                  <span>🛢️</span>
-                  <span>OIL SPILL DETECTED</span>
-                </span>
-                <span className="text-[10px] bg-red-900 text-red-200 px-1.5 py-0.5 rounded font-mono font-bold">
-                  {activeSpill.id}
-                </span>
-              </div>
-              <div className="space-y-1.5 text-gray-300">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Area:</span>
-                  <span className="font-bold text-white">{activeSpill.area_km2} km²</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Confidence:</span>
-                  <span className="font-bold text-emerald-400">{Math.round(activeSpill.confidence * 100)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Sentinel Scene:</span>
-                  <span className="font-mono text-[10px] text-gray-400 truncate max-w-[130px]" title={activeSpill.sentinel_scene_id}>
-                    {activeSpill.sentinel_scene_id}
-                  </span>
-                </div>
-                {activeSpill.top_candidates && activeSpill.top_candidates[0] && (
-                  <div className="mt-2 pt-2 border-t border-gray-800 bg-red-950/40 p-2 rounded">
-                    <span className="text-gray-400 block text-[10px] uppercase font-semibold">Top Suspect (4-Signal SVR):</span>
-                    <div className="flex justify-between font-bold text-red-300 mt-0.5">
-                      <span>{activeSpill.top_candidates[0].vessel_name}</span>
-                      <span>Score: {activeSpill.top_candidates[0].risk_score}</span>
-                    </div>
-                    <div className="text-[10px] text-gray-400 flex justify-between mt-0.5">
-                      <span>Dist: {activeSpill.top_candidates[0].distance_km} km</span>
-                      <span>Align: {Math.round(activeSpill.top_candidates[0].heading_score * 100)}%</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const suspect = vessels.find((v) => v.mmsi === activeSpill.top_candidates[0].mmsi);
-                        if (suspect) selectVessel(suspect);
-                      }}
-                      className="mt-2 w-full bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-2 rounded text-[11px] transition-colors"
-                    >
-                      Inspect Suspect Vessel →
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Popup>
-        )}
       </Map>
 
-      {/* Layer Toggle Control Overlay */}
-      <div className="absolute top-4 right-4 z-10 bg-gray-900/90 backdrop-blur border border-gray-800 rounded-lg p-2.5 shadow-2xl flex flex-col space-y-1.5">
-        <span className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase px-1 pb-1 border-b border-gray-800">
-          Layer Control
-        </span>
+      {/* ── Layer Control Panel — Bottom Left, Navy Glass Command Panel ── */}
+      <div
+        className="absolute bottom-6 left-4 z-10 rounded-lg shadow-2xl flex flex-col gap-2 p-3 backdrop-blur-md"
+        style={{
+          background: 'rgba(15, 31, 61, 0.92)',
+          border: '1px solid var(--navy-500)',
+          minWidth: '220px',
+        }}
+      >
+        <div className="flex items-center justify-between border-b pb-1.5" style={{ borderColor: 'var(--navy-500)' }}>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse-teal" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-300">
+              Surveillance Layers
+            </span>
+          </div>
+          <span className="text-[9px] font-mono text-cyan-500">LIVE GIS</span>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => toggleFilter('showVessels')}
-          className={`flex items-center justify-between space-x-3 px-2.5 py-1.5 rounded text-xs transition-colors ${
-            activeFilters.showVessels
-              ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
-              : 'bg-gray-800/40 text-gray-400 border border-transparent hover:bg-gray-800'
-          }`}
-        >
-          <span className="flex items-center space-x-1.5">
-            <span>🛥️</span>
-            <span>AIS Vessels</span>
-          </span>
-          <span className="text-[10px] font-bold">{activeFilters.showVessels ? 'ON' : 'OFF'}</span>
-        </button>
+        <div className="flex flex-col gap-1.5 text-xs">
+          <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
+            <input
+              type="checkbox"
+              checked={activeFilters.showVessels}
+              onChange={() => toggleFilter('showVessels')}
+              className="accent-cyan-400 rounded cursor-pointer"
+            />
+            <span className="flex items-center gap-1.5">
+              <span className="text-cyan-300">🛥️</span>
+              <span className="text-gray-200 text-[11px]">AIS Vessel Traffic</span>
+            </span>
+          </label>
 
-        <button
-          type="button"
-          onClick={() => toggleFilter('showSpillZones')}
-          className={`flex items-center justify-between space-x-3 px-2.5 py-1.5 rounded text-xs transition-colors ${
-            activeFilters.showSpillZones
-              ? 'bg-red-600/30 text-red-300 border border-red-500/40'
-              : 'bg-gray-800/40 text-gray-400 border border-transparent hover:bg-gray-800'
-          }`}
-        >
-          <span className="flex items-center space-x-1.5">
-            <span>🌊</span>
-            <span>Spill Zones</span>
-          </span>
-          <span className="text-[10px] font-bold">{activeFilters.showSpillZones ? 'ON' : 'OFF'}</span>
-        </button>
+          <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
+            <input
+              type="checkbox"
+              checked={activeFilters.showSpillZones}
+              onChange={() => toggleFilter('showSpillZones')}
+              className="accent-red-500 rounded cursor-pointer"
+            />
+            <span className="flex items-center gap-1.5">
+              <span className="text-red-400">🛢️</span>
+              <span className="text-gray-200 text-[11px]">Sentinel-1/2 SAR Spills</span>
+            </span>
+          </label>
 
-        <button
-          type="button"
-          onClick={() => toggleFilter('showMPABoundaries')}
-          className={`flex items-center justify-between space-x-3 px-2.5 py-1.5 rounded text-xs transition-colors ${
-            activeFilters.showMPABoundaries
-              ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
-              : 'bg-gray-800/40 text-gray-400 border border-transparent hover:bg-gray-800'
-          }`}
-        >
-          <span className="flex items-center space-x-1.5">
-            <span>🏊</span>
-            <span>MPA Zones</span>
-          </span>
-          <span className="text-[10px] font-bold">{activeFilters.showMPABoundaries ? 'ON' : 'OFF'}</span>
-        </button>
+          <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
+            <input
+              type="checkbox"
+              checked={activeFilters.showFireHotspots}
+              onChange={() => toggleFilter('showFireHotspots')}
+              className="accent-amber-400 rounded cursor-pointer"
+            />
+            <span className="flex items-center gap-1.5">
+              <span className="text-amber-400">🔥</span>
+              <span className="text-gray-200 text-[11px]">FIRMS Gas Flares / Fires</span>
+            </span>
+          </label>
 
-        <button
-          type="button"
-          onClick={() => toggleFilter('showDensityHeatmap')}
-          className={`flex items-center justify-between space-x-3 px-2.5 py-1.5 rounded text-xs transition-colors ${
-            activeFilters.showDensityHeatmap
-              ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40'
-              : 'bg-gray-800/40 text-gray-400 border border-transparent hover:bg-gray-800'
-          }`}
-        >
-          <span className="flex items-center space-x-1.5">
-            <span>🌡️</span>
-            <span>Density Heatmap</span>
-          </span>
-          <span className="text-[10px] font-bold">{activeFilters.showDensityHeatmap ? 'ON' : 'OFF'}</span>
-        </button>
+          <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
+            <input
+              type="checkbox"
+              checked={activeFilters.showDensityHeatmap}
+              onChange={() => toggleFilter('showDensityHeatmap')}
+              className="accent-cyan-400 rounded cursor-pointer"
+            />
+            <span className="flex items-center gap-1.5">
+              <span>🌊</span>
+              <span className="text-gray-200 text-[11px]">Traffic Density Heatmap</span>
+            </span>
+          </label>
 
-        <button
-          type="button"
-          onClick={() => toggleFilter('showFireHotspots')}
-          className={`flex items-center justify-between space-x-3 px-2.5 py-1.5 rounded text-xs transition-colors ${
-            activeFilters.showFireHotspots
-              ? 'bg-orange-600/30 text-orange-300 border border-orange-500/40'
-              : 'bg-gray-800/40 text-gray-400 border border-transparent hover:bg-gray-800'
-          }`}
-        >
-          <span className="flex items-center space-x-1.5">
-            <span>🔥</span>
-            <span>Fire / Thermal</span>
-          </span>
-          <span className="text-[10px] font-bold">{activeFilters.showFireHotspots ? 'ON' : 'OFF'}</span>
-        </button>
+          <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
+            <input
+              type="checkbox"
+              checked={activeFilters.showMPABoundaries}
+              onChange={() => toggleFilter('showMPABoundaries')}
+              className="accent-emerald-400 rounded cursor-pointer"
+            />
+            <span className="flex items-center gap-1.5">
+              <span className="text-emerald-400">🛡️</span>
+              <span className="text-gray-200 text-[11px]">Marine Protected Areas</span>
+            </span>
+          </label>
+        </div>
 
-        {/* Hackathon Live Demo Button */}
-        <button
-          type="button"
-          disabled={isSimulating}
-          onClick={handleSimulateSpillDemo}
-          className="w-full mt-2 bg-gradient-to-r from-red-700 to-rose-700 hover:from-red-600 hover:to-rose-600 active:scale-95 text-white font-bold px-2.5 py-2 rounded text-xs shadow-lg transition-all flex items-center justify-center space-x-1.5 border border-red-500/50"
-        >
-          <span>🛢️</span>
-          <span>{isSimulating ? 'Correlating...' : 'Simulate Spill (Demo)'}</span>
-        </button>
+        {/* Action / Simulation Controls */}
+        <div className="pt-2 border-t flex flex-col gap-1.5" style={{ borderColor: 'var(--navy-500)' }}>
+          <button
+            type="button"
+            onClick={handleSimulateSpillDemo}
+            disabled={isSimulating}
+            className="w-full py-1.5 px-2.5 rounded text-[11px] font-bold tracking-wide flex items-center justify-center gap-1.5 transition-all shadow-lg"
+            style={{
+              background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.9), rgba(185, 28, 28, 0.9))',
+              border: '1px solid var(--red-500)',
+              color: '#FFFFFF',
+            }}
+          >
+            <span className="text-sm">🚨</span>
+            <span>{isSimulating ? 'Simulating Incident...' : 'Simulate Spill Event'}</span>
+          </button>
 
-        {/* GFW AIS Track Playback Button */}
-        <button
-          id="track-demo-btn"
-          type="button"
-          onClick={() => setShowTrackPlayer((v) => !v)}
-          className={`w-full mt-1 px-2.5 py-2 rounded text-xs font-bold transition-all flex items-center justify-center space-x-1.5 border ${
-            showTrackPlayer
-              ? 'bg-sky-700 border-sky-500/50 text-white'
-              : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'
-          }`}
-        >
-          <span>📡</span>
-          <span>{showTrackPlayer ? 'Hide AIS Track' : 'Play GFW Track (Demo)'}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowTrackPlayer((prev) => !prev);
+              setTrackVesselId(DEMO_TRACK_VESSEL_ID);
+            }}
+            className="w-full py-1.5 px-2.5 rounded text-[11px] font-bold tracking-wide flex items-center justify-center gap-1.5 transition-all"
+            style={{
+              background: showTrackPlayer ? 'rgba(0, 212, 232, 0.2)' : 'var(--navy-700)',
+              border: `1px solid ${showTrackPlayer ? 'var(--teal-500)' : 'var(--navy-500)'}`,
+              color: showTrackPlayer ? 'var(--teal-500)' : 'var(--text-secondary)',
+            }}
+          >
+            <span>📡</span>
+            <span>{showTrackPlayer ? 'Close Track Player' : 'Play GFW AIS Track'}</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Playback Controls Panel ── */}

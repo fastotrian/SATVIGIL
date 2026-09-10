@@ -8,106 +8,207 @@ export function AlertDetailsDrawer() {
   if (!selectedVessel) return null;
 
   return (
-    <div className="fixed top-0 right-0 h-full w-80 bg-gray-900 border-l border-gray-800 shadow-2xl z-50 flex flex-col transform transition-transform duration-300 translate-x-0">
-      <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-950">
-        <h2 className="text-white font-bold tracking-wider">Vessel Profile</h2>
+    <div
+      className="fixed top-0 right-0 h-full w-88 shadow-2xl z-50 flex flex-col transform transition-transform duration-300 translate-x-0"
+      style={{
+        background: 'var(--navy-950)',
+        borderLeft: '1px solid var(--navy-500)',
+        width: '340px',
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between p-4 border-b"
+        style={{ background: 'var(--navy-900)', borderColor: 'var(--navy-500)' }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-4 rounded-full" style={{ background: 'var(--teal-500)' }} />
+          <h2 className="text-white font-bold text-sm tracking-widest uppercase">Target Dossier</h2>
+        </div>
         <button
           type="button"
           onClick={() => selectVessel(null)}
-          className="text-gray-400 hover:text-white transition-colors"
+          className="text-gray-400 hover:text-white transition-colors text-base"
         >
           ✕
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Header Block */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xl font-black text-white">{selectedVessel.vessel_name || 'UNKNOWN'}</span>
-          </div>
-          <div className="text-sm text-gray-400 font-mono">MMSI: {selectedVessel.mmsi}</div>
-        </div>
-
-        {/* Status Pills */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className={`p-2 rounded flex flex-col ${selectedVessel.risk_level === 'CRITICAL' ? 'bg-red-950/30 border border-red-900/50' : 'bg-gray-800/50'}`}>
-            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Risk Level</span>
+        <div
+          className="p-3 rounded-lg border"
+          style={{ background: 'var(--navy-800)', borderColor: 'var(--navy-500)' }}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-base font-bold text-white tracking-wide">{selectedVessel.vessel_name || 'UNKNOWN'}</span>
             <span
-              className="font-bold text-sm"
+              className="text-[9px] font-bold px-1.5 py-0.5 rounded tracking-widest uppercase"
               style={{
+                backgroundColor:
+                  selectedVessel.risk_level === 'CRITICAL' ? 'rgba(239, 68, 68, 0.25)' :
+                  selectedVessel.risk_level === 'WARNING' ? 'rgba(245, 158, 11, 0.25)' :
+                  'rgba(0, 212, 232, 0.2)',
                 color:
-                  selectedVessel.risk_level === 'CRITICAL'
-                    ? RISK_COLORS.CRITICAL
-                    : selectedVessel.risk_level === 'WARNING'
-                    ? RISK_COLORS.HIGH
-                    : RISK_COLORS.NORMAL,
+                  selectedVessel.risk_level === 'CRITICAL' ? 'var(--red-400)' :
+                  selectedVessel.risk_level === 'WARNING' ? 'var(--amber-400)' :
+                  'var(--teal-500)',
+                border: `1px solid ${
+                  selectedVessel.risk_level === 'CRITICAL' ? 'var(--red-500)' :
+                  selectedVessel.risk_level === 'WARNING' ? 'var(--amber-500)' :
+                  'var(--teal-500)'
+                }`,
               }}
             >
               {selectedVessel.risk_level}
             </span>
           </div>
-          <div className="p-2 rounded bg-gray-800/50 flex flex-col border border-gray-700/50">
-            <span className="text-[10px] text-gray-400 uppercase tracking-wide">Speed / Course</span>
-            <span className="font-bold text-sm text-white">{selectedVessel.speed_knots} kts / {selectedVessel.course_deg}°</span>
+          <div className="text-xs font-mono" style={{ color: 'var(--text-mono)' }}>
+            MMSI: {selectedVessel.mmsi} · {selectedVessel.vessel_type_label || 'Vessel'}
+          </div>
+        </div>
+
+        {/* Status Pills */}
+        <div className="grid grid-cols-2 gap-2">
+          <div
+            className="p-2.5 rounded border flex flex-col"
+            style={{ background: 'var(--navy-800)', borderColor: 'var(--navy-500)' }}
+          >
+            <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Threat Index</span>
+            <span className="font-bold text-sm font-mono mt-0.5" style={{ color: selectedVessel.risk_score > 0.7 ? 'var(--red-400)' : 'var(--teal-500)' }}>
+              {(selectedVessel.risk_score * 100).toFixed(0)}%
+            </span>
+          </div>
+          <div
+            className="p-2.5 rounded border flex flex-col"
+            style={{ background: 'var(--navy-800)', borderColor: 'var(--navy-500)' }}
+          >
+            <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Speed / Course</span>
+            <span className="font-bold text-sm text-white font-mono mt-0.5">
+              {selectedVessel.speed_knots?.toFixed(1) ?? '0.0'} kts / {selectedVessel.course_deg != null ? `${selectedVessel.course_deg.toFixed(0)}°` : '—'}
+            </span>
           </div>
         </div>
 
         {/* Risk Breakdown */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-800 pb-1">Risk Factors (4-Signal)</h3>
-          
+          <h3
+            className="text-[10px] font-bold uppercase tracking-widest border-b pb-1"
+            style={{ color: 'var(--teal-400)', borderColor: 'var(--navy-500)' }}
+          >
+            4-Signal Risk Decomposition
+          </h3>
+
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
-              <span className="text-gray-300">AIS Dark Gap</span>
-              <span className="text-white font-mono">{selectedVessel.ais_gap_minutes} min</span>
+              <span style={{ color: 'var(--text-secondary)' }}>AIS Dark Gap</span>
+              <span className="font-mono font-bold" style={{ color: selectedVessel.is_dark ? 'var(--red-400)' : 'var(--teal-500)' }}>
+                {selectedVessel.ais_gap_minutes} min
+              </span>
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
+            <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--navy-900)' }}>
               <div
-                className="bg-red-500 h-1.5 rounded-full"
-                style={{ width: `${Math.min((selectedVessel.ais_gap_minutes / 60) * 100, 100)}%` }}
-              ></div>
+                className="h-1.5 rounded-full"
+                style={{
+                  width: `${Math.min((selectedVessel.ais_gap_minutes / 60) * 100, 100)}%`,
+                  backgroundColor: selectedVessel.ais_gap_minutes > 30 ? 'var(--red-500)' : 'var(--teal-500)',
+                }}
+              />
             </div>
           </div>
 
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
-              <span className="text-gray-300">Vessel Type Risk</span>
-              <span className="text-white font-mono">{selectedVessel.vessel_type_label}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>Vessel Type Threat</span>
+              <span className="font-mono text-white">{selectedVessel.vessel_type_label}</span>
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
+            <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--navy-900)' }}>
               <div
-                className="bg-orange-500 h-1.5 rounded-full"
-                style={{ width: '75%' }}
-              ></div>
+                className="h-1.5 rounded-full"
+                style={{
+                  width: selectedVessel.vessel_type >= 80 && selectedVessel.vessel_type <= 89 ? '85%' : '35%',
+                  backgroundColor: selectedVessel.vessel_type >= 80 && selectedVessel.vessel_type <= 89 ? 'var(--amber-500)' : 'var(--teal-500)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span style={{ color: 'var(--text-secondary)' }}>MPA Sanctuary Proximity</span>
+              <span className="font-mono" style={{ color: selectedVessel.in_mpa ? 'var(--red-400)' : 'var(--emerald-400)' }}>
+                {selectedVessel.in_mpa ? 'Breach' : 'Clear'}
+              </span>
+            </div>
+            <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--navy-900)' }}>
+              <div
+                className="h-1.5 rounded-full"
+                style={{
+                  width: selectedVessel.in_mpa ? '100%' : '10%',
+                  backgroundColor: selectedVessel.in_mpa ? 'var(--red-500)' : 'var(--emerald-500)',
+                }}
+              />
             </div>
           </div>
         </div>
 
-        {/* Telemetry (Placeholder for Task UI06) */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-800 pb-1">24h Telemetry</h3>
-          <div className="h-32 bg-gray-800/50 rounded flex items-center justify-center border border-gray-700/50">
-            <span className="text-xs text-gray-500 font-mono">Chart Data Loading...</span>
+        {/* Telemetry / Observation Info */}
+        <div className="space-y-2">
+          <h3
+            className="text-[10px] font-bold uppercase tracking-widest border-b pb-1"
+            style={{ color: 'var(--teal-400)', borderColor: 'var(--navy-500)' }}
+          >
+            Spatial Telemetry
+          </h3>
+          <div
+            className="p-2.5 rounded border text-xs font-mono space-y-1"
+            style={{ background: 'var(--navy-800)', borderColor: 'var(--navy-500)', color: 'var(--text-mono)' }}
+          >
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--text-secondary)' }}>LATITUDE:</span>
+              <span>{selectedVessel.lat.toFixed(4)}°N</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--text-secondary)' }}>LONGITUDE:</span>
+              <span>{selectedVessel.lon.toFixed(4)}°E</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--text-secondary)' }}>LAST REPORT:</span>
+              <span>{selectedVessel.last_seen ? new Date(selectedVessel.last_seen).toLocaleTimeString() : 'LIVE'}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="p-4 border-t border-gray-800 bg-gray-950 space-y-2">
+      <div
+        className="p-3.5 border-t space-y-2"
+        style={{ background: 'var(--navy-900)', borderColor: 'var(--navy-500)' }}
+      >
         <button
           type="button"
-          className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded transition-colors flex justify-center items-center space-x-2"
+          onClick={() => selectVessel(null)}
+          className="w-full font-bold text-xs py-2 px-3 rounded transition-colors flex justify-center items-center gap-1.5 shadow"
+          style={{
+            background: 'var(--teal-500)',
+            color: 'var(--navy-950)',
+          }}
         >
-          <span>Acknowledge Alert</span>
+          <span>✓ Close Dossier</span>
         </button>
         <a
-          href={`mailto:coastguard@gov.in?subject=Alert: ${selectedVessel.vessel_name}`}
-          className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 font-bold py-2 px-4 rounded transition-colors flex justify-center items-center space-x-2"
+          href={`mailto:coastguard@gov.in?subject=Alert: ${selectedVessel.vessel_name}&body=Vessel MMSI ${selectedVessel.mmsi} detected with risk score ${selectedVessel.risk_score} at ${selectedVessel.lat}, ${selectedVessel.lon}.`}
+          className="w-full border font-bold text-xs py-2 px-3 rounded transition-colors flex justify-center items-center gap-1.5"
+          style={{
+            background: 'var(--navy-800)',
+            borderColor: 'var(--navy-500)',
+            color: 'var(--text-primary)',
+          }}
         >
-          <span>Dispatch Notice</span>
+          <span>🚨 Transmit Coast Guard Alert</span>
         </a>
       </div>
     </div>
   );
 }
+

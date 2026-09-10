@@ -26,8 +26,8 @@ export default function App() {
   }, [addAlert, isAudioMuted]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-white">
-      {/* Top header bar */}
+    <div className="flex flex-col h-screen text-white" style={{ background: 'var(--navy-900)', fontFamily: 'var(--font-ui)' }}>
+      {/* Top header + ticker bar */}
       <DashboardHeader />
 
       {/* Main content: map + sidebar */}
@@ -38,10 +38,13 @@ export default function App() {
         </div>
 
         {/* Alert sidebar (right) */}
-        <div className="w-96 bg-gray-900 border-l border-gray-800 overflow-y-auto">
+        <div
+          className="w-96 overflow-y-auto shrink-0"
+          style={{ background: 'var(--navy-950)', borderLeft: '1px solid var(--navy-500)' }}
+        >
           <AlertPanel />
         </div>
-        
+
         {/* Slide-in details drawer */}
         <AlertDetailsDrawer />
       </div>

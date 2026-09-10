@@ -2,19 +2,183 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   SATVIGIL — Global Design System
+   Theme: Military Maritime Command Center
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Fonts ──────────────────────────────────────────────────────────────── */
+:root {
+  --font-ui:   'Inter', system-ui, sans-serif;
+  --font-data: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ── Color Palette ──────────────────────────────────────────────────── */
+  --navy-950:  #060E1C;   /* deepest background */
+  --navy-900:  #0A1628;   /* page background */
+  --navy-800:  #0F1F3D;   /* panel surface */
+  --navy-700:  #112244;   /* card fill */
+  --navy-600:  #1A3560;   /* hover states */
+  --navy-500:  #1E3A5F;   /* default border */
+  --navy-400:  #1B6CA8;   /* glow border / active */
+
+  --teal-500:  #00D4E8;   /* primary accent — AIS data */
+  --teal-400:  #0EA5C9;   /* secondary accent */
+  --teal-300:  #38BDF8;   /* light accent */
+
+  --amber-500: #F59E0B;   /* warnings / AIS gap */
+  --amber-400: #FBBF24;
+  --amber-300: #FCD34D;
+
+  --red-600:   #DC2626;   /* critical alert background */
+  --red-500:   #EF4444;   /* critical accent */
+  --red-400:   #F87171;   /* critical text */
+
+  --emerald-500: #10B981; /* safe / normal */
+  --emerald-400: #34D399;
+
+  --text-primary:   #E2F4FF;   /* near-white on navy */
+  --text-secondary: #7BA8C9;   /* muted labels */
+  --text-mono:      #4ECCA3;   /* monospace data values */
+  --text-dim:       #3A5A7A;   /* very muted / disabled */
+}
+
+/* ── Base Reset ─────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
+  background-color: var(--navy-900);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--navy-500) var(--navy-900);
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--navy-900); }
+::-webkit-scrollbar-thumb { background: var(--navy-500); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--navy-400); }
+
+/* ── Animations ─────────────────────────────────────────────────────────── */
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50%       { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+@keyframes pulse-amber {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+  50%       { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+}
+@keyframes pulse-teal {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 232, 0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(0, 212, 232, 0); }
+}
+@keyframes ticker-scroll {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes scan-line {
+  0%   { top: 0%; opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.animate-pulse-red    { animation: pulse-red   1.4s ease-in-out infinite; }
+.animate-pulse-amber  { animation: pulse-amber 1.8s ease-in-out infinite; }
+.animate-pulse-teal   { animation: pulse-teal  2.0s ease-in-out infinite; }
+.animate-ticker       { animation: ticker-scroll 30s linear infinite; }
+
+/* ── Glow Utilities ─────────────────────────────────────────────────────── */
+.glow-teal   { box-shadow: 0 0 12px rgba(0, 212, 232, 0.25), 0 0 1px rgba(0, 212, 232, 0.8); }
+.glow-red    { box-shadow: 0 0 12px rgba(239, 68, 68, 0.30), 0 0 1px rgba(239, 68, 68, 0.8); }
+.glow-amber  { box-shadow: 0 0 10px rgba(245, 158, 11, 0.25), 0 0 1px rgba(245, 158, 11, 0.8); }
+
+/* ── Data / Mono Text ───────────────────────────────────────────────────── */
+.font-data { font-family: var(--font-data); }
+
+/* ── Mapbox Popup Override ──────────────────────────────────────────────── */
 .mapboxgl-popup-content {
   background: transparent !important;
   padding: 0 !important;
   box-shadow: none !important;
+  border: none !important;
+}
+.mapboxgl-popup-tip {
+  display: none !important;
 }
 
-.mapboxgl-popup-tip {
-  border-top-color: #111827 !important;
+/* ── Command Panel (glass card) ─────────────────────────────────────────── */
+.cmd-panel {
+  background: rgba(15, 31, 61, 0.95);
+  border: 1px solid var(--navy-500);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.cmd-panel-glow {
+  background: rgba(15, 31, 61, 0.95);
+  border: 1px solid var(--navy-400);
+  box-shadow: 0 0 20px rgba(27, 108, 168, 0.15);
+  backdrop-filter: blur(12px);
+}
+
+/* ── Alert Card Variants ────────────────────────────────────────────────── */
+.alert-card-critical {
+  border-left: 3px solid var(--red-500);
+  background: rgba(220, 38, 38, 0.06);
+}
+.alert-card-critical:hover {
+  background: rgba(220, 38, 38, 0.10);
+}
+.alert-card-warning {
+  border-left: 3px solid var(--amber-500);
+  background: rgba(245, 158, 11, 0.06);
+}
+.alert-card-warning:hover {
+  background: rgba(245, 158, 11, 0.10);
+}
+.alert-card-normal {
+  border-left: 3px solid var(--teal-400);
+  background: rgba(0, 212, 232, 0.04);
+}
+
+/* ── Risk Score Bar ─────────────────────────────────────────────────────── */
+.risk-bar-track {
+  background: var(--navy-600);
+  border-radius: 2px;
+  height: 4px;
+  overflow: hidden;
+}
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* ── Layer Toggle Buttons ───────────────────────────────────────────────── */
+.layer-toggle-on {
+  background: rgba(0, 212, 232, 0.12);
+  border-color: rgba(0, 212, 232, 0.35);
+  color: var(--teal-500);
+}
+.layer-toggle-off {
+  background: rgba(17, 34, 68, 0.6);
+  border-color: var(--navy-500);
+  color: var(--text-secondary);
+}
+
+/* ── Stat Chip ──────────────────────────────────────────────────────────── */
+.stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
 }

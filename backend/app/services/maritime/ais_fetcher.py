@@ -153,7 +153,7 @@ async def _gfw_report_call(
         "Content-Type": "application/json",
     }
     try:
-        async with httpx.AsyncClient(timeout=90) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             response = await client.post(url, params=params, json={"geojson": geojson}, headers=headers)
 
         if response.status_code == 401:
@@ -181,39 +181,40 @@ GULF_KUTCH_GEOJSON = {
     ]],
 }
 
+# Simple in-memory cache for vessels
+_VESSEL_CACHE: List[Dict] = []
+_VESSEL_CACHE_TIME: Optional[datetime] = None
+_CACHE_TTL_SECONDS = 60
 
-async def _fetch_gfw_presence(_unused_days_back: int = 3) -> List[Dict]:
+
+async def _fetch_gfw_presence(days_back: int = 3) -> List[Dict]:
     """
     Fetch vessel presence from GFW with cascading date-window fallback.
 
     GFW data has a 3-10 day processing delay, so we try multiple windows
     going progressively further back until we find processed data.
-
-    Cascade (stops at first window that returns vessels):
-      1. India Ocean bbox — DAILY, 7→14 days back   (broad, recent)
-      2. India Ocean bbox — DAILY, 14→30 days back  (broader time)
-      3. Gulf of Kutch   — DAILY, 30→60 days back   (small bbox, proven)
-      4. Gulf of Kutch   — DAILY, 60→90 days back   (further back)
     """
+    global _VESSEL_CACHE, _VESSEL_CACHE_TIME
+    now = datetime.now(timezone.utc)
+    if _VESSEL_CACHE and _VESSEL_CACHE_TIME and (now - _VESSEL_CACHE_TIME).total_seconds() < _CACHE_TTL_SECONDS:
+        return _VESSEL_CACHE
+
     token = _gfw_token()
     if not token:
         logger.warning("gfw_token_missing")
         return []
 
-    today = datetime.now(timezone.utc).date()
+    today = now.date()
 
     def date_range(start_days_back: int, end_days_back: int):
         start = (today - timedelta(days=start_days_back)).isoformat()
         end   = (today - timedelta(days=end_days_back)).isoformat()
         return start, end
 
-    # Cascade: (start_days_back, end_days_back, spatial_res, temporal_res, geojson, label)
+    # Fast cascade: try recent India ocean then Gulf of Kutch
     cascade = [
         (14,  7,  "LOW",  "DAILY",  INDIA_OCEAN_GEOJSON,  "india-7-14d"),
-        (30, 14,  "LOW",  "DAILY",  INDIA_OCEAN_GEOJSON,  "india-14-30d"),
-        (60, 30,  "LOW",  "DAILY",  INDIA_OCEAN_GEOJSON,  "india-30-60d"),
         (60, 30,  "HIGH", "DAILY",  GULF_KUTCH_GEOJSON,   "kutch-30-60d"),
-        (90, 60,  "HIGH", "DAILY",  GULF_KUTCH_GEOJSON,   "kutch-60-90d"),
     ]
 
     for (sb, eb, sr, tr, bbox, label) in cascade:
@@ -222,6 +223,8 @@ async def _fetch_gfw_presence(_unused_days_back: int = 3) -> List[Dict]:
         vessels = await _gfw_report_call(token, start, end, sr, tr, bbox)
         if vessels:
             logger.info("gfw_fetch_success", label=label, count=len(vessels))
+            _VESSEL_CACHE = vessels
+            _VESSEL_CACHE_TIME = now
             return vessels
         logger.info("gfw_fetch_empty", label=label)
 

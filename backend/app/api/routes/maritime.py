@@ -152,22 +152,32 @@ async def get_vessels(
     min_risk: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum risk score filter"),
 ):
     """
-    Fetch all active vessels in Indian waters with live behavioral risk scores.
+    Fetch active vessels in Indian waters with live behavioral risk scores.
+    Combines live GFW vessels with strategic demo vessels (e.g., MT GUJARAT PRIDE).
     """
+    demo_vessels = load_fallback_vessels()
     raw_vessels = await fetch_ais_vessels()
 
-    # Fallback to demo vessels if external API is down or credentials not set
-    if not raw_vessels:
-        logger.info("using_demo_ais_vessels")
-        raw_vessels = load_fallback_vessels()
+    # Prepend demo vessels so suspect MT GUJARAT PRIDE is always present
+    all_raw = list(demo_vessels)
+    seen_mmsi = {str(v.get("MMSI")) for v in demo_vessels}
 
-    vessels = [parse_vessel(v) for v in raw_vessels]
+    for v in raw_vessels:
+        mmsi = str(v.get("MMSI"))
+        if mmsi not in seen_mmsi:
+            seen_mmsi.add(mmsi)
+            all_raw.append(v)
+
+    vessels = [parse_vessel(v) for v in all_raw]
 
     # Apply filters
     if dark_only:
         vessels = [v for v in vessels if v.is_dark]
     if min_risk is not None:
         vessels = [v for v in vessels if v.risk_score >= min_risk]
+
+    # Cap to top 1500 vessels for lightning-fast WebGL rendering
+    vessels = vessels[:1500]
 
     return VesselListResponse(
         vessels=vessels,

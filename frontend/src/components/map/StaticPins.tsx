@@ -56,9 +56,17 @@ export function StaticPinsLayer() {
           latitude={pin.coordinates[1]}
           anchor="bottom"
         >
-          <div className="flex items-center gap-1.5 bg-gray-950/85 backdrop-blur-md px-2 py-0.5 rounded border border-gray-700/70 shadow-xl text-[10px] font-medium text-gray-200 pointer-events-none select-none">
+          <div
+            className="flex items-center gap-1.5 backdrop-blur-md px-2 py-0.5 rounded shadow-xl text-[10px] font-medium pointer-events-none select-none transition-all"
+            style={{
+              background: 'rgba(10, 22, 40, 0.88)',
+              border: '1px solid var(--navy-500)',
+              color: 'var(--text-primary)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+            }}
+          >
             <span className="text-xs">{pin.icon}</span>
-            <span className="tracking-tight">{pin.name}</span>
+            <span className="tracking-wide font-semibold">{pin.name}</span>
           </div>
         </Marker>
       ))}

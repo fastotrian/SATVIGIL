@@ -5,24 +5,23 @@
 
 ---
 
-## 🕒 Last Updated: 2026-09-10 (Sprint 3 — GFW Animated Track Player + SAR Image Popup implemented)
+## 🕒 Last Updated: 2026-09-10 (Sprint 3 — Military Command Center UI Overhaul & API Resilience Complete)
 
 > **Active Plan:** Full PS 143 build order with color system, Gemini model assignments,
 > and part-by-part checkpoints is in `implementation_plan.md` (Antigravity artifact).
 > - **PART 1:** ✅ Constants (`riskColors.ts`, `constants.py`) & shared types (`maritime.ts`) complete.
 > - **PART 2:** ✅ Schemas, real maritime API routes, and AIS simulator complete (`simulate_ais_feed.py`, `ais_demo_scenario.json`).
 > - **PART 3:** ✅ Complete Frontend UI Layer (Map, Header, Alert Panel, Zustand Store; verified Vite build).
-> - **PART 4:** ✅ Oil Spill Attribution & Simulation Pipeline:
->   - `spill_attribution.py`: 4-signal multi-factor scoring extracted from ML notebook (40% distance, 25% vessel type, 20% heading, 15% anomaly).
->   - `POST /api/v1/maritime/simulate-spill`: Real-time suspect vessel attribution returning MT GUJARAT PRIDE as #1 suspect (0.95 risk).
->   - `MapView.tsx`: Dynamic spill polygon overlay, interactive suspect attribution popup, camera fly-to, and live demo trigger.
-> - **PART 5:** ✅ Polish + Demo Scenario Script:
->   - `StaticPins.tsx`: Converted to high-reliability HTML `<Marker>` components to eliminate WebGL 403 font glyph PBF errors.
->   - `DEMO_TRACKS_GEOJSON`: Route vector lines including orange normal navigation and dashed red 45-min AIS blackout gap.
->   - `docs/demo/DEMO_RUNBOOK.md`: 5-minute SIH live pitch & demo presentation guide with fallback offline contingency.
->   - `MapView.tsx`: Configured clean ESRI Dark Gray Canvas basemap with dark background layer, enabled raster overzooming up to zoom 18, and migrated radar pulse to native CSS hardware-accelerated DOM markers, preventing any WebGL render interrupts on zoom/pan.
->   - `maritime.py`: Fixed missing return statement on `GET /api/v1/maritime/spills`.
-> - **ALL PS 143 PARTS COMPLETE & VERIFIED.** Ready for PS 162 (Thermal Hotspots & Fire Classification).
+> - **PART 4:** ✅ Oil Spill Attribution & Simulation Pipeline (4-signal ML attribution, Sentinel-2 SAR popup, simulation trigger).
+> - **PART 5:** ✅ Complete Military Command Center UI Overhaul & API Resilience:
+>   - Deep Ocean Navy base theme (`#0A1628`, `#0F1F3D`, `#060E1C`) with vibrant teal (`#00D4E8`) AIS vectors and glowing red/amber threat indicators.
+>   - Redesigned `DashboardHeader.tsx` with satellite icon, live threat metric chips, UTC clock, and continuous ops log ticker.
+>   - Redesigned `AlertPanel.tsx` with threat intel header, priority sorting, left-accent status cards, risk score bars, and target drilldowns.
+>   - Redesigned `MapView.tsx` with bottom-left navy glass surveillance layer control, hardware-accelerated radar pulses, and rich interactive popups.
+>   - Redesigned `AlertDetailsDrawer.tsx` with full 4-signal risk breakdown and spatial telemetry readout.
+>   - Hardened `fire.py`, `alerts.py`, and `maritime.py` routes with graceful fallbacks for offline PostgreSQL / credentials mismatches.
+>   - All core endpoints verified returning **HTTP 200 OK**: `/api/v1/fire/hotspots`, `/api/v1/maritime/vessels`, `/api/v1/maritime/spills`, `/api/v1/alerts`.
+>   - Zero TypeScript compilation errors (`tsc --noEmit` verified 100% clean).
 
 ---
 
