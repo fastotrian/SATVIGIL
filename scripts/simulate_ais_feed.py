@@ -21,7 +21,7 @@ def generate_ais_demo_scenario(output_path: Path):
     vessels = [
         # Vessel 1 — The dark tanker (Primary Suspect near Bombay High)
         {
-            "MMSI": "419000001",
+            "MMSI": "419082341",
             "NAME": "MT GUJARAT PRIDE",
             "TYPE": 80,
             "LATITUDE": 19.15,
@@ -134,7 +134,7 @@ def generate_ais_demo_scenario(output_path: Path):
     print(f" Successfully generated AIS scenario with {len(vessels)} vessels.")
     print(f" Output saved to: {output_path.resolve()}")
     print("\nKey Demo Vessels:")
-    print(" 1. MT GUJARAT PRIDE (MMSI 419000001) -> Dark Tanker near Bombay High (CRITICAL)")
+    print(" 1. MT GUJARAT PRIDE (MMSI 419082341) -> Dark Tanker near Bombay High (CRITICAL)")
     print(" 2. FV KUTCH FISHERMAN (MMSI 419000003) -> Loitering inside Gulf of Kutch MPA (WARNING)")
     print(" 3. MV MUMBAI EXPRESS (MMSI 419000002) -> Legitimate JNPT traffic (NORMAL)")
 

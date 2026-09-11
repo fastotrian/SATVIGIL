@@ -52,7 +52,7 @@
 
 - **Visual Action:** Click on the blinking red marker.
 - **What Appears:** The interactive popup opens showing:
-  - MMSI: `419000001`
+  - MMSI: `419082341` (Indian Flagged Tanker)
   - Speed: `0.2 kts` (Loitering)
   - Risk Score: `0.90` (CRITICAL)
   - `⚠️ Dark Vessel: Gap 45m`
@@ -60,18 +60,18 @@
 - **Sidebar Action:** Point to the corresponding Critical Alert card in the right-hand panel.
 
 #### Step 4: Live Satellite Oil Spill Attribution (The Climax) [2:30 – 4:15]
-> *"A dark ship is suspicious, but SATVIGIL provides definitive physical proof by correlating with Copernicus Sentinel-2 multispectral and SAR satellite passes. Watch what happens when a new satellite pass detects an oil sheen."*
+> *"A dark ship is suspicious, but SATVIGIL provides definitive physical proof by correlating with Copernicus Sentinel-1C C-SAR (IW Swath, VV/VH) radar passes. Watch what happens when a new satellite pass detects an oil sheen."*
 
-- **Visual Action:** Click the **`🛢️ Simulate Spill (Demo)`** button in the top-right overlay.
+- **Visual Action:** Click the **`📡 Ingest SAR Orbit #142 (Sentinel-1C)`** button in the bottom-left overlay.
 - **What Happens Automatically:**
-  1. The map camera executes a smooth fly-to zoom directly into the Bombay High spill coordinates (`19.15°N, 71.45°E`).
-  2. A semi-transparent dark red oil slick polygon (2.40 km²) renders on screen with a pulsing boundary.
+  1. The map camera executes a smooth fly-to zoom directly into the Bombay High spill coordinates (`19.2000°N, 71.5000°E`).
+  2. A semi-transparent dark red oil slick polygon renders on screen with a pulsing boundary.
   3. The **OIL SPILL DETECTED** popup opens displaying:
-     - Area: `2.4 km²`
-     - U-Net Model Confidence: `87%`
-     - Copernicus Sentinel-2 Scene ID.
+     - Area: `4.82 km²`
+     - Model Confidence: `94%`
+     - Copernicus Sentinel-1C C-SAR Scene ID (`S1C_IW_GRDH_1SDV_20260910T053649_20260910T053714_055591_06C82F_B7E2`).
   4. **The 4-Signal ML Attribution breakdown is displayed:**
-     - **Top Suspect:** `MT GUJARAT PRIDE`
+     - **Top Suspect:** `MT GUJARAT PRIDE` (MMSI: `419082341`)
      - **Attribution Risk Score:** `0.95`
      - **Distance to Spill Center:** `7.2 km`
      - **Course Alignment:** `95% match` with slick dispersion trail

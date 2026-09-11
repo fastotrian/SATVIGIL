@@ -11,8 +11,8 @@
  *   - Dark gap warning banner when vessel goes silent
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Source, Layer, Marker } from 'react-map-gl';
-import type { LineLayer } from 'react-map-gl';
+import { Source, Layer, Marker } from 'react-map-gl/maplibre';
+import type { LineLayer } from 'react-map-gl/maplibre';
 import type { VesselTrack, TrackPoint } from '../../types/maritime';
 
 const API_BASE = 'http://localhost:8000/api/v1';
@@ -217,11 +217,12 @@ interface ControlsProps {
   onReset: () => void;
   onSpeedChange: (s: number) => void;
   onSeek: (i: number) => void;
+  onClose?: () => void;
 }
 
 export function TrackPlaybackControls({
   track, isPlaying, frameIndex, speed,
-  onPlay, onPause, onReset, onSpeedChange, onSeek,
+  onPlay, onPause, onReset, onSpeedChange, onSeek, onClose,
 }: ControlsProps) {
   if (!track) return null;
 
@@ -239,12 +240,24 @@ export function TrackPlaybackControls({
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded-full ${isDarkGap ? 'bg-red-500 animate-pulse' : 'bg-sky-400'}`} />
             <span className="text-white font-semibold text-sm">{track.ship_name}</span>
-            <span className="text-gray-400 text-xs">MMSI: {track.mmsi}</span>
+            <span className="text-gray-400 text-xs font-mono">MMSI: {track.mmsi}</span>
             <span className="text-gray-500 text-xs">🏳️ {track.flag}</span>
           </div>
-          <span className="text-gray-400 text-xs">
-            {frameIndex + 1}/{total} obs
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-xs font-mono">
+              {frameIndex + 1}/{total} obs
+            </span>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                title="Close track player"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Dark gap alert */}

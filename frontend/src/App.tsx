@@ -1,18 +1,25 @@
 /**
  * SATVIGIL — Root Application Component
- * Layout: full-screen map + sidebar alert panel
+ * 4-Zone Clean Command Center Architecture:
+ *   - Top: Header Bar (Brand, Live UTC, Sensor Badges, Quick Threat Counters)
+ *   - Left / Center: Interactive MapView (Clustered vessel markers, collapsible layer dock, SAR overlays)
+ *   - Right: Compact Threat Feed (320px, collapsible with expand toggle)
+ *   - Bottom: Fixed Bloomberg-style Ops Log Telemetry Ticker (28px)
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { MapView } from "./components/map/MapView";
 import { AlertPanel } from "./components/alerts/AlertPanel";
 import { DashboardHeader } from "./components/dashboard/DashboardHeader";
+import { OpsLogFooter } from "./components/dashboard/OpsLogFooter";
 import { AlertDetailsDrawer } from "./components/alerts/AlertDetailsDrawer";
+import { ForensicDossierModal } from "./components/dossier/ForensicDossierModal";
 import { useAlertStore } from "./store/alertStore";
 import { connectWebSocket } from "./services/websocket";
 import { playAlarm } from "./services/soundEffects";
 
 export default function App() {
   const { addAlert, isAudioMuted } = useAlertStore();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     // Connect to backend WebSocket for real-time alerts
@@ -22,32 +29,58 @@ export default function App() {
         playAlarm(alert.risk_level === 'CRITICAL' ? 'critical' : 'warning');
       }
     });
-    return () => ws.close();
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1000, "Component unmounted");
+      } else if (ws.readyState === WebSocket.CONNECTING) {
+        ws.onopen = () => ws.close(1000, "Component unmounted");
+      }
+    };
   }, [addAlert, isAudioMuted]);
 
   return (
-    <div className="flex flex-col h-screen text-white" style={{ background: 'var(--navy-900)', fontFamily: 'var(--font-ui)' }}>
-      {/* Top header + ticker bar */}
+    <div className="flex flex-col h-screen text-white overflow-hidden" style={{ background: 'var(--navy-950)', fontFamily: 'var(--font-ui)' }}>
+      {/* ── Top Bar: Telemetry, Sensors, System Clock ── */}
       <DashboardHeader />
 
-      {/* Main content: map + sidebar */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Full-screen India map */}
-        <div className="flex-1 relative">
+      {/* ── Center Workspace: Map + Collapsible Threat Feed ── */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Full Map Canvas */}
+        <div className="flex-1 relative h-full">
           <MapView />
         </div>
 
-        {/* Alert sidebar (right) */}
-        <div
-          className="w-96 overflow-y-auto shrink-0"
-          style={{ background: 'var(--navy-950)', borderLeft: '1px solid var(--navy-500)' }}
-        >
-          <AlertPanel />
-        </div>
+        {/* Actionable Threat Feed (Right Panel) */}
+        {isSidebarOpen ? (
+          <div
+            className="w-80 h-full overflow-hidden shrink-0 shadow-2xl z-20 transition-all border-l border-navy-500/80"
+            style={{ background: 'var(--navy-950)' }}
+          >
+            <AlertPanel
+              isCollapsed={false}
+              onToggleCollapse={() => setIsSidebarOpen(false)}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="absolute top-3 right-3 z-30 px-3 py-1.5 rounded-md font-mono text-xs font-bold border border-teal-500/60 bg-navy-950/95 text-cyan-300 shadow-2xl flex items-center gap-1.5 hover:bg-navy-900 transition-all"
+          >
+            <span>◀</span>
+            <span>Threat Feed</span>
+          </button>
+        )}
 
         {/* Slide-in details drawer */}
         <AlertDetailsDrawer />
+
+        {/* Forensic Evidentiary Legal Dossier Modal */}
+        <ForensicDossierModal />
       </div>
+
+      {/* ── Bottom Strip: Single-Line Operational Marquee Ticker ── */}
+      <OpsLogFooter />
     </div>
   );
 }

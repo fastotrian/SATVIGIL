@@ -8,9 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.models.alert import ThermalHotspot
 from app.schemas.hotspot import HotspotListResponse, ThermalHotspotSchema, FireType
-from app.services.fire.firms_fetcher import get_responding_agency
+from app.services.fire.firms_fetcher import get_responding_agency, fetch_firms_india, classify_fire, is_near_cpcb_cluster
 
 router = APIRouter()
 
@@ -184,6 +185,67 @@ def _get_demo_hotspots() -> list[ThermalHotspotSchema]:
     return res
 
 
+_LIVE_HOTSPOTS_CACHE: list[ThermalHotspotSchema] = []
+_LIVE_HOTSPOTS_CACHE_TIME: Optional[datetime] = None
+
+async def _get_live_firms_hotspots() -> list[ThermalHotspotSchema]:
+    global _LIVE_HOTSPOTS_CACHE, _LIVE_HOTSPOTS_CACHE_TIME
+    now = datetime.utcnow()
+    if _LIVE_HOTSPOTS_CACHE and _LIVE_HOTSPOTS_CACHE_TIME and (now - _LIVE_HOTSPOTS_CACHE_TIME).total_seconds() < 300:
+        return _LIVE_HOTSPOTS_CACHE
+
+    if settings.FIRMS_MAP_KEY:
+        try:
+            df = await fetch_firms_india(days=1)
+            if not df.empty:
+                results = []
+                for idx, row in df.iterrows():
+                    row_dict = row.to_dict()
+                    fire_type = classify_fire(row_dict)
+                    lat = float(row_dict.get("latitude", 0))
+                    lon = float(row_dict.get("longitude", 0))
+                    frp = float(row_dict.get("frp", 0) or 0)
+                    brightness = float(row_dict.get("bright_ti4", row_dict.get("brightness", 300)) or 300)
+                    confidence = str(row_dict.get("confidence", "nominal"))
+                    satellite = str(row_dict.get("satellite", "VIIRS_SNPP_NRT"))
+                    near_cpcb, _ = is_near_cpcb_cluster(lat, lon)
+                    agency_info = get_responding_agency(fire_type)
+
+                    acq_date = str(row_dict.get("acq_date", now.strftime("%Y-%m-%d")))
+                    acq_time = str(row_dict.get("acq_time", "1200")).zfill(4)
+                    try:
+                        acquired_at = datetime.strptime(f"{acq_date} {acq_time}", "%Y-%m-%d %H%M")
+                    except Exception:
+                        acquired_at = now
+
+                    results.append(
+                        ThermalHotspotSchema(
+                            id=int(idx) + 100,
+                            latitude=lat,
+                            longitude=lon,
+                            frp=frp,
+                            brightness=brightness,
+                            confidence=confidence,
+                            satellite=satellite,
+                            acquired_at=acquired_at,
+                            fire_type=fire_type,
+                            land_use="industrial" if near_cpcb else ("farmland" if fire_type == "stubble" else "unknown"),
+                            near_cpcb_cluster=near_cpcb,
+                            recurrence_count=1,
+                            created_at=now,
+                            responding_agency=agency_info.get("agency"),
+                            recommended_action=agency_info.get("action"),
+                        )
+                    )
+                _LIVE_HOTSPOTS_CACHE = results
+                _LIVE_HOTSPOTS_CACHE_TIME = now
+                return results
+        except Exception:
+            pass
+
+    return _get_demo_hotspots()
+
+
 @router.get("/hotspots", response_model=HotspotListResponse)
 async def get_hotspots(
     fire_type: Optional[FireType] = Query(None, description="Filter by fire type"),
@@ -195,6 +257,25 @@ async def get_hotspots(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db)
 ):
+    # When live NASA FIRMS key is configured, return live NASA satellite detections
+    if settings.FIRMS_MAP_KEY:
+        live_hotspots = await _get_live_firms_hotspots()
+        filtered = live_hotspots
+        if fire_type:
+            filtered = [h for h in filtered if h.fire_type == fire_type.value]
+        if min_frp is not None:
+            filtered = [h for h in filtered if h.frp and h.frp >= min_frp]
+        if near_cpcb_only:
+            filtered = [h for h in filtered if h.near_cpcb_cluster]
+
+        paginated = filtered[offset : offset + limit]
+        return HotspotListResponse(
+            hotspots=paginated,
+            total=len(filtered),
+            limit=limit,
+            offset=offset,
+        )
+
     try:
         query = select(ThermalHotspot)
         count_query = select(func.count(ThermalHotspot.id))
@@ -222,6 +303,10 @@ async def get_hotspots(
         total_result = await db.execute(count_query)
         total = total_result.scalar_one()
 
+        if total == 0:
+            # If DB is empty, use live NASA FIRMS detections
+            raise Exception("DB empty, load live FIRMS")
+
         query = query.order_by(ThermalHotspot.acquired_at.desc()).offset(offset).limit(limit)
         result = await db.execute(query)
         hotspots_db = result.scalars().all()
@@ -235,8 +320,8 @@ async def get_hotspots(
             offset=offset
         )
     except Exception:
-        # Graceful fallback to demo hotspots when DB is offline
-        demo_all = _get_demo_hotspots()
+        # Load live NASA FIRMS hotspots or fallback to demo hotspots
+        demo_all = await _get_live_firms_hotspots()
         filtered = demo_all
         if fire_type:
             filtered = [h for h in filtered if h.fire_type == fire_type.value]

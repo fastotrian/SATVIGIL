@@ -64,7 +64,7 @@ async def fetch_firms_india(days: int = 1, sensor: str = "VIIRS_SNPP_NRT") -> pd
         f"/{settings.INDIA_BBOX}/{days}"
     )
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=60, verify=False) as client:
         try:
             resp = await client.get(url)
             resp.raise_for_status()

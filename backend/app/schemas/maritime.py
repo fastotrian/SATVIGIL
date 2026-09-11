@@ -116,3 +116,138 @@ class SimulateSpillRequest(BaseModel):
     spill_trail_bearing: float = 250.0
     time_window_hours: int = 12
 
+
+# ── Legal & Evidentiary Dossier Schemas (MARPOL / Merchant Shipping Act) ──
+
+class SatelliteSarEvidenceSchema(BaseModel):
+    satellite: str = "Sentinel-1C C-SAR (IW Swath, VV/VH)"
+    band: str = "C-band (5.405 GHz microwave)"
+    acquisition_mode: str = "IW (Interferometric Wide Swath)"
+    polarization: str = "Dual Polarization (VV + VH)"
+    orbit_pass: str = "Relative Orbit Track #142 / Descending Node"
+    scene_id: str = "S1C_IW_GRDH_1SDV_20260910T053649_20260910T053714_055591_06C82F_B7E2"
+    slick_area_km2: float = 4.82
+    slick_length_km: float = 8.4
+    slick_width_max_km: float = 0.92
+    est_volume_litres: int = 3850
+    backscatter_clean_db: float = -12.1
+    backscatter_slick_db: float = -19.5
+    backscatter_delta_db: float = -7.4
+    sar_image_url: str = "/sar_spill_bombay_high.jpg"
+
+
+class CulpritVesselProfileSchema(BaseModel):
+    name: str = "MT GUJARAT PRIDE"
+    imo: str = "9418236"
+    mmsi: str = "419082341"
+    call_sign: str = "VTAA"
+    flag_state: str = "India (Indian Registry)"
+    flag_code: str = "IN"
+    vessel_type: str = "Crude Oil / Chemical Tanker"
+    gross_tonnage: int = 62450
+    deadweight_tonnage: int = 115000
+    build_year: int = 2018
+    owner_operator: str = "Gujarat Maritime Shipping Corp., Mumbai / Kandla"
+    last_port_of_call: str = "Fujairah Anchorage, UAE"
+    destination: str = "JNPT, Mumbai, India"
+    pre_incident_speed_kts: float = 12.4
+    incident_speed_kts: float = 6.1
+    course_deg: float = 174.0
+    ais_gap_duration_minutes: int = 47
+
+
+class AttributionMLBreakdownSchema(BaseModel):
+    composite_confidence: float = 94.2
+    spatial_proximity_score: float = 98.5
+    ais_dark_gap_score: float = 96.0
+    vessel_type_risk_score: float = 92.0
+    svr_kinematics_anomaly_score: float = 90.5
+    p_value: str = "< 0.001 (Statistically Significant)"
+
+
+class StatutoryViolationSchema(BaseModel):
+    statute: str
+    regulation: str
+    description: str
+
+
+class PenalSanctionsSchema(BaseModel):
+    detention_order: str = "Immediate Port State Control (PSC) Arrest at JNPT / Mumbai Port"
+    statutory_fine_inr: str = "₹ 50,00,000 to ₹ 2,00,00,000"
+    statutory_fine_usd: str = "$60,000 – $240,000 USD"
+    cleanup_liability: str = "100% Comprehensive Ecological Remediation Cost Recovery"
+    criminal_proceedings: str = "Lodging of FIR against Master & Ship Operator under Merchant Shipping Act Section 356K"
+
+
+class ContainmentDirectiveSchema(BaseModel):
+    dispersant_recommended: str = "Type 2/3 Concentrated Bio-dispersant (OSD-II)"
+    dispersant_litres: int = 4200
+    boom_perimeter_meters: int = 2800
+    response_vessel: str = "ICGS Samudra Prahari (CG-01)"
+    intercept_station: str = "ICG Regional HQ (West), Worli, Mumbai"
+    intercept_course_deg: int = 248
+    intercept_speed_kts: float = 18.0
+    intercept_eta_hours: str = "2h 18m"
+
+
+class LocationSchema(BaseModel):
+    lat: float = 19.20
+    lon: float = 71.50
+    zone: str = "Arabian Sea — Mumbai High Offshore Sector (28 NM WNW)"
+    eez_status: str = "Indian Exclusive Economic Zone (200 NM Sovereign Boundary)"
+
+
+class ForensicDossierResponse(BaseModel):
+    dossier_id: str = "ICG-DOS-2026-AR-0941"
+    classification: str = "RESTRICTED // LAW ENFORCEMENT & MARITIME EVIDENCE"
+    issuing_authority: str = "DIRECTORATE GENERAL OF SHIPPING / INDIAN COAST GUARD (WESTERN COMMAND)"
+    incident_id: str = "SPILL-20260907-001"
+    compiled_at: datetime
+    evidence_sha256_hash: str = "7d8f5c3e91b24a6e804f519c23b8e714652a9103c847d1f5b630e2417c89a502"
+    location: LocationSchema
+    satellite_sar: SatelliteSarEvidenceSchema
+    culprit_vessel: CulpritVesselProfileSchema
+    attribution_ml: AttributionMLBreakdownSchema
+    statutory_violations: List[StatutoryViolationSchema]
+    penal_sanctions: PenalSanctionsSchema
+    containment_directive: ContainmentDirectiveSchema
+
+
+# ── INCOIS OOSA Ocean Drift Trajectory Simulation Schemas ──
+
+class AssetImpactWarningSchema(BaseModel):
+    asset_name: str
+    asset_type: str  # "ONGC_PLATFORM" | "MPA_SANCTUARY" | "PORT" | "COASTLINE"
+    distance_nm: float
+    time_to_impact_hours: Optional[float] = None
+    threat_level: str  # "HIGH" | "MEDIUM" | "WATCH"
+    coordinates: List[float]  # [lon, lat]
+
+
+class DriftStepForecastSchema(BaseModel):
+    time_offset_hours: int
+    forecast_time: datetime
+    centroid_lat: float
+    centroid_lon: float
+    area_km2: float
+    drift_speed_knots: float
+    drift_heading_deg: float
+    wind_speed_knots: float
+    wind_heading_deg: float
+    current_speed_knots: float
+    current_heading_deg: float
+    geojson_polygon: Dict[str, Any]
+    active_warnings: List[AssetImpactWarningSchema] = []
+    containment_recommendation: str
+
+
+class SpillDriftForecastResponse(BaseModel):
+    spill_id: str
+    base_time: datetime
+    initial_area_km2: float
+    drift_model: str = "INCOIS-OOSA Fay Spreading + Arabian Sea Ocean Current Model"
+    trajectory_points: List[Dict[str, Any]]
+    steps: List[DriftStepForecastSchema]
+
+
+

@@ -99,14 +99,16 @@ html, body, #root {
 /* ── Data / Mono Text ───────────────────────────────────────────────────── */
 .font-data { font-family: var(--font-data); }
 
-/* ── Mapbox Popup Override ──────────────────────────────────────────────── */
-.mapboxgl-popup-content {
+/* ── Mapbox / MapLibre Popup Override ───────────────────────────────────── */
+.mapboxgl-popup-content,
+.maplibregl-popup-content {
   background: transparent !important;
   padding: 0 !important;
   box-shadow: none !important;
   border: none !important;
 }
-.mapboxgl-popup-tip {
+.mapboxgl-popup-tip,
+.maplibregl-popup-tip {
   display: none !important;
 }
 

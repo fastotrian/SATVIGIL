@@ -29,9 +29,11 @@ export function connectWebSocket(onAlert: (alert: Alert) => void): WebSocket {
     console.error("[SATVIGIL] WebSocket error:", err);
   };
 
-  ws.onclose = () => {
-    console.log("[SATVIGIL] WebSocket disconnected — reconnecting in 5s...");
-    setTimeout(() => connectWebSocket(onAlert), 5000);
+  ws.onclose = (e) => {
+    if (e.code !== 1000) {
+      console.log("[SATVIGIL] WebSocket disconnected — reconnecting in 5s...");
+      setTimeout(() => connectWebSocket(onAlert), 5000);
+    }
   };
 
   return ws;

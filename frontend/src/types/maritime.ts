@@ -68,6 +68,107 @@ export interface TrackPoint {
   ais_gap_minutes: number;     // >30 = vessel was dark at this timestamp
 }
 
+export interface SatelliteSarEvidence {
+  satellite: string;
+  band: string;
+  acquisition_mode: string;
+  polarization: string;
+  orbit_pass: string;
+  scene_id?: string;
+  slick_area_km2: number;
+  slick_length_km: number;
+  slick_width_max_km: number;
+  est_volume_litres: number;
+  backscatter_clean_db: number;
+  backscatter_slick_db: number;
+  backscatter_delta_db: number;
+  sar_image_url: string;
+}
+
+export interface CulpritVesselProfile {
+  name: string;
+  imo: string;
+  mmsi: string;
+  call_sign: string;
+  flag_state: string;
+  flag_code: string;
+  vessel_type: string;
+  gross_tonnage: number;
+  deadweight_tonnage: number;
+  build_year: number;
+  owner_operator: string;
+  last_port_of_call: string;
+  destination: string;
+  pre_incident_speed_kts: number;
+  incident_speed_kts: number;
+  course_deg: number;
+  ais_gap_duration_minutes: number;
+}
+
+export interface AttributionMLBreakdown {
+  composite_confidence: number;
+  spatial_proximity_score: number;
+  ais_dark_gap_score: number;
+  vessel_type_risk_score: number;
+  svr_kinematics_anomaly_score: number;
+  p_value: string;
+}
+
+export interface StatutoryViolation {
+  statute: string;
+  regulation: string;
+  description: string;
+}
+
+export interface PenalSanctions {
+  detention_order: string;
+  statutory_fine_inr: string;
+  statutory_fine_usd: string;
+  cleanup_liability: string;
+  criminal_proceedings: string;
+}
+
+export interface ContainmentDirective {
+  dispersant_recommended: string;
+  dispersant_litres: number;
+  boom_perimeter_meters: number;
+  response_vessel: string;
+  intercept_station: string;
+  intercept_course_deg: number;
+  intercept_speed_kts: number;
+  intercept_eta_hours: string;
+}
+
+export interface ForensicDossier {
+  dossier_id: string;
+  classification: string;
+  issuing_authority: string;
+  incident_id: string;
+  compiled_at: string;
+  evidence_sha256_hash?: string;
+  location: {
+    lat: number;
+    lon: number;
+    zone: string;
+    eez_status: string;
+  };
+  satellite_sar: SatelliteSarEvidence;
+  culprit_vessel: CulpritVesselProfile;
+  attribution_ml: AttributionMLBreakdown;
+  statutory_violations: StatutoryViolation[];
+  penal_sanctions: PenalSanctions;
+  containment_directive: ContainmentDirective;
+}
+
+/** Single AIS position observation from GFW track data */
+export interface TrackPoint {
+  lat: number;
+  lon: number;
+  date: string;                // ISO 8601 datetime
+  presence_hours: number;
+  ais_gap_minutes: number;     // >30 = vessel was dark at this timestamp
+}
+
 /** Full vessel AIS track response from /api/v1/maritime/vessels/{id}/track */
 export interface VesselTrack {
   vessel_id: string;
@@ -86,3 +187,46 @@ export interface VesselTrack {
   geojson: object;             // Full GeoJSON FeatureCollection
   track_points: TrackPoint[];  // Flat array for animation playback
 }
+
+export interface AssetImpactWarning {
+  asset_name: string;
+  asset_type: 'ONGC_PLATFORM' | 'MPA_SANCTUARY' | 'PORT' | 'COASTLINE';
+  distance_nm: number;
+  time_to_impact_hours: number | null;
+  threat_level: 'HIGH' | 'MEDIUM' | 'WATCH';
+  coordinates: [number, number]; // [lon, lat]
+}
+
+export interface DriftStepForecast {
+  time_offset_hours: number;
+  forecast_time: string;
+  centroid_lat: number;
+  centroid_lon: number;
+  area_km2: number;
+  drift_speed_knots: number;
+  drift_heading_deg: number;
+  wind_speed_knots: number;
+  wind_heading_deg: number;
+  current_speed_knots: number;
+  current_heading_deg: number;
+  geojson_polygon: object;
+  active_warnings: AssetImpactWarning[];
+  containment_recommendation: string;
+}
+
+export interface SpillDriftForecast {
+  spill_id: string;
+  base_time: string;
+  initial_area_km2: number;
+  drift_model: string;
+  trajectory_points: Array<{
+    hours: number;
+    lat: number;
+    lon: number;
+    area_km2: number;
+  }>;
+  steps: DriftStepForecast[];
+}
+
+
+

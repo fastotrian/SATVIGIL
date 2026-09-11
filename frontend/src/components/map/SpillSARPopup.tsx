@@ -11,16 +11,19 @@
 import React from 'react';
 import type { SpillEvent } from '../../types/maritime';
 import { RISK_COLORS } from '../../constants/riskColors';
+import { useAlertStore } from '../../store/alertStore';
 
 interface Props {
   spill: SpillEvent;
   onClose: () => void;
+  onLaunchDrift?: () => void;
   /** Screen position in px (from map click event) */
   screenX?: number;
   screenY?: number;
 }
 
-export function SpillSARPopup({ spill, onClose, screenX, screenY }: Props) {
+export function SpillSARPopup({ spill, onClose, onLaunchDrift, screenX, screenY }: Props) {
+  const { openDossier } = useAlertStore();
   const topSuspect = spill.top_candidates?.[0];
   const confidencePct = Math.round(spill.confidence * 100);
   const sarImageSrc = spill.sar_image_url ?? '/sar_spill_bombay_high.jpg';
@@ -69,19 +72,25 @@ export function SpillSARPopup({ spill, onClose, screenX, screenY }: Props) {
             }}
           />
           {/* Overlay badges */}
-          <div className="absolute top-2 left-2 flex gap-1.5">
-            <span className="bg-black/70 text-cyan-300 text-xs font-mono px-2 py-1 rounded">
-              SENTINEL-1B SAR-C · VV
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            <span className="bg-black/80 text-cyan-300 text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-500/40">
+              🛰️ Sentinel-1C C-SAR (IW Swath, VV/VH)
+            </span>
+            <span className="bg-black/80 text-emerald-300 text-[9px] font-mono px-2 py-0.5 rounded border border-emerald-500/40">
+              📍 19.2000°N, 71.5000°E · Bombay High
             </span>
           </div>
           <div className="absolute top-2 right-2">
-            <span className="bg-red-900/80 text-red-300 text-xs font-bold px-2 py-1 rounded border border-red-700">
+            <span className="bg-red-900/80 text-red-300 text-[10px] font-bold font-mono px-2 py-0.5 rounded border border-red-700">
               {confidencePct}% Confidence
             </span>
           </div>
-          <div className="absolute bottom-2 left-2">
-            <span className="bg-black/70 text-gray-300 text-xs font-mono px-2 py-1 rounded">
-              {spill.sentinel_scene_id.slice(0, 26)}…
+          <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center px-2 py-1 rounded bg-black/80 text-[9px] font-mono text-gray-300 border border-cyan-900/50">
+            <span className="truncate max-w-[200px]" title={spill.sentinel_scene_id}>
+              {spill.sentinel_scene_id}
+            </span>
+            <span className="text-cyan-400 font-bold shrink-0">
+              Track 142 (Desc)
             </span>
           </div>
         </div>
@@ -98,11 +107,11 @@ export function SpillSARPopup({ spill, onClose, screenX, screenY }: Props) {
               <div className="text-gray-400 text-xs">ML confidence</div>
             </div>
             <div className="bg-gray-800/60 rounded-lg p-2.5 text-center">
-              <div className="text-emerald-400 font-bold text-sm leading-tight">
-                {spill.lat.toFixed(2)}°N
+              <div className="text-emerald-400 font-bold text-xs leading-tight font-mono">
+                {spill.lat.toFixed(4)}°N
               </div>
-              <div className="text-emerald-400 font-bold text-sm">{spill.lon.toFixed(2)}°E</div>
-              <div className="text-gray-400 text-xs">coordinates</div>
+              <div className="text-emerald-400 font-bold text-xs font-mono">{spill.lon.toFixed(4)}°E</div>
+              <div className="text-gray-400 text-[10px]">Bombay High</div>
             </div>
           </div>
 
@@ -154,18 +163,34 @@ export function SpillSARPopup({ spill, onClose, screenX, screenY }: Props) {
           )}
 
           {/* ── Action Buttons ── */}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                id="spill-evidence-btn"
+                onClick={() => openDossier('latest')}
+                className="flex-1 py-1.5 text-xs font-bold font-mono bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-300 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow"
+              >
+                <span>⚖️ Legal Dossier</span>
+              </button>
+              {onLaunchDrift && (
+                <button
+                  id="spill-drift-btn"
+                  onClick={onLaunchDrift}
+                  className="flex-1 py-1.5 text-xs font-bold font-mono bg-amber-950/80 hover:bg-amber-900 border border-amber-500/60 text-amber-300 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow"
+                >
+                  <span>🌊 72h Drift Sim</span>
+                </button>
+              )}
+            </div>
+
             <button
               id="spill-dispatch-btn"
-              className="flex-1 py-2 text-xs font-medium bg-red-800 hover:bg-red-700 text-white rounded-lg transition-colors"
+              onClick={() => {
+                alert('🚨 Operational Alert Transmitted to Indian Coast Guard Western Command (ICGS Samudra Prahari tasked).');
+              }}
+              className="w-full py-1.5 text-xs font-bold font-mono bg-red-900/80 hover:bg-red-800 border border-red-500/60 text-red-200 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow"
             >
-              🚨 Dispatch Coast Guard
-            </button>
-            <button
-              id="spill-evidence-btn"
-              className="flex-1 py-2 text-xs font-medium bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
-            >
-              📄 Download Evidence
+              <span>🚨 Task ICGS Samudra Prahari</span>
             </button>
           </div>
         </div>

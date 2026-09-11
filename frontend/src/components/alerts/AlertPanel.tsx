@@ -1,9 +1,8 @@
 /**
- * SATVIGIL — Threat Intelligence Panel
- * Real-time alert cards with risk priority, type badges, and action buttons.
- * Design: Military command center — navy base, teal accents, amber/red threat colors.
+ * SATVIGIL — Actionable Threat Intelligence Feed
+ * Refactored into a sleek, compact command center drawer with collapsible cards and zero visual clutter.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useAlertStore } from '../../store/alertStore';
 import type { Alert } from '../../types/maritime';
 
@@ -21,11 +20,11 @@ function getAlertMeta(type: string) {
 }
 
 // ── Risk level config ─────────────────────────────────────────────────────
-const RISK_CFG: Record<string, { border: string; cardClass: string; badge: string; badgeBg: string }> = {
-  CRITICAL: { border: '#EF4444', cardClass: 'alert-card-critical', badge: '#EF4444', badgeBg: 'rgba(239,68,68,0.20)' },
-  WARNING:  { border: '#F59E0B', cardClass: 'alert-card-warning',  badge: '#F59E0B', badgeBg: 'rgba(245,158,11,0.20)' },
-  WATCH:    { border: '#FBBF24', cardClass: 'alert-card-warning',  badge: '#FBBF24', badgeBg: 'rgba(251,191,36,0.20)' },
-  NORMAL:   { border: '#00D4E8', cardClass: 'alert-card-normal',   badge: '#00D4E8', badgeBg: 'rgba(0,212,232,0.12)' },
+const RISK_CFG: Record<string, { border: string; badge: string; badgeBg: string }> = {
+  CRITICAL: { border: '#EF4444', badge: '#EF4444', badgeBg: 'rgba(239,68,68,0.20)' },
+  WARNING:  { border: '#F59E0B', badge: '#F59E0B', badgeBg: 'rgba(245,158,11,0.20)' },
+  WATCH:    { border: '#FBBF24', badge: '#FBBF24', badgeBg: 'rgba(251,191,36,0.20)' },
+  NORMAL:   { border: '#00D4E8', badge: '#00D4E8', badgeBg: 'rgba(0,212,232,0.12)' },
 };
 
 function getRiskCfg(level: string) {
@@ -41,136 +40,130 @@ function relTime(iso: string) {
   return `${Math.floor(m / 60)}h ago`;
 }
 
-// ── Risk Score Bar ─────────────────────────────────────────────────────────
-function RiskBar({ score }: { score?: number }) {
-  if (score == null) return null;
-  const pct = Math.round(score * 100);
-  const color = score > 0.75 ? '#EF4444' : score > 0.45 ? '#F59E0B' : '#10B981';
-  return (
-    <div className="flex items-center gap-2 mt-1.5">
-      <span className="text-[9px] tracking-widest" style={{ color: 'var(--text-secondary)', width: 68 }}>RISK SCORE</span>
-      <div className="risk-bar-track flex-1">
-        <div className="risk-bar-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="font-data text-[10px] font-bold" style={{ color, width: 28, textAlign: 'right' }}>{pct}%</span>
-    </div>
-  );
-}
-
-// ── Single Alert Card ─────────────────────────────────────────────────────
-function AlertCard({ alert, onTarget, onAck }: {
+// ── Compact Expandable Alert Card ─────────────────────────────────────────
+function CompactAlertCard({
+  alert,
+  isSelected,
+  onToggleExpand,
+  onTarget,
+  onAck,
+  onDossier,
+}: {
   alert: Alert;
+  isSelected: boolean;
+  onToggleExpand: () => void;
   onTarget: () => void;
   onAck: () => void;
+  onDossier: () => void;
 }) {
   const meta = getAlertMeta(alert.alert_type);
   const risk = getRiskCfg(alert.risk_level);
-  const isCrit = alert.risk_level === 'CRITICAL';
+  const isSpillOrDark = alert.alert_type === 'OIL_SPILL' || alert.alert_type === 'DARK_VESSEL';
 
   return (
     <div
-      className={`${risk.cardClass} rounded-md border transition-all cursor-default select-none`}
+      className="rounded border transition-all select-none overflow-hidden"
       style={{
-        borderColor: 'var(--navy-500)',
+        background: isSelected ? 'var(--navy-800)' : 'var(--navy-900)',
+        borderColor: isSelected ? 'var(--teal-500)' : 'var(--navy-500)',
         borderLeftColor: alert.acknowledged ? 'var(--text-dim)' : risk.border,
         borderLeftWidth: 3,
-        opacity: alert.acknowledged ? 0.4 : 1,
-        filter: alert.acknowledged ? 'grayscale(0.7)' : 'none',
+        opacity: alert.acknowledged ? 0.45 : 1,
       }}
     >
-      {/* Card top row: icon chip + title + risk badge */}
-      <div className="flex items-start gap-2 p-3 pb-2">
-        {/* Type icon chip */}
-        <div
-          className="shrink-0 flex items-center justify-center w-7 h-7 rounded text-sm font-bold"
-          style={{ background: meta.bg, border: `1px solid ${meta.color}30` }}
-        >
-          {meta.icon}
-        </div>
-
-        {/* Title + description */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-1">
-            <button
-              type="button"
-              onClick={onTarget}
-              className="text-left font-bold text-[11px] leading-tight hover:underline transition-colors line-clamp-2"
-              style={{ color: isCrit ? '#FCA5A5' : 'var(--text-primary)', maxWidth: '75%' }}
-            >
+      {/* ── Summary Row (Always Visible ~52px) ── */}
+      <div
+        onClick={onToggleExpand}
+        className="p-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-navy-700/50 transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div
+            className="w-6 h-6 rounded flex items-center justify-center shrink-0 text-xs font-bold"
+            style={{ background: meta.bg, border: `1px solid ${meta.color}40` }}
+          >
+            {meta.icon}
+          </div>
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-[11px] font-bold text-gray-100 truncate leading-tight">
               {alert.title}
-            </button>
-
-            {/* Risk badge */}
-            <span
-              className="shrink-0 font-data text-[9px] font-bold px-1.5 py-0.5 rounded tracking-widest"
-              style={{ background: risk.badgeBg, color: risk.badge, border: `1px solid ${risk.badge}40` }}
-            >
-              {alert.risk_level}
+            </span>
+            <span className="text-[9px] font-mono text-gray-400 truncate">
+              {meta.label} · {relTime(alert.created_at)}
             </span>
           </div>
+        </div>
 
-          {/* Type label */}
-          <span className="text-[9px] font-bold tracking-widest mt-0.5 block" style={{ color: meta.color }}>
-            {meta.label}
+        {/* Risk Badge */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider"
+            style={{ background: risk.badgeBg, color: risk.badge, border: `1px solid ${risk.badge}50` }}
+          >
+            {alert.risk_level}
+          </span>
+          <span className="text-gray-500 text-xs">
+            {isSelected ? '▲' : '▼'}
           </span>
         </div>
       </div>
 
-      {/* Description */}
-      <p className="px-3 text-[10px] leading-relaxed line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-        {alert.description}
-      </p>
+      {/* ── Expanded Detail Drawer ── */}
+      {isSelected && (
+        <div className="px-3 pt-1 pb-3 border-t border-navy-700/80 bg-navy-950/60 flex flex-col gap-2 text-xs">
+          <p className="text-[10px] text-gray-300 leading-relaxed">
+            {alert.description}
+          </p>
 
-      {/* Risk bar */}
-      <div className="px-3">
-        <RiskBar score={(alert as any).risk_score} />
-      </div>
-
-      {/* Footer: time + actions */}
-      <div className="flex items-center justify-between px-3 pt-2 pb-3">
-        <span className="font-data text-[9px]" style={{ color: 'var(--text-dim)' }}>
-          {relTime(alert.created_at)}
-        </span>
-
-        <div className="flex items-center gap-2">
-          {alert.vessel_mmsi && (
-            <button
-              type="button"
-              onClick={onTarget}
-              className="text-[10px] font-medium transition-colors hover:underline"
-              style={{ color: 'var(--teal-500)' }}
-            >
-              Target →
-            </button>
-          )}
-          {!alert.acknowledged && (
-            <button
-              type="button"
-              onClick={onAck}
-              className="font-data text-[9px] font-bold px-2 py-0.5 rounded border transition-all hover:opacity-80"
-              style={{
-                background: 'rgba(27,108,168,0.15)',
-                borderColor: 'var(--navy-400)',
-                color: 'var(--teal-400)',
-              }}
-            >
-              ACK
-            </button>
-          )}
-          {alert.acknowledged && (
-            <span className="font-data text-[9px]" style={{ color: 'var(--emerald-500)' }}>
-              ✓ ACK
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[9px] font-mono text-gray-400">
+              {alert.lat.toFixed(4)}°N, {alert.lon.toFixed(4)}°E
             </span>
-          )}
+
+            <div className="flex items-center gap-1.5">
+              {isSpillOrDark && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDossier(); }}
+                  className="font-mono text-[9px] font-bold px-2 py-0.5 rounded border border-teal-500/50 bg-teal-950/60 text-teal-300 hover:bg-teal-900/80 transition-colors"
+                >
+                  ⚖️ Dossier
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onTarget(); }}
+                className="font-mono text-[9px] font-bold px-2 py-0.5 rounded border border-navy-400 bg-navy-800 text-cyan-300 hover:bg-navy-700 transition-colors"
+              >
+                Target →
+              </button>
+
+              {!alert.acknowledged ? (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onAck(); }}
+                  className="font-mono text-[9px] font-bold px-2 py-0.5 rounded border border-navy-500 bg-navy-900 text-gray-300 hover:text-white transition-colors"
+                >
+                  ACK
+                </button>
+              ) : (
+                <span className="text-[9px] font-mono text-emerald-400 font-bold">
+                  ✓ ACK
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// ── Main Panel ────────────────────────────────────────────────────────────
-export function AlertPanel() {
-  const { alerts, setAlerts, acknowledgeAlert, vessels, selectVessel } = useAlertStore();
+// ── Main Threat Panel ─────────────────────────────────────────────────────
+export function AlertPanel({ isCollapsed, onToggleCollapse }: { isCollapsed?: boolean; onToggleCollapse?: () => void }) {
+  const { alerts, setAlerts, acknowledgeAlert, vessels, selectVessel, openDossier } = useAlertStore();
+  const [filterType, setFilterType] = useState<string>('ALL');
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>('ALERT-SPILL-001');
 
   // Seed initial alerts from vessel state
   React.useEffect(() => {
@@ -181,35 +174,36 @@ export function AlertPanel() {
           alert_type: 'OIL_SPILL',
           risk_level: 'CRITICAL',
           title: 'Active Oil Slick Detected (4.8 km²)',
-          description: 'Sentinel-2 SAR correlation: dark patch 4.8 km² near Bombay High. High-probability suspect: MT GUJARAT PRIDE (MMSI: 419000001).',
-          lat: 19.20, lon: 71.50,
+          description: 'Sentinel-1C C-SAR (IW Swath, VV/VH) correlation: dark patch 4.8 km² near Bombay High (19.2000°N, 71.5000°E). High-probability suspect: MT GUJARAT PRIDE (MMSI: 419082341).',
+          lat: 19.2000, lon: 71.5000,
           created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-          vessel_mmsi: '419000001',
+          vessel_mmsi: '419082341',
           acknowledged: false,
         },
       ];
 
       vessels.forEach((v) => {
-        if (v.is_dark) {
+        if (v.is_dark && v.ais_gap_minutes >= 30) {
           seeded.push({
             id: `ALERT-DARK-${v.mmsi}`,
             alert_type: 'DARK_VESSEL',
             risk_level: 'CRITICAL',
             title: `AIS Transponder Off: ${v.vessel_name}`,
-            description: `Vessel ceased AIS broadcast for ${v.ais_gap_minutes}m. Last known position: ${v.lat.toFixed(2)}°N ${v.lon.toFixed(2)}°E near Bombay High Oil Field.`,
+            description: `Vessel ceased AIS broadcast for ${v.ais_gap_minutes}m. Position: ${v.lat.toFixed(4)}°N ${v.lon.toFixed(4)}°E.`,
             lat: v.lat, lon: v.lon,
             created_at: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
             vessel_mmsi: v.mmsi,
             acknowledged: false,
           });
         }
-        if (v.in_mpa) {
+        const isFishingVessel = (v.vessel_type >= 30 && v.vessel_type <= 39) || v.vessel_name.toUpperCase().startsWith('FV');
+        if (v.in_mpa && isFishingVessel && v.ais_gap_minutes >= 10) {
           seeded.push({
             id: `ALERT-MPA-${v.mmsi}`,
             alert_type: 'ILLEGAL_FISHING',
             risk_level: 'WARNING',
             title: `Protected Area Breach: ${v.vessel_name}`,
-            description: `Loitering pattern detected inside ${v.mpa_name}. Speed ${v.speed_knots} kts for ${v.ais_gap_minutes}+ minutes. Possible illegal fishing.`,
+            description: `Suspicious loitering pattern detected inside ${v.mpa_name}. Speed ${v.speed_knots.toFixed(1)} kts for ${v.ais_gap_minutes}m in marine sanctuary.`,
             lat: v.lat, lon: v.lon,
             created_at: new Date(Date.now() - 1000 * 60 * 40).toISOString(),
             vessel_mmsi: v.mmsi,
@@ -220,112 +214,81 @@ export function AlertPanel() {
 
       setAlerts(seeded);
     }
-  }, [alerts.length, vessels, setAlerts]);
+  }, [vessels, alerts.length, setAlerts]);
 
-  const sorted = [...alerts].sort((a, b) => {
-    const p: Record<string, number> = { CRITICAL: 0, WARNING: 1, WATCH: 2, NORMAL: 3 };
-    return (p[a.risk_level] ?? 9) - (p[b.risk_level] ?? 9);
+  const filtered = alerts.filter((a) => {
+    if (filterType === 'CRITICAL') return a.risk_level === 'CRITICAL';
+    if (filterType === 'OIL_SPILL') return a.alert_type === 'OIL_SPILL';
+    if (filterType === 'DARK_VESSEL') return a.alert_type === 'DARK_VESSEL';
+    if (filterType === 'MPA') return a.alert_type === 'ILLEGAL_FISHING';
+    return true;
   });
 
-  const unackCount = sorted.filter((a) => !a.acknowledged).length;
-
   return (
-    <div
-      className="flex flex-col h-full select-none"
-      style={{ background: 'var(--navy-950)', color: 'var(--text-primary)' }}
-    >
-      {/* ── Panel Header ──────────────────────────────────────────────── */}
-      <div
-        className="shrink-0 px-4 py-3 flex items-center justify-between"
-        style={{ borderBottom: '1px solid var(--navy-500)', background: 'var(--navy-900)' }}
-      >
-        <div className="flex items-center gap-2.5">
-          {/* Teal left accent bar */}
-          <div className="w-0.5 h-5 rounded-full" style={{ background: 'var(--teal-500)' }} />
-          <span
-            className="text-[11px] font-bold tracking-[0.2em] uppercase"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            Threat Intel
-          </span>
-          {/* Count badge */}
-          {unackCount > 0 && (
-            <span
-              className="font-data text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse-red"
-              style={{ background: 'rgba(239,68,68,0.20)', color: 'var(--red-400)', border: '1px solid rgba(239,68,68,0.4)' }}
-            >
-              {unackCount} LIVE
-            </span>
-          )}
+    <div className="flex flex-col h-full select-none" style={{ background: 'var(--navy-950)' }}>
+      {/* ── Header ── */}
+      <div className="p-3 border-b border-navy-500/80 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <h2 className="text-xs font-bold font-mono tracking-widest uppercase text-gray-200">
+            Threat Feed ({filtered.length})
+          </h2>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setAlerts([])}
-          className="text-[10px] transition-colors hover:opacity-80"
-          style={{ color: 'var(--text-dim)' }}
-        >
-          Clear All
-        </button>
-      </div>
-
-      {/* ── Sort/Filter micro-bar ─────────────────────────────────────── */}
-      <div
-        className="shrink-0 px-4 py-1.5 flex items-center gap-3"
-        style={{ borderBottom: '1px solid var(--navy-500)', background: 'var(--navy-900)' }}
-      >
-        <span className="text-[9px] tracking-widest uppercase" style={{ color: 'var(--text-dim)' }}>
-          Sort: Priority ▾
-        </span>
-        <span className="text-[9px]" style={{ color: 'var(--navy-500)' }}>|</span>
-        <span className="text-[9px] tracking-widest uppercase" style={{ color: 'var(--text-dim)' }}>
-          All Types ▾
-        </span>
-        <span className="ml-auto font-data text-[9px]" style={{ color: 'var(--text-dim)' }}>
-          {sorted.length} events
-        </span>
-      </div>
-
-      {/* ── Alert Cards ──────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-56 gap-3">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-              style={{ background: 'rgba(0,212,232,0.08)', border: '1px solid var(--navy-500)' }}>
-              🛰
-            </div>
-            <span className="text-xs tracking-widest" style={{ color: 'var(--text-dim)' }}>
-              NO ACTIVE THREATS
-            </span>
-          </div>
-        ) : (
-          sorted.map((alert) => (
-            <AlertCard
-              key={alert.id}
-              alert={alert}
-              onTarget={() => {
-                if (alert.vessel_mmsi) {
-                  const v = vessels.find((v) => v.mmsi === alert.vessel_mmsi);
-                  if (v) selectVessel(v);
-                }
-              }}
-              onAck={() => acknowledgeAlert(alert.id)}
-            />
-          ))
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="text-[10px] font-mono px-2 py-0.5 rounded border border-navy-500 text-gray-400 hover:text-white hover:bg-navy-800 transition-all"
+            title="Toggle Threat Panel"
+          >
+            {isCollapsed ? '◀ Expand' : '▶ Hide'}
+          </button>
         )}
       </div>
 
-      {/* ── Panel Footer: system status ───────────────────────────────── */}
-      <div
-        className="shrink-0 px-4 py-2 flex items-center justify-between"
-        style={{ borderTop: '1px solid var(--navy-500)', background: 'var(--navy-900)' }}
-      >
-        <span className="font-data text-[9px]" style={{ color: 'var(--text-dim)' }}>
-          FEED: GFW / SAR
-        </span>
-        <span className="font-data text-[9px]" style={{ color: 'var(--emerald-500)' }}>
-          ● SYSTEM NOMINAL
-        </span>
+      {/* ── Filter Pills ── */}
+      <div className="p-2 border-b border-navy-600/50 flex gap-1 overflow-x-auto text-[10px] font-mono">
+        {['ALL', 'CRITICAL', 'OIL_SPILL', 'DARK_VESSEL', 'MPA'].map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setFilterType(tab)}
+            className={`px-2 py-0.5 rounded transition-all whitespace-nowrap ${
+              filterType === tab
+                ? 'bg-teal-500 text-black font-bold'
+                : 'bg-navy-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {tab.replace('_', ' ')}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Card Feed ── */}
+      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
+        {filtered.length === 0 ? (
+          <div className="p-4 text-center text-xs font-mono text-gray-500">
+            No threats detected for selected filter.
+          </div>
+        ) : (
+          filtered.map((alert) => (
+            <CompactAlertCard
+              key={alert.id}
+              alert={alert}
+              isSelected={expandedAlertId === alert.id}
+              onToggleExpand={() =>
+                setExpandedAlertId((prev) => (prev === alert.id ? null : alert.id))
+              }
+              onTarget={() => {
+                const v = vessels.find((ves) => ves.mmsi === alert.vessel_mmsi);
+                if (v) selectVessel(v);
+              }}
+              onAck={() => acknowledgeAlert(alert.id)}
+              onDossier={() => openDossier(alert.id)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

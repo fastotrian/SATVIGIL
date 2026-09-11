@@ -3,7 +3,7 @@ import { useAlertStore } from '../../store/alertStore';
 import { RISK_COLORS } from '../../constants/riskColors';
 
 export function AlertDetailsDrawer() {
-  const { selectedVessel, selectVessel } = useAlertStore();
+  const { selectedVessel, selectVessel, openDossier } = useAlertStore();
 
   if (!selectedVessel) return null;
 
@@ -187,6 +187,18 @@ export function AlertDetailsDrawer() {
       >
         <button
           type="button"
+          onClick={() => openDossier('latest')}
+          className="w-full font-bold text-xs py-2 px-3 rounded transition-colors flex justify-center items-center gap-1.5 shadow border"
+          style={{
+            background: 'linear-gradient(90deg, rgba(0, 212, 232, 0.2), rgba(0, 212, 232, 0.4))',
+            borderColor: 'var(--teal-500)',
+            color: 'var(--teal-300)',
+          }}
+        >
+          <span>⚖️ Generate Legal Prosecution Dossier</span>
+        </button>
+        <button
+          type="button"
           onClick={() => selectVessel(null)}
           className="w-full font-bold text-xs py-2 px-3 rounded transition-colors flex justify-center items-center gap-1.5 shadow"
           style={{
@@ -194,19 +206,8 @@ export function AlertDetailsDrawer() {
             color: 'var(--navy-950)',
           }}
         >
-          <span>✓ Close Dossier</span>
+          <span>✓ Close Drawer</span>
         </button>
-        <a
-          href={`mailto:coastguard@gov.in?subject=Alert: ${selectedVessel.vessel_name}&body=Vessel MMSI ${selectedVessel.mmsi} detected with risk score ${selectedVessel.risk_score} at ${selectedVessel.lat}, ${selectedVessel.lon}.`}
-          className="w-full border font-bold text-xs py-2 px-3 rounded transition-colors flex justify-center items-center gap-1.5"
-          style={{
-            background: 'var(--navy-800)',
-            borderColor: 'var(--navy-500)',
-            color: 'var(--text-primary)',
-          }}
-        >
-          <span>🚨 Transmit Coast Guard Alert</span>
-        </a>
       </div>
     </div>
   );
