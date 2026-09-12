@@ -31,19 +31,37 @@ Most satellite tools detect something *after* it happens. SATVIGIL scores risk *
 
 ## Quick Start
 
+### 1. Clone & Configure
 ```bash
-# 1. Clone
 git clone <your-repo-url> && cd SATVIGIL
-
-# 2. Configure (fill in your API keys)
 cp .env.example .env
-
-# 3. Run
-docker-compose up --build
-
-# 4. Open
-open http://localhost:3000
 ```
+
+### 2. Local Development Mode (Recommended)
+
+**Terminal 1 — Backend (FastAPI):**
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+*Backend API:* [http://localhost:8000](http://localhost:8000) · *Interactive Swagger Docs:* [http://localhost:8000/docs](http://localhost:8000/docs)
+
+**Terminal 2 — Frontend (React + Vite + MapLibre):**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*Frontend Tactical Dashboard:* [http://localhost:5173](http://localhost:5173)
+
+---
+
+### 3. Containerized Stack (Docker Compose)
+```bash
+docker-compose up --build
+```
+*Frontend:* [http://localhost:3001](http://localhost:3001) · *Backend:* [http://localhost:8000](http://localhost:8000)
 
 See [Deployment Guide](docs/deployment/DEPLOYMENT.md) for full setup.
 
