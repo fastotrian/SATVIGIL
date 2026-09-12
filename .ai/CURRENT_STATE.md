@@ -118,7 +118,7 @@
   - **FIRMS PostGIS Database Ingestion Connected**: Replaced `# TODO: store to DB` in `scheduler.py` by wiring `job_fetch_firms()` directly to `ingest_firms_batch(df, db)` in `firms_processor.py`, achieving full pipeline-to-DB persistence.
   - **Copernicus CDSE Background Query Connected**: Replaced `# TODO` in `job_check_sentinel()` to automatically search live Sentinel-1 passes over Bombay High and populate the scene cache.
   - **Simulation Transparency & Calibration Tagging**: Explicitly documented and tagged `sar_spill_detector.py` as a `PHYSICALLY_CALIBRATED_RADAR_EVALUATION` benchmark mode grounded in EMSA CleanSeaNet -7.4 dB backscatter reduction equations.
-  - **SVR vs Kinematic Attribution Positioning**: Verified `ml/models/svr_spill_attribution.pkl` (23.0 KB) is present on disk for the ML regression baseline, while maintaining that the primary forensic attribution uses the deterministic Forensic Kinematic Backtracking engine for 100% legal admissibility.
+  - **Directional Chevron Vessel Markers (`MapView.tsx`)**: Ingested Akshar's second commit `ab01b5a`, implementing dynamic rotated SVG chevrons (`vessel.course_deg`) with critical ping halos and interactive selection.
   - **All 39 Backend Tests Passing**: Verified in 5.47s with zero failures.
 
 ---

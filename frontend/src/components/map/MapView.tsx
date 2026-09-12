@@ -11,7 +11,8 @@
  *   - Marine Protected Area (MPA) conservation zone overlays
  *   - INCOIS-OOSA 72-hour forward ocean drift trajectory simulator
  */
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react';
+
 import Map, {
   Source,
   Layer,
@@ -144,6 +145,49 @@ const DEMO_TRACKS_GEOJSON: GeoJSON.FeatureCollection = {
     },
   ],
 };
+
+const VesselMarker = memo(({ vessel, onSelect }: { vessel: Vessel; onSelect: (v: Vessel) => void }) => {
+  const isCritical = vessel.risk_level === 'CRITICAL';
+  const color =
+    vessel.risk_level === 'CRITICAL'
+      ? RISK_COLORS.CRITICAL
+      : vessel.risk_level === 'WARNING'
+      ? RISK_COLORS.HIGH
+      : vessel.risk_level === 'WATCH'
+      ? RISK_COLORS.CAUTION
+      : RISK_COLORS.NORMAL;
+
+  return (
+    <Marker
+      longitude={vessel.lon}
+      latitude={vessel.lat}
+      anchor="center"
+      onClick={(e) => {
+        e.originalEvent.stopPropagation();
+        onSelect(vessel);
+      }}
+    >
+      <div className="relative flex items-center justify-center cursor-pointer hover:scale-125 transition-transform" style={{ zIndex: isCritical ? 50 : 10 }}>
+        {isCritical && (
+          <div className="absolute w-12 h-12 rounded-full border-2 border-red-500 bg-red-500/20 animate-ping pointer-events-none" />
+        )}
+        <div style={{ transform: `rotate(${vessel.course_deg || 0}deg)` }}>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill={color}
+            stroke="#0a0a0a"
+            strokeWidth="1.5"
+            style={{ filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.8))' }}
+          >
+            <path d="M12 2L22 22L12 17L2 22L12 2Z" />
+          </svg>
+        </div>
+      </div>
+    </Marker>
+  );
+});
 
 export function MapView() {
   const mapRef = useRef<MapRef>(null);
@@ -756,23 +800,12 @@ export function MapView() {
         {/* Layer: Strategic Fixed Maritime Pins (Bombay High, Ports, MPAs) */}
         <StaticPinsLayer />
 
-        {/* Animated Radar Pulse Rings for Critical Vessels */}
+        {/* Layer 4: Vessel Vectors (Directional Chevron Markers with Heading & Threat Rings) */}
         {activeFilters.showVessels &&
-          vessels
-            .filter((v) => v.risk_level === 'CRITICAL')
-            .map((v) => (
-              <Marker
-                key={`radar-${v.mmsi}`}
-                longitude={v.lon}
-                latitude={v.lat}
-                anchor="center"
-              >
-                <div className="relative flex items-center justify-center pointer-events-none -ml-4 -mt-4 w-8 h-8">
-                  <div className="absolute w-12 h-12 rounded-full border-2 border-red-500 bg-red-500/20 animate-ping opacity-75" />
-                  <div className="w-4 h-4 rounded-full border border-red-400/80" />
-                </div>
-              </Marker>
-            ))}
+          vessels.map((v) => (
+            <VesselMarker key={v.mmsi} vessel={v} onSelect={selectVessel} />
+          ))}
+
 
         {/* Layer: Historical Routes & AIS Blackout Gap Line */}
         {activeFilters.showVessels && (
