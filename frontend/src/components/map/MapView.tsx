@@ -800,11 +800,10 @@ export function MapView() {
         {/* Layer: Strategic Fixed Maritime Pins (Bombay High, Ports, MPAs) */}
         <StaticPinsLayer />
 
-        {/* Layer 4: Vessel Vectors (Directional Chevron Markers with Heading & Threat Rings) */}
-        {activeFilters.showVessels &&
-          vessels.map((v) => (
-            <VesselMarker key={v.mmsi} vessel={v} onSelect={selectVessel} />
-          ))}
+        {/* Selected Vessel Focused Chevron Indicator (Zero clutter on main map) */}
+        {selectedVessel && (
+          <VesselMarker vessel={selectedVessel} onSelect={selectVessel} />
+        )}
 
 
         {/* Layer: Historical Routes & AIS Blackout Gap Line */}
