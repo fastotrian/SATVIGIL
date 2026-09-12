@@ -205,6 +205,47 @@ def _speed_mean_for_type(vessel_type: int) -> float:
     return VESSEL_TYPE_SPEED_MEAN.get(int(vessel_type), 11.0)
 
 
+import pandas as pd
+import numpy as np
+
+
+def calculate_behavior_score_from_track(track: List[Dict], spill_time: pd.Timestamp, time_window_hours: int = 12) -> float:
+    """
+    Calculate z-score speed variance from vessel track points within a time window
+    around the oil spill detection epoch.
+    """
+    window_start = spill_time - pd.Timedelta(hours=time_window_hours)
+    window_end = spill_time + pd.Timedelta(hours=time_window_hours)
+
+    valid_speeds = []
+    for point in track:
+        pt_time = pd.Timestamp(point["timestamp"]) if not isinstance(point["timestamp"], pd.Timestamp) else point["timestamp"]
+        if window_start <= pt_time <= window_end:
+            speed = point.get("sog", 0.0)
+            if speed > 0 and not pd.isna(speed):
+                valid_speeds.append(speed)
+
+    if len(valid_speeds) < 3:
+        return 0.0
+
+    mean_speed = float(np.mean(valid_speeds))
+    std_speed = float(np.std(valid_speeds))
+
+    if std_speed == 0 or pd.isna(std_speed):
+        return 0.0
+
+    z_scores = [abs(s - mean_speed) / std_speed for s in valid_speeds]
+    max_z = max(z_scores)
+
+    if max_z >= 3:
+        return 1.0
+    if max_z >= 2:
+        return 0.7
+    if max_z >= 1.5:
+        return 0.4
+    return 0.0
+
+
 # ── Core Forensic Scoring Function ───────────────────────────────────────────
 
 def score_vessel_for_spill(
@@ -214,6 +255,7 @@ def score_vessel_for_spill(
     spill_trail_bearing: float = 250.0,
     distance_cutoff_km: float = DEFAULT_DISTANCE_CUTOFF_KM,
     elapsed_hours: float = 4.5,
+    spill_time: Optional[pd.Timestamp] = None,
 ) -> Optional[Dict]:
     """
     Forensically evaluates a single vessel's culpability for an observed oil spill
@@ -273,12 +315,19 @@ def score_vessel_for_spill(
     speed_dev = abs(speed_kts - expected_speed)
     heading_score = heading_alignment_score(cog, spill_trail_bearing)
 
+    # Check for track-based z-score speed variance anomaly
+    track = vessel.get("track", [])
+    track_anomaly = 0.0
+    if track and spill_time:
+        track_anomaly = calculate_behavior_score_from_track(track, spill_time)
+
     # Slow steaming / loitering signature for cargo/tankers
     is_loitering = (speed_kts <= 7.0 and (80 <= vtype <= 89 or 70 <= vtype <= 79))
     kinematics_anomaly_score = (
-        0.50 * heading_score +
+        0.40 * heading_score +
         0.30 * (1.0 if is_loitering else min(1.0, speed_dev / 8.0)) +
-        0.20 * (1.0 if ais_gap >= 30 else 0.0)
+        0.20 * (1.0 if ais_gap >= 30 else 0.0) +
+        0.10 * track_anomaly
     )
     kinematics_anomaly_score = round(min(max(kinematics_anomaly_score, 0.0), 1.0), 3)
 
@@ -291,7 +340,7 @@ def score_vessel_for_spill(
     )
     composite_confidence = round(min(max(composite_confidence, 0.0), 1.0), 3)
 
-    has_anomaly = (ais_gap >= 30) or is_loitering
+    has_anomaly = (ais_gap >= 30) or is_loitering or (track_anomaly > 0.0)
 
     return {
         "mmsi":                       mmsi,
@@ -321,6 +370,7 @@ def rank_vessels_for_spill(
     top_n: int = 5,
     distance_cutoff_km: float = DEFAULT_DISTANCE_CUTOFF_KM,
     elapsed_hours: float = 4.5,
+    spill_time: Optional[pd.Timestamp] = None,
 ) -> List[Dict]:
     """
     Scores and ranks candidate vessels according to forensic culpability,
@@ -335,6 +385,7 @@ def rank_vessels_for_spill(
             spill_trail_bearing=spill_trail_bearing,
             distance_cutoff_km=distance_cutoff_km,
             elapsed_hours=elapsed_hours,
+            spill_time=spill_time,
         )
         if res:
             candidates.append(res)

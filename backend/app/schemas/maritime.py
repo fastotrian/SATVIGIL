@@ -250,4 +250,32 @@ class SpillDriftForecastResponse(BaseModel):
     steps: List[DriftStepForecastSchema]
 
 
+class TrackPoint(BaseModel):
+    timestamp: datetime
+    lat: float
+    lon: float
+    sog: float
+    cog: float
 
+
+class VesselTrackResponse(BaseModel):
+    vessel_id: str
+    mmsi: str
+    vessel_name: str
+    ais_status: str
+    track: List[TrackPoint]
+
+
+class VesselTracksListResponse(BaseModel):
+    vessels: List[VesselTrackResponse]
+    total: int
+    timestamp: datetime
+
+
+class AttributeSpillRequest(BaseModel):
+    spill_lat: float
+    spill_lon: float
+    spill_time: datetime
+    spill_trail_bearing: float
+    time_window_hours: int = 12
+    distance_cutoff_km: float = 30.0

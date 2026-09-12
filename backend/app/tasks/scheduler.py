@@ -24,19 +24,33 @@ async def job_fetch_ais():
 
 
 async def job_fetch_firms():
-    """Fetch NASA FIRMS thermal data, classify, and store alerts."""
+    """Fetch NASA FIRMS thermal data, classify, and store alerts to PostGIS."""
     logger.info("scheduler_job_start", job="fetch_firms")
-    from app.services.fire.firms_fetcher import fetch_firms_india
-    df = await fetch_firms_india(days=1)
-    # TODO: Classify each hotspot, check recurrence, store to DB
-    logger.info("scheduler_job_done", job="fetch_firms", hotspots=len(df))
+    try:
+        from app.services.fire.firms_fetcher import fetch_firms_india
+        from app.services.fire.firms_processor import ingest_firms_batch
+        from app.core.database import AsyncSessionLocal
+        
+        df = await fetch_firms_india(days=1)
+        if df is not None and not df.empty:
+            async with AsyncSessionLocal() as db:
+                count = await ingest_firms_batch(df, db)
+                logger.info("scheduler_job_done", job="fetch_firms", hotspots=len(df), ingested=count)
+        else:
+            logger.info("scheduler_job_done", job="fetch_firms", hotspots=0)
+    except Exception as exc:
+        logger.warning("scheduler_firms_job_failed", error=str(exc))
 
 
 async def job_check_sentinel():
-    """Check Copernicus for new Sentinel-2 images over India."""
+    """Check Copernicus CDSE for new Sentinel-1 C-SAR radar passes over India."""
     logger.info("scheduler_job_start", job="check_sentinel")
-    # TODO: Query Copernicus Dataspace API for new scenes
-    logger.info("scheduler_job_done", job="check_sentinel")
+    try:
+        from app.services.satellite.copernicus_cdse import search_sentinel1_scenes
+        scenes = await search_sentinel1_scenes(sector="bombay_high", days_back=7)
+        logger.info("scheduler_job_done", job="check_sentinel", scenes_found=len(scenes))
+    except Exception as exc:
+        logger.warning("scheduler_sentinel_job_failed", error=str(exc))
 
 
 def start_scheduler():

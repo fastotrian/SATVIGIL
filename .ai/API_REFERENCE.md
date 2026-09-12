@@ -46,9 +46,11 @@ Interactive docs: `http://localhost:8000/docs` (FastAPI auto-generated Swagger U
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/v1/maritime/vessels` | List currently tracked vessels with risk scores |
+| `GET` | `/api/v1/maritime/vessels/tracks` | Full hourly AIS track history per vessel |
 | `GET` | `/api/v1/maritime/vessels/{mmsi}` | Single vessel detail + AIS history |
 | `GET` | `/api/v1/maritime/spills` | Active oil spill detections |
 | `GET` | `/api/v1/maritime/risk-zones` | High-risk zones (MPAs, offshore fields) as GeoJSON |
+| `POST` | `/api/v1/maritime/attribute-spill` | Production oil spill attribution using live GFW data |
 
 **Vessel risk score schema:**
 ```json

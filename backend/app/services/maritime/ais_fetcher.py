@@ -44,29 +44,10 @@ except ImportError:
 
 GFW_BASE_URL = "https://gateway.api.globalfishingwatch.org/v3"
 
-# Token from scripts/fetch_gfw_vessel_track.py (proven working)
-# Prefer env var GFW_API_TOKEN; fall back to the hardcoded team token
-_TEAM_GFW_TOKEN = (
-    "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtpZEtleSJ9"
-    ".eyJkYXRhIjp7Im5hbWUiOiJTQVRWSUdJTCIsInVzZXJJZCI6Njk5Mjgs"
-    "ImFwcGxpY2F0aW9uTmFtZSI6IlNBVFZJR0lMIiwiaWQiOjE0MDI1LCJ0"
-    "eXBlIjoidXNlci1hcHBsaWNhdGlvbiJ9LCJpYXQiOjE3ODg0NzA1NjYs"
-    "ImV4cCI6MjEwMzgzMDU2NiwiYXVkIjoiZ2Z3IiwiaXNzIjoiZ2Z3In0"
-    ".mGtBnTjmesVPp73HIIf-3f9x6wOTIfmdUUlouuAJyTACOvmaTJtO0RR_"
-    "g0QMNAbvkEtkE2AvS7veOESpYCq2ky0bm8KQQ9TvKy2JikL6lhBwCXwj"
-    "LMNH4Sz8eAU7TCbAO15PqU3xHNqJtVyeashiTKL8oSj6uNKMQ_yHMbV6"
-    "24nao8npc_i4nZUFhdwL3mudEV-xXndgGUN42_M-XXJ84esc28KYN_3T2r"
-    "g7a1oDuM1VtQC67ihb8OaI6_BgZEfW4_oYbz8znLHrMTl1KlE7Hsa4E5s"
-    "XLZ6Qz3sVWHUJDncThnB8xUY1IlmZZcvprDddXcbVtlfXgciIE7qT_pOo"
-    "SqlgQKil2cS_tvnjZwjTdzRPQaz5XnJkMuchn5ujIGD-EJb4a_dEakUeb"
-    "wpoPHud_PCxv54DDV2xp2DY4PBlatEoB12yhrrASp2-A2Swg4aRmwIsIwv"
-    "YCa3_YGxuwo-DRnLMpDAgHZIHuHox6kDJKme9XNbKDexBkzAZOtSDOFIq"
-)
-
-
 def _gfw_token() -> str:
-    """Return GFW API token — env var takes priority over team default."""
-    return settings.GFW_API_TOKEN.strip() or _TEAM_GFW_TOKEN
+    """Return GFW API token from environment / configuration."""
+    return settings.GFW_API_TOKEN.strip()
+
 
 
 # Indian Ocean / India EEZ bounding box (same as friend's script + broader)
@@ -458,15 +439,29 @@ async def _fetch_aishub_vessels() -> List[Dict]:
 # Public API — called by maritime.py routes and ais_worker.py
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def fetch_ais_vessels() -> List[Dict]:
+async def fetch_ais_vessels(
+    spill_lat: Optional[float] = None,
+    spill_lon: Optional[float] = None,
+    spill_time: Optional[datetime] = None,
+) -> List[Dict]:
     """
     Fetch current vessel positions.
     Priority:
-      1. Global Fishing Watch (GFW) API  ← primary (friend's proven token)
+      1. Targeted GFW fetch (if spill_lat & spill_lon provided) or GFW presence API ← primary
       2. AISHub API                      ← if GFW fails and AISHUB_USERNAME set
       3. Returns []                      ← maritime.py falls back to demo scenario
     """
-    # 1. Try GFW
+    if spill_lat is not None and spill_lon is not None:
+        try:
+            from app.services.maritime.gfw_fetcher import fetch_gfw_vessels
+            gfw_vessels = await fetch_gfw_vessels(spill_lat, spill_lon, spill_time)
+            if gfw_vessels:
+                logger.info("ais_source_gfw_targeted", count=len(gfw_vessels))
+                return gfw_vessels
+        except Exception as e:
+            logger.warning("gfw_targeted_fetch_failed", error=str(e))
+
+    # 1. Try GFW presence
     vessels = await _fetch_gfw_presence(days_back=3)
     if vessels:
         logger.info("ais_source_gfw", count=len(vessels))

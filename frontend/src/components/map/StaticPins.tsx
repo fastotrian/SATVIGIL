@@ -4,7 +4,8 @@
  * Bypasses WebGL glyph font loading to eliminate any 403 font PBF errors.
  */
 import React from 'react';
-import { Marker } from 'react-map-gl';
+import { Marker } from 'react-map-gl/maplibre';
+
 
 export interface StrategicPin {
   name: string;

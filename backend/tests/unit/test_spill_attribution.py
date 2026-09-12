@@ -19,6 +19,7 @@ from app.services.maritime.spill_attribution import (
     score_vessel_for_spill,
     rank_vessels_for_spill,
     get_model_metadata,
+    calculate_behavior_score_from_track,
     VESSEL_TYPE_RISK,
     VESSEL_TYPE_SPEED_MEAN,
 )
@@ -207,4 +208,53 @@ class TestModelMetadata:
         assert "telemetry_provenance" in meta
         assert "validation_metrics" in meta
         assert meta["validation_metrics"]["reproducibility"] == "100% Deterministic (Admissible in Admiralty Court)"
+
+
+# ── Track-based Behavior Scoring ──────────────────────────────────────────────
+
+class TestTrackBehaviorScore:
+    def test_empty_track(self):
+        spill_time = np.datetime64("2026-09-12T10:00:00")
+        score = calculate_behavior_score_from_track([], spill_time)
+        assert score == 0.0
+
+    def test_insufficient_points(self):
+        spill_time = np.datetime64("2026-09-12T10:00:00")
+        track = [
+            {"timestamp": "2026-09-12T09:00:00", "sog": 12.0},
+            {"timestamp": "2026-09-12T10:00:00", "sog": 12.2},
+        ]
+        score = calculate_behavior_score_from_track(track, spill_time)
+        assert score == 0.0
+
+    def test_uniform_speed_no_anomaly(self):
+        spill_time = np.datetime64("2026-09-12T10:00:00")
+        track = [
+            {"timestamp": "2026-09-12T08:00:00", "sog": 12.0},
+            {"timestamp": "2026-09-12T09:00:00", "sog": 12.0},
+            {"timestamp": "2026-09-12T10:00:00", "sog": 12.0},
+            {"timestamp": "2026-09-12T11:00:00", "sog": 12.0},
+        ]
+        score = calculate_behavior_score_from_track(track, spill_time)
+        assert score == 0.0
+
+    def test_anomalous_speed_spike_or_drop(self):
+        spill_time = np.datetime64("2026-09-12T10:00:00")
+        # 10 points cruising at 12 knots, sudden drop to 1.5 knots
+        track = [{"timestamp": f"2026-09-12T0{i}:00:00", "sog": 12.0} for i in range(1, 9)]
+        track.append({"timestamp": "2026-09-12T09:00:00", "sog": 1.0})
+        score = calculate_behavior_score_from_track(track, spill_time)
+        assert score >= 0.7, f"Expected anomaly >= 0.7 for severe speed drop, got {score}"
+
+    def test_points_outside_window_filtered(self):
+        spill_time = np.datetime64("2026-09-12T10:00:00")
+        # All points 48 hours earlier (window is 12 hours)
+        track = [
+            {"timestamp": "2026-09-10T01:00:00", "sog": 12.0},
+            {"timestamp": "2026-09-10T02:00:00", "sog": 12.0},
+            {"timestamp": "2026-09-10T03:00:00", "sog": 1.0},
+        ]
+        score = calculate_behavior_score_from_track(track, spill_time, time_window_hours=12)
+        assert score == 0.0
+
 
