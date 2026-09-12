@@ -163,6 +163,49 @@ const DEMO_TRACKS_GEOJSON: GeoJSON.FeatureCollection = {
   ],
 };
 
+const VesselMarker = React.memo(({ vessel, onSelect }: { vessel: Vessel; onSelect: (v: Vessel) => void }) => {
+  const isCritical = vessel.risk_level === 'CRITICAL';
+  const color =
+    vessel.risk_level === 'CRITICAL'
+      ? RISK_COLORS.CRITICAL
+      : vessel.risk_level === 'WARNING'
+      ? RISK_COLORS.HIGH
+      : vessel.risk_level === 'WATCH'
+      ? RISK_COLORS.CAUTION
+      : RISK_COLORS.NORMAL;
+
+  return (
+    <Marker
+      longitude={vessel.lon}
+      latitude={vessel.lat}
+      anchor="center"
+      onClick={(e) => {
+        e.originalEvent.stopPropagation();
+        onSelect(vessel);
+      }}
+    >
+      <div className="relative flex items-center justify-center cursor-pointer hover:scale-125 transition-transform" style={{ zIndex: isCritical ? 50 : 10 }}>
+        {isCritical && (
+          <div className="absolute w-12 h-12 rounded-full border-2 border-red-500 bg-red-500/20 animate-ping pointer-events-none" />
+        )}
+        <div style={{ transform: `rotate(${vessel.course_deg || 0}deg)` }}>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill={color}
+            stroke="#0a0a0a"
+            strokeWidth="1.5"
+            style={{ filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.8))' }}
+          >
+            <path d="M12 2L22 22L12 17L2 22L12 2Z" />
+          </svg>
+        </div>
+      </div>
+    </Marker>
+  );
+});
+
 export function MapView() {
   const mapRef = useRef<MapRef | null>(null);
   const { vessels, setVessels, activeFilters, toggleFilter, selectedVessel, selectVessel, addAlert } = useAlertStore();
@@ -317,47 +360,6 @@ export function MapView() {
     };
   }, [hotspots]);
 
-  // Mapbox Circle Layer: Fixed subtle glow halo for CRITICAL threats
-  const vesselPulseLayer: CircleLayer = {
-    id: 'vessel-pulse',
-    type: 'circle',
-    source: 'vessels',
-    filter: ['==', ['get', 'risk_level'], 'CRITICAL'],
-    paint: {
-      'circle-radius': 16,
-      'circle-color': RISK_COLORS.CRITICAL,
-      'circle-opacity': 0.2,
-      'circle-stroke-width': 1.5,
-      'circle-stroke-color': RISK_COLORS.CRITICAL,
-      'circle-stroke-opacity': 0.7,
-    },
-  };
-
-  // Mapbox Circle Layer: Main colored vessel markers
-  const vesselDotsLayer: CircleLayer = {
-    id: 'vessel-dots',
-    type: 'circle',
-    source: 'vessels',
-    paint: {
-      'circle-radius': [
-        'case',
-        ['==', ['get', 'vessel_type'], 80], 11,
-        ['==', ['get', 'vessel_type'], 82], 11,
-        8,
-      ],
-      'circle-color': [
-        'case',
-        ['==', ['get', 'risk_level'], 'CRITICAL'], RISK_COLORS.CRITICAL,
-        ['==', ['get', 'risk_level'], 'WARNING'], RISK_COLORS.HIGH,
-        ['==', ['get', 'risk_level'], 'WATCH'], RISK_COLORS.CAUTION,
-        RISK_COLORS.NORMAL,
-      ],
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#FFFFFF',
-      'circle-stroke-opacity': 0.8,
-      'circle-opacity': 0.95,
-    },
-  };
 
   // Mapbox Heatmap Layer: Vessel density
   const vesselHeatmapLayer: HeatmapLayer = {
@@ -499,7 +501,6 @@ export function MapView() {
         mapStyle={MAP_STYLE}
         mapboxAccessToken={MAPBOX_TOKEN}
         interactiveLayerIds={[
-          ...(activeFilters.showVessels ? ['vessel-dots'] : []),
           ...(activeFilters.showFireHotspots ? ['hotspots-layer'] : [])
         ]}
         onMouseEnter={(e) => {
@@ -509,13 +510,9 @@ export function MapView() {
           }
         }}
         onMouseLeave={() => setHoveredHotspot(null)}
-        onClick={(e) => {
-          const feature = e.features && e.features[0];
-          if (feature?.layer.id === 'vessel-dots') {
-            selectVessel(feature.properties as Vessel);
-          } else {
-            selectVessel(null);
-          }
+        onClick={() => {
+          // Deselect vessel if map background is clicked
+          selectVessel(null);
         }}
       >
         <NavigationControl position="bottom-right" />
@@ -579,24 +576,6 @@ export function MapView() {
         {/* Layer: Strategic Fixed Maritime Pins (Bombay High, Ports, MPAs) */}
         <StaticPinsLayer />
 
-        {/* Animated Radar Pulse Rings for Critical Vessels (Hardware-accelerated CSS on DOM) */}
-        {activeFilters.showVessels &&
-          vessels
-            .filter((v) => v.risk_level === 'CRITICAL')
-            .map((v) => (
-              <Marker
-                key={`radar-${v.mmsi}`}
-                longitude={v.lon}
-                latitude={v.lat}
-                anchor="center"
-              >
-                <div className="relative flex items-center justify-center pointer-events-none -ml-4 -mt-4 w-8 h-8">
-                  <div className="absolute w-12 h-12 rounded-full border-2 border-red-500 bg-red-500/20 animate-ping opacity-75" />
-                  <div className="w-4 h-4 rounded-full border border-red-400/80" />
-                </div>
-              </Marker>
-            ))}
-
         {/* Layer: Historical Routes & AIS Blackout Gap Line */}
         {activeFilters.showVessels && (
           <Source id="vessel-tracks" type="geojson" data={DEMO_TRACKS_GEOJSON}>
@@ -644,13 +623,10 @@ export function MapView() {
           </Popup>
         )}
 
-        {/* Layer 4: Vessel Vectors & Radar Pulse */}
-        {activeFilters.showVessels && (
-          <Source id="vessels" type="geojson" data={vesselsGeoJSON}>
-            <Layer {...vesselPulseLayer} />
-            <Layer {...vesselDotsLayer} />
-          </Source>
-        )}
+        {/* Layer 4: Vessel Vectors (Directional Chevrons) */}
+        {activeFilters.showVessels && vessels.map(v => (
+          <VesselMarker key={v.mmsi} vessel={v} onSelect={selectVessel} />
+        ))}
 
         {/* Selected Vessel Interactive Popup */}
         {selectedVessel && (
