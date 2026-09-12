@@ -47,6 +47,16 @@
      - Upsert records into `vessel_risk_records` table with PostGIS point geometry.
    - **Deliverable:** `backend/app/tasks/ais_worker.py`.
 
+5. [x] **TASK-M08: GFW AIS Integration & Mapbox Fixes**
+   - **Priority:** 🔴 High
+   - **Goal:** Integrate Global Fishing Watch API for live hourly vessel tracking and fix Mapbox / CORS issues.
+   - **Requirements:**
+     - Extract standalone GFW logic into an async FastAPI `gfw_fetcher.py` service.
+     - Update `spill_attribution.py` to use a 4-signal model incorporating z-score behavioral anomalies from hourly tracks.
+     - Provide `/api/v1/maritime/vessels/tracks` and `/attribute-spill` endpoints.
+     - Fix backend CORS for `localhost:3001` and update Vite config to use root `.env`.
+   - **Deliverable:** Integrated GFW fetcher, updated routes, and resolved Mapbox frontend rendering.
+
 ---
 
 ### 🔹 Part 2: Frontend UI & Interactive Analytics
@@ -93,6 +103,7 @@
 | TASK-UI08 | Thermal Hotspots WebGL Map Layer                                           | 🔴 High   | 2026-09-08    | ✅ Done   | Completed and implemented |
 | TASK-M07  | AIS Background Worker & PostGIS Upsert                                     | 🟡 Medium | 2026-09-08    | ✅ Done   | Completed and implemented |
 | TASK-UI07 | Tactical Audio Alarm & Desktop Notifications                               | 🟡 Medium | 2026-09-08    | ✅ Done   | Completed and implemented |
+| TASK-M08  | GFW AIS Integration & Mapbox Fixes                                         | 🔴 High   | 2026-09-12    | ✅ Done   | Completed and implemented |
 
 ---
 

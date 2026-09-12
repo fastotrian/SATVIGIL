@@ -32,14 +32,19 @@ HIGH_RISK_ZONES = [
 ]
 
 
-async def fetch_ais_vessels() -> List[Dict]:
+async def fetch_ais_vessels(spill_lat: Optional[float] = None, spill_lon: Optional[float] = None, spill_time: Optional[datetime] = None) -> List[Dict]:
     """
-    Fetch current vessel positions from AISHub.
+    Fetch current vessel positions from GFW (primary) or AISHub (fallback).
     Returns list of vessel dicts with position and metadata.
-
-    AISHub API docs: https://www.aishub.net/api
-    Returns XML/JSON of vessels in a geographic area.
     """
+    from app.services.maritime.gfw_fetcher import fetch_gfw_vessels
+
+    # Try GFW first
+    gfw_vessels = await fetch_gfw_vessels(spill_lat, spill_lon, spill_time)
+    if gfw_vessels:
+        logger.info("ais_fetch_success", source="gfw", count=len(gfw_vessels))
+        return gfw_vessels
+
     url = "https://data.aishub.net/ws.php"
     params = {
         "username": settings.AISHUB_USERNAME,
@@ -58,7 +63,7 @@ async def fetch_ais_vessels() -> List[Dict]:
             response.raise_for_status()
             data = response.json()
             vessels = data[1] if len(data) > 1 else []
-            logger.info("ais_fetch_success", count=len(vessels))
+            logger.info("ais_fetch_success", source="aishub", count=len(vessels))
             return vessels
         except Exception as e:
             logger.error("ais_fetch_failed", error=str(e))

@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     AISHUB_USERNAME: str = ""
     AISHUB_PASSWORD: str = ""
     GFW_API_TOKEN: str = ""
+    GFW_AIS_REGION: str = "gulf_of_kutch"
+    GFW_AIS_LOOKBACK_DAYS: int = 2
+    GFW_AIS_MAX_VESSELS: int = 8
 
     # Copernicus/Sentinel
     COPERNICUS_CLIENT_ID: str = ""
@@ -50,7 +53,7 @@ class Settings(BaseSettings):
     VITE_MAPBOX_TOKEN: str = ""
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173"]
 
     # Data fetch intervals (seconds)
     FIRMS_FETCH_INTERVAL_SECONDS: int = 10800   # 3 hours

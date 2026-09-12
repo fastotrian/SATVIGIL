@@ -9,6 +9,8 @@ Extracts the 4-signal multi-factor scoring methodology from ml/notebooks/vessel_
 import math
 from typing import Dict, List, Optional
 import structlog
+import pandas as pd
+import numpy as np
 
 logger = structlog.get_logger()
 
@@ -67,12 +69,46 @@ def heading_alignment_score(vessel_cog: float, trail_bearing: float, tolerance: 
     return round(max(0.0, 1.0 - (diff / 180.0)), 3)
 
 
+def calculate_behavior_score_from_track(track: List[Dict], spill_time: pd.Timestamp, time_window_hours: int = 12) -> float:
+    window_start = spill_time - pd.Timedelta(hours=time_window_hours)
+    window_end = spill_time + pd.Timedelta(hours=time_window_hours)
+
+    valid_speeds = []
+    for point in track:
+        pt_time = pd.Timestamp(point["timestamp"])
+        if window_start <= pt_time <= window_end:
+            speed = point.get("sog", 0.0)
+            if speed > 0 and not pd.isna(speed):
+                valid_speeds.append(speed)
+
+    if len(valid_speeds) < 3:
+        return 0.0
+
+    mean_speed = np.mean(valid_speeds)
+    std_speed = np.std(valid_speeds)
+
+    if std_speed == 0 or pd.isna(std_speed):
+        return 0.0
+
+    z_scores = [abs(s - mean_speed) / std_speed for s in valid_speeds]
+    max_z = max(z_scores)
+
+    if max_z >= 3:
+        return 1.0
+    if max_z >= 2:
+        return 0.7
+    if max_z >= 1.5:
+        return 0.4
+    return 0.0
+
+
 def score_vessel_for_spill(
     vessel: Dict,
     spill_lat: float,
     spill_lon: float,
     spill_trail_bearing: float = 250.0,
     distance_cutoff_km: float = DEFAULT_DISTANCE_CUTOFF_KM,
+    spill_time: Optional[pd.Timestamp] = None,
 ) -> Optional[Dict]:
     """
     Compute combined 4-signal oil spill attribution score for a candidate vessel.
@@ -87,6 +123,7 @@ def score_vessel_for_spill(
     raw_speed = float(vessel.get("SPEED", 0.0))
     speed_knots = raw_speed / 10.0 if raw_speed > 30 else raw_speed
     ais_gap_minutes = int(vessel.get("ais_gap_minutes", 0))
+    track = vessel.get("track", [])
 
     # Signal 1: Proximity
     dist_km = haversine(lat, lon, spill_lat, spill_lon)
@@ -101,9 +138,13 @@ def score_vessel_for_spill(
     # Signal 3: Course / Heading Alignment
     heading_score = heading_alignment_score(cog, spill_trail_bearing)
 
-    # Signal 4: Behavioral Anomaly (Dark AIS transponder gap or loitering)
-    has_anomaly = (ais_gap_minutes >= 30) or (speed_knots < 1.0 and ais_gap_minutes >= 10)
-    anomaly_score = 1.0 if has_anomaly else 0.0
+    # Signal 4: Behavioral Anomaly (Dark AIS transponder gap or loitering, or z-score)
+    if track and spill_time:
+        anomaly_score = calculate_behavior_score_from_track(track, spill_time)
+        has_anomaly = anomaly_score > 0.0
+    else:
+        has_anomaly = (ais_gap_minutes >= 30) or (speed_knots < 1.0 and ais_gap_minutes >= 10)
+        anomaly_score = 1.0 if has_anomaly else 0.0
 
     # Weighted composite score (0.0 to 1.0)
     composite_risk = (
@@ -130,6 +171,8 @@ def rank_vessels_for_spill(
     spill_lon: float,
     spill_trail_bearing: float = 250.0,
     top_n: int = 5,
+    distance_cutoff_km: float = DEFAULT_DISTANCE_CUTOFF_KM,
+    spill_time: Optional[pd.Timestamp] = None,
 ) -> List[Dict]:
     """
     Score and rank candidate vessels for a detected oil spill event.
@@ -137,7 +180,7 @@ def rank_vessels_for_spill(
     """
     candidates = []
     for v in vessels:
-        score_record = score_vessel_for_spill(v, spill_lat, spill_lon, spill_trail_bearing)
+        score_record = score_vessel_for_spill(v, spill_lat, spill_lon, spill_trail_bearing, distance_cutoff_km, spill_time)
         if score_record:
             candidates.append(score_record)
 
