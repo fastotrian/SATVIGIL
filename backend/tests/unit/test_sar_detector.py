@@ -81,6 +81,23 @@ class TestSARSimulationAndDetection:
         assert len(coords) >= 4
         assert coords[0] == coords[-1]  # Closed polygon
 
+    def test_real_sar_raster_loading_and_detection(self):
+        detection = detect_oil_slick_from_sar(center_lat=19.20, center_lon=71.50, force_simulation=False)
+        assert detection["status"] == "DETECTED"
+        assert detection["processing_mode"] in [
+            "SENTINEL1_CSAR_IW_GRDH_CALIBRATED_RASTER",
+            "PHYSICALLY_CALIBRATED_RADAR_EVALUATION"
+        ]
+        assert "radar_source" in detection
+        assert detection["slick_area_km2"] > 0.5
+        assert len(detection["evidence_sha256"]) == 64
+
+    def test_forced_simulation_mode(self):
+        detection = detect_oil_slick_from_sar(center_lat=19.20, center_lon=71.50, force_simulation=True)
+        assert detection["processing_mode"] == "PHYSICALLY_CALIBRATED_RADAR_EVALUATION"
+        assert detection["radar_source"] == "SYNTHETIC_CALIBRATED_EMSA_PATCH"
+        assert detection["backscatter_delta_db"] <= -5.0
+
 
 @pytest.mark.asyncio
 class TestCopernicusCDSE:

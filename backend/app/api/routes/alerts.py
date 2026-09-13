@@ -60,6 +60,95 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# In-memory dynamic queue for newly triggered detection events
+_DYNAMIC_ALERTS: List[AlertSummary] = []
+
+
+async def dispatch_alert(
+    alert_type: str,
+    risk_level: str,
+    risk_score: float,
+    latitude: float,
+    longitude: float,
+    title: str,
+    description: str,
+    source_dataset: str,
+    confidence: str = "high",
+    db: Optional[AsyncSession] = None,
+) -> AlertSummary:
+    """
+    Persists a newly detected threat alert to the PostGIS database (if available),
+    registers it in the dynamic alert cache, and broadcasts it in real-time
+    across all active WebSocket connections.
+    """
+    now = datetime.now(timezone.utc)
+    new_id = int(now.timestamp()) % 1000000 + 100
+    saved_alert_summary: Optional[AlertSummary] = None
+
+    if db is not None:
+        try:
+            from geoalchemy2.shape import from_shape
+            from shapely.geometry import Point
+            from app.models.alert import AlertType, RiskLevel
+
+            geom_point = from_shape(Point(longitude, latitude), srid=4326)
+
+            atype = AlertType(alert_type) if alert_type in [e.value for e in AlertType] else AlertType.OIL_SPILL
+            rlevel = RiskLevel(risk_level) if risk_level in [e.value for e in RiskLevel] else RiskLevel.CRITICAL
+
+            db_alert = Alert(
+                alert_type=atype,
+                risk_level=rlevel,
+                risk_score=float(risk_score),
+                latitude=float(latitude),
+                longitude=float(longitude),
+                location=geom_point,
+                title=title[:255],
+                description=description,
+                source_dataset=source_dataset[:100],
+                confidence=confidence[:20],
+                is_active=True,
+            )
+            db.add(db_alert)
+            await db.commit()
+            await db.refresh(db_alert)
+            saved_alert_summary = AlertSummary.model_validate(db_alert)
+            new_id = db_alert.id
+        except Exception:
+            # Degrade gracefully to in-memory registration if DB is offline
+            pass
+
+    if saved_alert_summary is None:
+        saved_alert_summary = AlertSummary(
+            id=new_id,
+            alert_type=alert_type,
+            risk_level=risk_level,
+            risk_score=risk_score,
+            title=title,
+            latitude=latitude,
+            longitude=longitude,
+            source_dataset=source_dataset,
+            confidence=confidence,
+            is_active=True,
+            created_at=now,
+        )
+
+    # Register in dynamic alerts queue
+    _DYNAMIC_ALERTS.insert(0, saved_alert_summary)
+    if len(_DYNAMIC_ALERTS) > 50:
+        _DYNAMIC_ALERTS.pop()
+
+    # Broadcast to all active WebSocket connections in real time
+    try:
+        await manager.broadcast({
+            "event": "new_alert",
+            "data": saved_alert_summary.model_dump(mode="json"),
+        })
+    except Exception:
+        pass
+
+    return saved_alert_summary
+
 
 def _get_demo_alerts() -> list[AlertSummary]:
     now = datetime.now(timezone.utc)
@@ -72,7 +161,7 @@ def _get_demo_alerts() -> list[AlertSummary]:
         area = 4.8
         conf = 0.94
 
-    return [
+    base = [
         AlertSummary(
             id=1,
             alert_type="oil_spill",
@@ -139,6 +228,7 @@ def _get_demo_alerts() -> list[AlertSummary]:
             created_at=now,
         ),
     ]
+    return list(_DYNAMIC_ALERTS) + base
 
 
 @router.get("/", response_model=AlertListResponse)
@@ -244,6 +334,7 @@ async def get_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
         id=alert_id,
         alert_type="oil_spill",
         risk_level="critical",
+        risk_score=0.94,
         title=f"Alert #{alert_id}",
         description="Active satellite anomaly",
         latitude=19.20,
@@ -385,6 +476,7 @@ async def acknowledge_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
         id=alert_id,
         alert_type="oil_spill",
         risk_level="critical",
+        risk_score=0.94,
         title=f"Alert #{alert_id} (Acknowledged)",
         description="Resolved threat event",
         latitude=19.20,

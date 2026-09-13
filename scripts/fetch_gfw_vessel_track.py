@@ -29,13 +29,13 @@ import requests
 # ============================================================
 # CONFIG
 # ============================================================
-API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtpZEtleSJ9.eyJkYXRhIjp7Im5hbWUiOiJTQVRWSUdJTCIsInVzZXJJZCI6Njk5MjgsImFwcGxpY2F0aW9uTmFtZSI6IlNBVFZJR0lMIiwiaWQiOjE0MDI1LCJ0eXBlIjoidXNlci1hcHBsaWNhdGlvbiJ9LCJpYXQiOjE3ODg0NzA1NjYsImV4cCI6MjEwMzgzMDU2NiwiYXVkIjoiZ2Z3IiwiaXNzIjoiZ2Z3In0.mGtBnTjmesVPp73HIIf-3f9x6wOTIfmdUUlouuAJyTACOvmaTJtO0RR_g0QMNAbvkEtkE2AvS7veOESpYCq2ky0bm8KQQ9TvKy2JikL6lhBwCXwjLMNH4Sz8eAU7TCbAO15PqU3xHNqJtVyeashiTKL8oSj6uNKMQ_yHMbV624nao8npc_i4nZUFhdwL3mudEV-xXndgGUN42_M-XXJ84esc28KYN_3T2rg7a1oDuM1VtQC67ihb8OaI6_BgZEfW4_oYbz8znLHrMTl1KlE7Hsa4E5sXLZ6Qz3sVWHUJDncThnB8xUY1IlmZZcvprDddXcbVtlfXgciIE7qT_pOoSqlgQKil2cS_tvnjZwjTdzRPQaz5XnJkMuchn5ujIGD-EJb4a_dEakUebwpoPHud_PCxv54DDV2xp2DY4PBlatEoB12yhrrASp2-A2Swg4aRmwIsIwvYCa3_YGxuwo-DRnLMpDAgHZIHuHox6kDJKme9XNbKDexBkzAZOtSDOFIq"
+API_TOKEN = os.environ.get("GFW_API_TOKEN", "")
 
 if not API_TOKEN:
-    API_TOKEN = input("Paste your GFW API token: ").strip()
+    API_TOKEN = input("Paste your GFW API token (or set GFW_API_TOKEN env var): ").strip()
 
 if not API_TOKEN:
-    print("ERROR: API token is required.")
+    print("ERROR: API token is required. Set GFW_API_TOKEN in your environment or .env file.")
     sys.exit(1)
 
 BASE_URL = "https://gateway.api.globalfishingwatch.org/v3"
