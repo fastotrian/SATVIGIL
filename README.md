@@ -21,7 +21,7 @@ Most satellite tools detect something *after* it happens. SATVIGIL scores risk *
 
 | Module | Watches | Data |
 |--------|---------|------|
-| **Oil Spill Detection** | Vessel risk-scoring: dark AIS, loitering near ports | Sentinel-2 + AIS |
+| **Oil Spill Detection** | Vessel risk-scoring: dark AIS, loitering near ports | Sentinel-1 C-SAR + AIS |
 | **Illegal Fishing** | Vessels going dark inside Marine Protected Areas | AIS (same pipeline) |
 | **Fire Classification** | 5-class: industrial / wildfire / stubble / gas flare / mining | NASA FIRMS + OSM |
 | **Industrial Pollution** | Recurring thermal hotspots at CPCB-flagged clusters | FIRMS historical |
@@ -178,10 +178,10 @@ SDG 13 (Climate Action) · SDG 14 (Life Below Water) · SDG 15 (Life on Land) ·
 
 | Role | Responsibility |
 |------|---------------|
-| AI/ML | PyTorch U-Net (spill detection) + ESRGAN (super-resolution) |
+| AI/ML | Sentinel-1 C-SAR Lee filter + Otsu segmentation + SVR attribution ensemble |
 | Data Science | XGBoost fire classifier + Isolation Forest vessel anomaly + spatial joins |
-| Backend | FastAPI + APScheduler + Celery + PostGIS |
-| Frontend | React + Mapbox GL JS + Tailwind + WebSocket client |
+| Backend | FastAPI + APScheduler + PostGIS |
+| Frontend | React + MapLibre GL + Tailwind + WebSocket client |
 | Full Stack | Docker Compose + Redis + integration + deployment |
 | Presenter | Demo flow + pitch narrative |
 

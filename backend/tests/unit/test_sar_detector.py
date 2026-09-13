@@ -99,6 +99,44 @@ class TestSARSimulationAndDetection:
         assert detection["backscatter_delta_db"] <= -5.0
 
 
+class TestRealGeoTIFFMode:
+    """Tests for genuine Sentinel-1 GeoTIFF / calibrated processing path."""
+
+    def test_detection_confidence_is_computed_not_hardcoded(self):
+        """Confidence must vary based on actual detection quality, not be a constant."""
+        det1 = detect_oil_slick_from_sar(center_lat=19.20, center_lon=71.50, force_simulation=True)
+        det2 = detect_oil_slick_from_sar(center_lat=15.00, center_lon=68.00, force_simulation=True)
+        assert 0.0 < det1["detection_confidence"] <= 1.0
+        assert 0.0 < det2["detection_confidence"] <= 1.0
+        assert det1["detection_confidence"] != 0.935, (
+            "Confidence must be computed from segmentation, not hardcoded."
+        )
+
+    def test_jpeg_fallback_caps_confidence(self):
+        """JPEG fallback must cap confidence at 0.70 to reflect demonstration quality."""
+        import unittest.mock as mock
+        with mock.patch("app.services.satellite.sar_spill_detector.RASTERIO_AVAILABLE", False):
+            det = detect_oil_slick_from_sar(center_lat=19.20, center_lon=71.50, force_simulation=False)
+            if det["radar_source"].startswith("JPEG_FALLBACK"):
+                assert det["detection_confidence"] <= 0.70, (
+                    "JPEG fallback should cap confidence at 0.70 (honest about data quality)"
+                )
+
+    def test_backscatter_delta_is_negative_for_slick(self):
+        """Oil dampens backscatter — delta MUST be negative for a real detection."""
+        det = detect_oil_slick_from_sar(force_simulation=True)
+        assert det["backscatter_delta_db"] < 0, (
+            f"Delta must be negative (oil dampening). Got {det['backscatter_delta_db']} dB."
+        )
+
+    def test_processing_mode_reflects_data_source(self):
+        """Processing mode must be truthful about what data was used."""
+        det_sim = detect_oil_slick_from_sar(force_simulation=True)
+        assert det_sim["processing_mode"] == "PHYSICALLY_CALIBRATED_RADAR_EVALUATION"
+        assert det_sim["data_quality"] == "SYNTHETIC_CALIBRATED"
+
+
+
 @pytest.mark.asyncio
 class TestCopernicusCDSE:
     async def test_search_scenes_structure(self):

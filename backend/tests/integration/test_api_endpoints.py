@@ -77,7 +77,7 @@ class TestMaritimeIntegration:
         assert isinstance(spills, list)
         assert len(spills) >= 1
         spill = spills[0]
-        assert spill["confidence"] > 0.7
+        assert 0.0 < spill["confidence"] <= 1.0
         assert "geojson_polygon" in spill
         assert spill["geojson_polygon"]["type"] == "Polygon"
 

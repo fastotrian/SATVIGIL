@@ -181,7 +181,7 @@ Task: score_vessel_batch
   Queue: "maritime"
 
 Task: process_sentinel_scene
-  Input: Sentinel-2 image path
-  Process: Super-resolution → spill detection → persist → broadcast
-  Queue: "imagery" (long-running)
+  Input: Sentinel-1 C-SAR IW GRDH GeoTIFF path
+  Process: Despeckling (Lee 7x7) → Otsu thresholding → morphological boundary extraction → backscatter delta verification → broadcast
+  Queue: "imagery" (radar processing)
 ```

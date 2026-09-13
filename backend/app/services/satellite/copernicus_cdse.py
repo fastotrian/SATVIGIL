@@ -222,3 +222,71 @@ def _get_calibrated_fallback_scenes(sector_cfg: Dict, now: datetime) -> List[Dic
             "backscatter_calibration": "Sigma-0 (dB)",
         }
     ]
+
+
+async def get_cdse_access_token(
+    client_id: str,
+    client_secret: str,
+) -> Optional[str]:
+    """
+    Obtains a short-lived OAuth2 access token from Copernicus Identity Service.
+    Used to authenticate download requests for full SAR product data.
+    Token valid for ~10 minutes.
+    """
+    token_url = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+    payload = {
+        "client_id": "cdse-public",
+        "username": client_id,       # Your CDSE email
+        "password": client_secret,   # Your CDSE password
+        "grant_type": "password",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(token_url, data=payload)
+            if resp.status_code == 200:
+                return resp.json().get("access_token")
+            logger.warning("CDSE token request failed: %d %s", resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.error("CDSE token fetch error: %s", exc)
+    return None
+
+
+async def download_sentinel1_vv_band(
+    product_id: str,
+    output_path: str,
+    access_token: str,
+) -> bool:
+    """
+    Downloads a Sentinel-1 IW GRDH product from CDSE.
+    The full SAFE product is ~800MB-1GB.
+
+    Args:
+      product_id: UUID from search_sentinel1_scenes() result["product_id"]
+      output_path: Destination path for the downloaded file
+      access_token: From get_cdse_access_token()
+
+    Returns True on success, False on failure.
+    """
+    download_url = f"{CDSE_ODATA_URL}({product_id})/$value"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0, follow_redirects=True) as client:
+            async with client.stream("GET", download_url, headers=headers) as resp:
+                if resp.status_code not in (200, 206):
+                    logger.error("CDSE download failed: %d", resp.status_code)
+                    return False
+
+                total = int(resp.headers.get("content-length", 0))
+                downloaded = 0
+                with open(output_path, "wb") as f:
+                    async for chunk in resp.aiter_bytes(chunk_size=8192):
+                        f.write(chunk)
+                        downloaded += len(chunk)
+
+                logger.info("Downloaded %d / %d bytes to %s", downloaded, total, output_path)
+                return True
+    except Exception as exc:
+        logger.error("CDSE download error: %s", exc)
+        return False
+

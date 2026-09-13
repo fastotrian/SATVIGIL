@@ -44,9 +44,9 @@ SATVIGIL is an AI-powered satellite monitoring platform that predicts and classi
 ## 3. Five Detection Modules
 
 ### Module 1: Oil Spill Detection
-- **Input:** Sentinel-2 optical imagery + AIS vessel positions
-- **Process:** Vessel behavior risk-scoring (dark transponders, loitering, MPA proximity)
-- **Output:** Risk-scored vessel markers on map; spill sheen polygons when optical confirms
+- **Input:** Sentinel-1 C-SAR radar imagery (IW GRDH) + AIS vessel positions
+- **Process:** Vessel behavior risk-scoring (dark transponders, loitering, MPA proximity) + Lee/Otsu SAR segmentation + Kinematic/SVR attribution ensemble
+- **Output:** Risk-scored vessel markers on map; spill sheen polygons when SAR confirms
 - **Responding agency:** Indian Coast Guard + INCOIS
 
 ### Module 2: Illegal Fishing Detection

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     GFW_API_TOKEN: str = ""
     GFW_AIS_REGION: str = "gulf_of_kutch"
     GFW_AIS_LOOKBACK_DAYS: int = 2
-    GFW_AIS_MAX_VESSELS: int = 8
+    GFW_AIS_MAX_VESSELS: int = 500
 
     # Copernicus/Sentinel
     COPERNICUS_CLIENT_ID: str = ""

@@ -1,0 +1,3293 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SATVIGIL API",
+    "description": "AI-Powered Satellite Monitoring Platform for India",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "operationId": "health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Get Alerts",
+        "description": "Get all active alerts. Supports filtering by type, risk level, and active status.\nUsed by the frontend map to load markers on initial render.",
+        "operationId": "get_alerts_api_v1_alerts__get",
+        "parameters": [
+          {
+            "name": "alert_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by type: oil_spill, fire_industrial, etc.",
+              "title": "Alert Type"
+            },
+            "description": "Filter by type: oil_spill, fire_industrial, etc."
+          },
+          {
+            "name": "risk_level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by risk: low, medium, high, critical",
+              "title": "Risk Level"
+            },
+            "description": "Filter by risk: low, medium, high, critical"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by active status (default: True = active only)",
+              "default": true,
+              "title": "Is Active"
+            },
+            "description": "Filter by active status (default: True = active only)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/near": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Get Alerts Near",
+        "description": "Find alerts, vessels, and hotspots within a given radius using PostGIS.\nMax radius is 500km to prevent full table scans.",
+        "operationId": "get_alerts_near_api_v1_alerts_near_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "description": "Latitude",
+              "title": "Lat"
+            },
+            "description": "Latitude"
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "description": "Longitude",
+              "title": "Lon"
+            },
+            "description": "Longitude"
+          },
+          {
+            "name": "radius_km",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 500,
+              "exclusiveMinimum": 0,
+              "description": "Radius in km",
+              "title": "Radius Km"
+            },
+            "description": "Radius in km"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpatialRadiusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alert_id}": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Get Alert",
+        "description": "Get details for a single alert (clicked on map).",
+        "operationId": "get_alert_api_v1_alerts__alert_id__get",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alert_id}/dossier": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Get Alert Dossier",
+        "description": "Generate official 1-Click Forensic Evidentiary Dossier for given Alert ID.\nAdheres to MARPOL 73/78 Annex I & Merchant Shipping Act 1958 Sections 356A-356O.",
+        "operationId": "get_alert_dossier_api_v1_alerts__alert_id__dossier_get",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForensicDossierResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alert_id}/acknowledge": {
+      "post": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Acknowledge Alert",
+        "description": "Mark an alert as resolved/inactive.\nSets is_active=False and resolved_at=now().\nBroadcasts a resolve_alert WS event to all connected clients.",
+        "operationId": "acknowledge_alert_api_v1_alerts__alert_id__acknowledge_post",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/vessels": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Vessels",
+        "description": "Fetch active vessels in Indian waters with live behavioral risk scores.\nCombines live GFW vessels with strategic demo vessels (e.g., MT GUJARAT PRIDE).",
+        "operationId": "get_vessels_api_v1_maritime_vessels_get",
+        "parameters": [
+          {
+            "name": "dark_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Filter for dark vessels with AIS transponder off",
+              "default": false,
+              "title": "Dark Only"
+            },
+            "description": "Filter for dark vessels with AIS transponder off"
+          },
+          {
+            "name": "min_risk",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum risk score filter",
+              "title": "Min Risk"
+            },
+            "description": "Minimum risk score filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VesselListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/vessels/tracks": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Vessels Tracks",
+        "description": "Fetch all active vessels in Indian waters with full hourly AIS track history.",
+        "operationId": "get_vessels_tracks_api_v1_maritime_vessels_tracks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VesselTracksListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/vessels/{mmsi}": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Vessel By Mmsi",
+        "description": "Retrieve single vessel by MMSI with current status and risk breakdown.",
+        "operationId": "get_vessel_by_mmsi_api_v1_maritime_vessels__mmsi__get",
+        "parameters": [
+          {
+            "name": "mmsi",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Mmsi"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VesselResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/simulate-dark-vessel": {
+      "post": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Simulate Dark Vessel",
+        "description": "Simulate a dark vessel event for live hackathon demonstrations.",
+        "operationId": "simulate_dark_vessel_api_v1_maritime_simulate_dark_vessel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateDarkVesselRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VesselResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/spills": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Oil Spills",
+        "description": "Retrieve detected oil spills with Copernicus Sentinel-1 SAR scene processing and correlated vessels.\nSegments the oil slick using the Enhanced Lee speckle filter + Adaptive Otsu thresholding.",
+        "operationId": "get_oil_spills_api_v1_maritime_spills_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SpillEventResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Get Oil Spills Api V1 Maritime Spills Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/simulate-spill": {
+      "post": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Simulate Oil Spill",
+        "description": "Trigger real-time oil spill detection and multi-factor suspect vessel attribution.\nScores all vessels in the fleet using the 4-signal SVR scoring pipeline.",
+        "operationId": "simulate_oil_spill_api_v1_maritime_simulate_spill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateSpillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpillEventResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/attribute-spill": {
+      "post": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Attribute Spill",
+        "description": "Production oil spill attribution using live GFW data and forensic CPA backtracking.",
+        "operationId": "attribute_spill_api_v1_maritime_attribute_spill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttributeSpillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpillEventResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/vessels/{vessel_id}/track": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Vessel Track",
+        "description": "Return historical AIS track for a vessel as a GeoJSON FeatureCollection.\nContains:\n  - A LineString of the full route\n  - Individual Point features for each observation (with presence_hours, timestamps)\n  - Highlighted dark gap event if present (47-minute blackout segment in red)\n\nSources:\n  - 419082341 / MT GUJARAT PRIDE: Forensic Bombay High passage across backtracked spill origin\n  - 419001845 / MV KUTCH EXPLORER: GFW presence track in Gulf of Kutch July 2026",
+        "operationId": "get_vessel_track_api_v1_maritime_vessels__vessel_id__track_get",
+        "parameters": [
+          {
+            "name": "vessel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Vessel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/dossier/{identifier}": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Forensic Dossier",
+        "description": "Generate official 1-Click Forensic Evidentiary Dossier for Coast Guard / DG Shipping prosecution.\nAdheres to MARPOL 73/78 Annex I & Merchant Shipping Act 1958 Sections 356A-356O.\n\nAttribution ML scores are computed live by the trained SVR model\n(ml/models/svr_spill_attribution.pkl) \u2014 NOT hardcoded constants.",
+        "operationId": "get_forensic_dossier_api_v1_maritime_dossier__identifier__get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForensicDossierResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/spills/{spill_id}/drift-forecast": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Spill Drift Forecast",
+        "description": "Simulate INCOIS-OOSA 72-hour forward oil spill drift and coastal threat trajectory.\nModels surface current vectors (Arabian Sea ESE current) + 3% wind drift + Fay spreading theory.",
+        "operationId": "get_spill_drift_forecast_api_v1_maritime_spills__spill_id__drift_forecast_get",
+        "parameters": [
+          {
+            "name": "spill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Spill Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpillDriftForecastResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maritime/model-status": {
+      "get": {
+        "tags": [
+          "Maritime"
+        ],
+        "summary": "Get Maritime Model Status",
+        "description": "Returns live forensic engine specifications, statutory compliance standards,\nhydrodynamic drift formulation, and validation metrics for the oil spill attribution engine.\nAllows hackathon judges and admiralty auditors to inspect the scientific pipeline.",
+        "operationId": "get_maritime_model_status_api_v1_maritime_model_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fire/hotspots": {
+      "get": {
+        "tags": [
+          "Fire"
+        ],
+        "summary": "Get Hotspots",
+        "operationId": "get_hotspots_api_v1_fire_hotspots_get",
+        "parameters": [
+          {
+            "name": "fire_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/FireType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by fire type",
+              "title": "Fire Type"
+            },
+            "description": "Filter by fire type"
+          },
+          {
+            "name": "min_frp",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum Fire Radiative Power (MW)",
+              "title": "Min Frp"
+            },
+            "description": "Minimum Fire Radiative Power (MW)"
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by acquisition date (start)",
+              "title": "Start Date"
+            },
+            "description": "Filter by acquisition date (start)"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by acquisition date (end)",
+              "title": "End Date"
+            },
+            "description": "Filter by acquisition date (end)"
+          },
+          {
+            "name": "near_cpcb_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only show hotspots near CPCB clusters",
+              "default": false,
+              "title": "Near Cpcb Only"
+            },
+            "description": "Only show hotspots near CPCB clusters"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HotspotListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fire/hotspots/{id}": {
+      "get": {
+        "tags": [
+          "Fire"
+        ],
+        "summary": "Get Hotspot",
+        "operationId": "get_hotspot_api_v1_fire_hotspots__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThermalHotspotSchema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fire/recurrence": {
+      "get": {
+        "tags": [
+          "Fire"
+        ],
+        "summary": "Get Recurrence",
+        "operationId": "get_recurrence_api_v1_fire_recurrence_get",
+        "parameters": [
+          {
+            "name": "min_recurrence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum recurrence count",
+              "default": 3,
+              "title": "Min Recurrence"
+            },
+            "description": "Minimum recurrence count"
+          },
+          {
+            "name": "fire_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/FireType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by fire type",
+              "title": "Fire Type"
+            },
+            "description": "Filter by fire type"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HotspotListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/landslide/risk-areas": {
+      "get": {
+        "tags": [
+          "Landslide"
+        ],
+        "summary": "Get Landslide Risk Areas",
+        "description": "Returns static GeoJSON FeatureCollection of landslide risk zones.\nUsed for Sprint 3 Demo to demonstrate SAR/InSAR data without live pipeline.",
+        "operationId": "get_landslide_risk_areas_api_v1_landslide_risk_areas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pollution/clusters": {
+      "get": {
+        "tags": [
+          "Pollution"
+        ],
+        "summary": "Get Pollution Clusters",
+        "description": "Returns spatial clusters of recurring thermal hotspots.\nUseful for identifying chronic industrial polluters.",
+        "operationId": "get_pollution_clusters_api_v1_pollution_clusters_get",
+        "parameters": [
+          {
+            "name": "min_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum recurrence count to be considered a cluster",
+              "default": 3,
+              "title": "Min Count"
+            },
+            "description": "Minimum recurrence count to be considered a cluster"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "description": "Rolling window in days",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Rolling window in days"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pollution/heatmap": {
+      "get": {
+        "tags": [
+          "Pollution"
+        ],
+        "summary": "Get Pollution Heatmap",
+        "description": "Returns thermal recurrence heatmap data formatted as GeoJSON FeatureCollection.\nUsed by Mapbox GL JS for rendering heatmaps.",
+        "operationId": "get_pollution_heatmap_api_v1_pollution_heatmap_get",
+        "parameters": [
+          {
+            "name": "min_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum recurrence count",
+              "default": 1,
+              "title": "Min Count"
+            },
+            "description": "Minimum recurrence count"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "description": "Rolling window in days",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Rolling window in days"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/satellite/scenes": {
+      "get": {
+        "tags": [
+          "Satellite"
+        ],
+        "summary": "Get Sentinel1 Scenes",
+        "description": "Search live Copernicus Data Space Ecosystem (CDSE) for genuine Sentinel-1\nIW GRDH radar scenes covering Indian maritime surveillance corridors.",
+        "operationId": "get_sentinel1_scenes_api_v1_satellite_scenes_get",
+        "parameters": [
+          {
+            "name": "sector",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Indian maritime sector: bombay_high, gulf_of_kutch, gulf_of_mannar, visakhapatnam",
+              "default": "bombay_high",
+              "title": "Sector"
+            },
+            "description": "Indian maritime sector: bombay_high, gulf_of_kutch, gulf_of_mannar, visakhapatnam"
+          },
+          {
+            "name": "days_back",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 60,
+              "minimum": 1,
+              "description": "Acquisition lookback window in days",
+              "default": 14,
+              "title": "Days Back"
+            },
+            "description": "Acquisition lookback window in days"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "description": "Maximum scenes to return",
+              "default": 5,
+              "title": "Limit"
+            },
+            "description": "Maximum scenes to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/satellite/detect-spills": {
+      "post": {
+        "tags": [
+          "Satellite"
+        ],
+        "summary": "Analyze Sar Spill Event",
+        "description": "Executes the complete microwave radar oil spill detection pipeline:\nEnhanced Lee speckle filtering + Adaptive Otsu bimodal segmentation.\nReturns the vector GeoJSON polygon and physical backscatter metrics.",
+        "operationId": "analyze_sar_spill_event_api_v1_satellite_detect_spills_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SARAnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/satellite/status": {
+      "get": {
+        "tags": [
+          "Satellite"
+        ],
+        "summary": "Get Satellite Subsystem Status",
+        "description": "Returns radar processing pipeline telemetry, Copernicus CDSE connection status,\nand Lee filter / Otsu thresholding calibration parameters.",
+        "operationId": "get_satellite_subsystem_status_api_v1_satellite_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlertListResponse": {
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/AlertSummary"
+            },
+            "type": "array",
+            "title": "Alerts"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total records matching filters (before limit/offset)"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "Page size requested",
+            "default": 50
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "description": "Page offset requested",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "alerts",
+          "total"
+        ],
+        "title": "AlertListResponse",
+        "description": "Paginated envelope for GET /api/v1/alerts."
+      },
+      "AlertNearResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "alert_type": {
+            "$ref": "#/components/schemas/AlertType"
+          },
+          "risk_level": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "risk_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Risk Score",
+            "description": "Normalised risk score 0.0\u20131.0"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source_dataset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Dataset",
+            "description": "Originating dataset: FIRMS | AIS | SENTINEL"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence",
+            "description": "Detection confidence: low | nominal | high"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "distance_km": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Distance Km",
+            "description": "Great-circle distance from query point in km"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "alert_type",
+          "risk_level",
+          "risk_score",
+          "latitude",
+          "longitude",
+          "title",
+          "is_active",
+          "created_at",
+          "distance_km"
+        ],
+        "title": "AlertNearResponse",
+        "description": "Alert with computed distance \u2014 returned by GET /api/v1/alerts/near."
+      },
+      "AlertResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "alert_type": {
+            "$ref": "#/components/schemas/AlertType"
+          },
+          "risk_level": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "risk_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Risk Score",
+            "description": "Normalised risk score 0.0\u20131.0"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source_dataset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Dataset",
+            "description": "Originating dataset: FIRMS | AIS | SENTINEL"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence",
+            "description": "Detection confidence: low | nominal | high"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "alert_type",
+          "risk_level",
+          "risk_score",
+          "latitude",
+          "longitude",
+          "title",
+          "is_active",
+          "created_at"
+        ],
+        "title": "AlertResponse",
+        "description": "Full alert record \u2014 returned by GET /api/v1/alerts/{id}."
+      },
+      "AlertSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "alert_type": {
+            "$ref": "#/components/schemas/AlertType"
+          },
+          "risk_level": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "risk_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Risk Score",
+            "description": "Normalised risk score 0.0\u20131.0"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "source_dataset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Dataset",
+            "description": "Originating dataset: FIRMS | AIS | SENTINEL"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence",
+            "description": "Detection confidence: low | nominal | high"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "alert_type",
+          "risk_level",
+          "risk_score",
+          "latitude",
+          "longitude",
+          "title",
+          "is_active",
+          "created_at"
+        ],
+        "title": "AlertSummary",
+        "description": "Condensed alert \u2014 omits description and resolved_at to reduce payload size."
+      },
+      "AlertType": {
+        "type": "string",
+        "enum": [
+          "oil_spill",
+          "illegal_fishing",
+          "fire_industrial",
+          "fire_wildfire",
+          "fire_stubble",
+          "fire_gas_flare",
+          "fire_mining",
+          "industrial_pollution",
+          "landslide_risk"
+        ],
+        "title": "AlertType"
+      },
+      "AssetImpactWarningSchema": {
+        "properties": {
+          "asset_name": {
+            "type": "string",
+            "title": "Asset Name"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type"
+          },
+          "distance_nm": {
+            "type": "number",
+            "title": "Distance Nm"
+          },
+          "time_to_impact_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time To Impact Hours"
+          },
+          "threat_level": {
+            "type": "string",
+            "title": "Threat Level"
+          },
+          "coordinates": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Coordinates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asset_name",
+          "asset_type",
+          "distance_nm",
+          "threat_level",
+          "coordinates"
+        ],
+        "title": "AssetImpactWarningSchema"
+      },
+      "AttributeSpillRequest": {
+        "properties": {
+          "spill_lat": {
+            "type": "number",
+            "title": "Spill Lat"
+          },
+          "spill_lon": {
+            "type": "number",
+            "title": "Spill Lon"
+          },
+          "spill_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Spill Time"
+          },
+          "spill_trail_bearing": {
+            "type": "number",
+            "title": "Spill Trail Bearing"
+          },
+          "time_window_hours": {
+            "type": "integer",
+            "title": "Time Window Hours",
+            "default": 12
+          },
+          "distance_cutoff_km": {
+            "type": "number",
+            "title": "Distance Cutoff Km",
+            "default": 30.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "spill_lat",
+          "spill_lon",
+          "spill_time",
+          "spill_trail_bearing"
+        ],
+        "title": "AttributeSpillRequest"
+      },
+      "AttributionMLBreakdownSchema": {
+        "properties": {
+          "composite_confidence": {
+            "type": "number",
+            "title": "Composite Confidence",
+            "default": 94.2
+          },
+          "spatial_proximity_score": {
+            "type": "number",
+            "title": "Spatial Proximity Score",
+            "default": 98.5
+          },
+          "ais_dark_gap_score": {
+            "type": "number",
+            "title": "Ais Dark Gap Score",
+            "default": 96.0
+          },
+          "vessel_type_risk_score": {
+            "type": "number",
+            "title": "Vessel Type Risk Score",
+            "default": 92.0
+          },
+          "svr_kinematics_anomaly_score": {
+            "type": "number",
+            "title": "Svr Kinematics Anomaly Score",
+            "default": 90.5
+          },
+          "p_value": {
+            "type": "string",
+            "title": "P Value",
+            "default": "< 0.001 (Statistically Significant)"
+          }
+        },
+        "type": "object",
+        "title": "AttributionMLBreakdownSchema"
+      },
+      "ContainmentDirectiveSchema": {
+        "properties": {
+          "dispersant_recommended": {
+            "type": "string",
+            "title": "Dispersant Recommended",
+            "default": "Type 2/3 Concentrated Bio-dispersant (OSD-II)"
+          },
+          "dispersant_litres": {
+            "type": "integer",
+            "title": "Dispersant Litres",
+            "default": 4200
+          },
+          "boom_perimeter_meters": {
+            "type": "integer",
+            "title": "Boom Perimeter Meters",
+            "default": 2800
+          },
+          "response_vessel": {
+            "type": "string",
+            "title": "Response Vessel",
+            "default": "ICGS Samudra Prahari (CG-01)"
+          },
+          "intercept_station": {
+            "type": "string",
+            "title": "Intercept Station",
+            "default": "ICG Regional HQ (West), Worli, Mumbai"
+          },
+          "intercept_course_deg": {
+            "type": "integer",
+            "title": "Intercept Course Deg",
+            "default": 248
+          },
+          "intercept_speed_kts": {
+            "type": "number",
+            "title": "Intercept Speed Kts",
+            "default": 18.0
+          },
+          "intercept_eta_hours": {
+            "type": "string",
+            "title": "Intercept Eta Hours",
+            "default": "2h 18m"
+          }
+        },
+        "type": "object",
+        "title": "ContainmentDirectiveSchema"
+      },
+      "CulpritVesselProfileSchema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "MT GUJARAT PRIDE"
+          },
+          "imo": {
+            "type": "string",
+            "title": "Imo",
+            "default": "9418236"
+          },
+          "mmsi": {
+            "type": "string",
+            "title": "Mmsi",
+            "default": "419082341"
+          },
+          "call_sign": {
+            "type": "string",
+            "title": "Call Sign",
+            "default": "VTAA"
+          },
+          "flag_state": {
+            "type": "string",
+            "title": "Flag State",
+            "default": "India (Indian Registry)"
+          },
+          "flag_code": {
+            "type": "string",
+            "title": "Flag Code",
+            "default": "IN"
+          },
+          "vessel_type": {
+            "type": "string",
+            "title": "Vessel Type",
+            "default": "Crude Oil / Chemical Tanker"
+          },
+          "gross_tonnage": {
+            "type": "integer",
+            "title": "Gross Tonnage",
+            "default": 62450
+          },
+          "deadweight_tonnage": {
+            "type": "integer",
+            "title": "Deadweight Tonnage",
+            "default": 115000
+          },
+          "build_year": {
+            "type": "integer",
+            "title": "Build Year",
+            "default": 2018
+          },
+          "owner_operator": {
+            "type": "string",
+            "title": "Owner Operator",
+            "default": "Gujarat Maritime Shipping Corp., Mumbai / Kandla"
+          },
+          "last_port_of_call": {
+            "type": "string",
+            "title": "Last Port Of Call",
+            "default": "Fujairah Anchorage, UAE"
+          },
+          "destination": {
+            "type": "string",
+            "title": "Destination",
+            "default": "JNPT, Mumbai, India"
+          },
+          "pre_incident_speed_kts": {
+            "type": "number",
+            "title": "Pre Incident Speed Kts",
+            "default": 12.4
+          },
+          "incident_speed_kts": {
+            "type": "number",
+            "title": "Incident Speed Kts",
+            "default": 6.1
+          },
+          "course_deg": {
+            "type": "number",
+            "title": "Course Deg",
+            "default": 174.0
+          },
+          "ais_gap_duration_minutes": {
+            "type": "integer",
+            "title": "Ais Gap Duration Minutes",
+            "default": 47
+          }
+        },
+        "type": "object",
+        "title": "CulpritVesselProfileSchema"
+      },
+      "DriftStepForecastSchema": {
+        "properties": {
+          "time_offset_hours": {
+            "type": "integer",
+            "title": "Time Offset Hours"
+          },
+          "forecast_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Forecast Time"
+          },
+          "centroid_lat": {
+            "type": "number",
+            "title": "Centroid Lat"
+          },
+          "centroid_lon": {
+            "type": "number",
+            "title": "Centroid Lon"
+          },
+          "area_km2": {
+            "type": "number",
+            "title": "Area Km2"
+          },
+          "drift_speed_knots": {
+            "type": "number",
+            "title": "Drift Speed Knots"
+          },
+          "drift_heading_deg": {
+            "type": "number",
+            "title": "Drift Heading Deg"
+          },
+          "wind_speed_knots": {
+            "type": "number",
+            "title": "Wind Speed Knots"
+          },
+          "wind_heading_deg": {
+            "type": "number",
+            "title": "Wind Heading Deg"
+          },
+          "current_speed_knots": {
+            "type": "number",
+            "title": "Current Speed Knots"
+          },
+          "current_heading_deg": {
+            "type": "number",
+            "title": "Current Heading Deg"
+          },
+          "geojson_polygon": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Geojson Polygon"
+          },
+          "active_warnings": {
+            "items": {
+              "$ref": "#/components/schemas/AssetImpactWarningSchema"
+            },
+            "type": "array",
+            "title": "Active Warnings",
+            "default": []
+          },
+          "containment_recommendation": {
+            "type": "string",
+            "title": "Containment Recommendation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time_offset_hours",
+          "forecast_time",
+          "centroid_lat",
+          "centroid_lon",
+          "area_km2",
+          "drift_speed_knots",
+          "drift_heading_deg",
+          "wind_speed_knots",
+          "wind_heading_deg",
+          "current_speed_knots",
+          "current_heading_deg",
+          "geojson_polygon",
+          "containment_recommendation"
+        ],
+        "title": "DriftStepForecastSchema"
+      },
+      "FireType": {
+        "type": "string",
+        "enum": [
+          "industrial",
+          "gas_flare",
+          "wildfire",
+          "stubble",
+          "mining",
+          "unknown"
+        ],
+        "title": "FireType",
+        "description": "XGBoost classifier output categories.\nMatches fire_type column values in ThermalHotspot.\nAlso aligns with AlertType values (e.g. FIRE_INDUSTRIAL \u2192 'industrial')."
+      },
+      "ForensicDossierResponse": {
+        "properties": {
+          "dossier_id": {
+            "type": "string",
+            "title": "Dossier Id",
+            "default": "ICG-DOS-2026-AR-0941"
+          },
+          "classification": {
+            "type": "string",
+            "title": "Classification",
+            "default": "RESTRICTED // LAW ENFORCEMENT & MARITIME EVIDENCE"
+          },
+          "issuing_authority": {
+            "type": "string",
+            "title": "Issuing Authority",
+            "default": "DIRECTORATE GENERAL OF SHIPPING / INDIAN COAST GUARD (WESTERN COMMAND)"
+          },
+          "incident_id": {
+            "type": "string",
+            "title": "Incident Id",
+            "default": "SPILL-20260907-001"
+          },
+          "compiled_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Compiled At"
+          },
+          "evidence_sha256_hash": {
+            "type": "string",
+            "title": "Evidence Sha256 Hash",
+            "default": "7d8f5c3e91b24a6e804f519c23b8e714652a9103c847d1f5b630e2417c89a502"
+          },
+          "location": {
+            "$ref": "#/components/schemas/LocationSchema"
+          },
+          "satellite_sar": {
+            "$ref": "#/components/schemas/SatelliteSarEvidenceSchema"
+          },
+          "culprit_vessel": {
+            "$ref": "#/components/schemas/CulpritVesselProfileSchema"
+          },
+          "attribution_ml": {
+            "$ref": "#/components/schemas/AttributionMLBreakdownSchema"
+          },
+          "statutory_violations": {
+            "items": {
+              "$ref": "#/components/schemas/StatutoryViolationSchema"
+            },
+            "type": "array",
+            "title": "Statutory Violations"
+          },
+          "penal_sanctions": {
+            "$ref": "#/components/schemas/PenalSanctionsSchema"
+          },
+          "containment_directive": {
+            "$ref": "#/components/schemas/ContainmentDirectiveSchema"
+          }
+        },
+        "type": "object",
+        "required": [
+          "compiled_at",
+          "location",
+          "satellite_sar",
+          "culprit_vessel",
+          "attribution_ml",
+          "statutory_violations",
+          "penal_sanctions",
+          "containment_directive"
+        ],
+        "title": "ForensicDossierResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HotspotListResponse": {
+        "properties": {
+          "hotspots": {
+            "items": {
+              "$ref": "#/components/schemas/ThermalHotspotSchema"
+            },
+            "type": "array",
+            "title": "Hotspots"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total hotspot records before pagination"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "Page size requested",
+            "default": 50
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "description": "Page offset requested",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "hotspots",
+          "total"
+        ],
+        "title": "HotspotListResponse",
+        "description": "Paginated envelope for GET /api/v1/fire/hotspots."
+      },
+      "HotspotNearResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "frp": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frp",
+            "description": "Fire Radiative Power in megawatts (MW)"
+          },
+          "brightness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brightness",
+            "description": "Brightness temperature in Kelvin"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence",
+            "description": "FIRMS detection confidence: low | nominal | high"
+          },
+          "satellite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satellite",
+            "description": "Source sensor: VIIRS | MODIS | etc."
+          },
+          "acquired_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Acquired At",
+            "description": "Satellite overpass time (UTC)"
+          },
+          "fire_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FireType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "XGBoost-classified fire category"
+          },
+          "land_use": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Land Use",
+            "description": "Land-use category from OpenStreetMap"
+          },
+          "near_cpcb_cluster": {
+            "type": "boolean",
+            "title": "Near Cpcb Cluster",
+            "description": "True if within 10 km of a CPCB-designated polluted industrial cluster",
+            "default": false
+          },
+          "recurrence_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Recurrence Count",
+            "description": "Number of times this grid cell has fired (rolling 30-day window)",
+            "default": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "responding_agency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responding Agency",
+            "description": "Agency responsible for response, derived from fire type + land use. e.g. 'CPCB + State Fire Services' for industrial fires near CPCB clusters."
+          },
+          "recommended_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommended Action",
+            "description": "Recommended response action. e.g. 'Emergency response + PESO investigation' for gas flares."
+          },
+          "distance_km": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Distance Km",
+            "description": "Great-circle distance from query point in km"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "latitude",
+          "longitude",
+          "acquired_at",
+          "created_at",
+          "distance_km"
+        ],
+        "title": "HotspotNearResponse",
+        "description": "Hotspot with computed distance \ufffd returned by GET /api/v1/alerts/near."
+      },
+      "LocationSchema": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat",
+            "default": 19.2
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon",
+            "default": 71.5
+          },
+          "zone": {
+            "type": "string",
+            "title": "Zone",
+            "default": "Arabian Sea \u2014 Mumbai High Offshore Sector (28 NM WNW)"
+          },
+          "eez_status": {
+            "type": "string",
+            "title": "Eez Status",
+            "default": "Indian Exclusive Economic Zone (200 NM Sovereign Boundary)"
+          }
+        },
+        "type": "object",
+        "title": "LocationSchema"
+      },
+      "PenalSanctionsSchema": {
+        "properties": {
+          "detention_order": {
+            "type": "string",
+            "title": "Detention Order",
+            "default": "Immediate Port State Control (PSC) Arrest at JNPT / Mumbai Port"
+          },
+          "statutory_fine_inr": {
+            "type": "string",
+            "title": "Statutory Fine Inr",
+            "default": "\u20b9 50,00,000 to \u20b9 2,00,00,000"
+          },
+          "statutory_fine_usd": {
+            "type": "string",
+            "title": "Statutory Fine Usd",
+            "default": "$60,000 \u2013 $240,000 USD"
+          },
+          "cleanup_liability": {
+            "type": "string",
+            "title": "Cleanup Liability",
+            "default": "100% Comprehensive Ecological Remediation Cost Recovery"
+          },
+          "criminal_proceedings": {
+            "type": "string",
+            "title": "Criminal Proceedings",
+            "default": "Lodging of FIR against Master & Ship Operator under Merchant Shipping Act Section 356K"
+          }
+        },
+        "type": "object",
+        "title": "PenalSanctionsSchema"
+      },
+      "RiskLevel": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "RiskLevel"
+      },
+      "SARAnalyzeRequest": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat",
+            "default": 19.2
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon",
+            "default": 71.5
+          },
+          "scene_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene Id"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector",
+            "default": "bombay_high"
+          }
+        },
+        "type": "object",
+        "title": "SARAnalyzeRequest"
+      },
+      "SatelliteSarEvidenceSchema": {
+        "properties": {
+          "satellite": {
+            "type": "string",
+            "title": "Satellite",
+            "default": "Sentinel-1C C-SAR (IW Swath, VV/VH)"
+          },
+          "band": {
+            "type": "string",
+            "title": "Band",
+            "default": "C-band (5.405 GHz microwave)"
+          },
+          "acquisition_mode": {
+            "type": "string",
+            "title": "Acquisition Mode",
+            "default": "IW (Interferometric Wide Swath)"
+          },
+          "polarization": {
+            "type": "string",
+            "title": "Polarization",
+            "default": "Dual Polarization (VV + VH)"
+          },
+          "orbit_pass": {
+            "type": "string",
+            "title": "Orbit Pass",
+            "default": "Relative Orbit Track #142 / Descending Node"
+          },
+          "scene_id": {
+            "type": "string",
+            "title": "Scene Id",
+            "default": "S1C_IW_GRDH_1SDV_20260910T053649_20260910T053714_055591_06C82F_B7E2"
+          },
+          "slick_area_km2": {
+            "type": "number",
+            "title": "Slick Area Km2",
+            "default": 4.82
+          },
+          "slick_length_km": {
+            "type": "number",
+            "title": "Slick Length Km",
+            "default": 8.4
+          },
+          "slick_width_max_km": {
+            "type": "number",
+            "title": "Slick Width Max Km",
+            "default": 0.92
+          },
+          "est_volume_litres": {
+            "type": "integer",
+            "title": "Est Volume Litres",
+            "default": 3850
+          },
+          "backscatter_clean_db": {
+            "type": "number",
+            "title": "Backscatter Clean Db",
+            "default": -12.1
+          },
+          "backscatter_slick_db": {
+            "type": "number",
+            "title": "Backscatter Slick Db",
+            "default": -19.5
+          },
+          "backscatter_delta_db": {
+            "type": "number",
+            "title": "Backscatter Delta Db",
+            "default": -7.4
+          },
+          "sar_image_url": {
+            "type": "string",
+            "title": "Sar Image Url",
+            "default": "/sar_spill_bombay_high.jpg"
+          }
+        },
+        "type": "object",
+        "title": "SatelliteSarEvidenceSchema"
+      },
+      "SimulateDarkVesselRequest": {
+        "properties": {
+          "mmsi": {
+            "type": "string",
+            "title": "Mmsi"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "ais_gap_minutes": {
+            "type": "integer",
+            "title": "Ais Gap Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mmsi",
+          "lat",
+          "lon",
+          "ais_gap_minutes"
+        ],
+        "title": "SimulateDarkVesselRequest",
+        "description": "Request payload to simulate a dark vessel during hackathon demo."
+      },
+      "SimulateSpillRequest": {
+        "properties": {
+          "spill_lat": {
+            "type": "number",
+            "title": "Spill Lat",
+            "default": 19.15
+          },
+          "spill_lon": {
+            "type": "number",
+            "title": "Spill Lon",
+            "default": 71.45
+          },
+          "spill_trail_bearing": {
+            "type": "number",
+            "title": "Spill Trail Bearing",
+            "default": 250.0
+          },
+          "time_window_hours": {
+            "type": "integer",
+            "title": "Time Window Hours",
+            "default": 12
+          }
+        },
+        "type": "object",
+        "title": "SimulateSpillRequest",
+        "description": "Request payload to trigger oil spill detection simulation during hackathon demo."
+      },
+      "SpatialRadiusResponse": {
+        "properties": {
+          "query_lat": {
+            "type": "number",
+            "title": "Query Lat"
+          },
+          "query_lon": {
+            "type": "number",
+            "title": "Query Lon"
+          },
+          "radius_km": {
+            "type": "number",
+            "title": "Radius Km"
+          },
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/AlertNearResponse"
+            },
+            "type": "array",
+            "title": "Alerts"
+          },
+          "vessels": {
+            "items": {
+              "$ref": "#/components/schemas/VesselNearResponse"
+            },
+            "type": "array",
+            "title": "Vessels"
+          },
+          "hotspots": {
+            "items": {
+              "$ref": "#/components/schemas/HotspotNearResponse"
+            },
+            "type": "array",
+            "title": "Hotspots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query_lat",
+          "query_lon",
+          "radius_km",
+          "alerts",
+          "vessels",
+          "hotspots"
+        ],
+        "title": "SpatialRadiusResponse",
+        "description": "Unified response for GET /api/v1/alerts/near"
+      },
+      "SpillCandidateResponse": {
+        "properties": {
+          "mmsi": {
+            "type": "string",
+            "title": "Mmsi"
+          },
+          "vessel_name": {
+            "type": "string",
+            "title": "Vessel Name"
+          },
+          "risk_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Risk Score"
+          },
+          "distance_km": {
+            "type": "number",
+            "title": "Distance Km"
+          },
+          "type_risk": {
+            "type": "number",
+            "title": "Type Risk"
+          },
+          "heading_score": {
+            "type": "number",
+            "title": "Heading Score"
+          },
+          "behavioral_anomaly": {
+            "type": "boolean",
+            "title": "Behavioral Anomaly",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "mmsi",
+          "vessel_name",
+          "risk_score",
+          "distance_km",
+          "type_risk",
+          "heading_score"
+        ],
+        "title": "SpillCandidateResponse",
+        "description": "Correlated vessel candidate for an oil spill incident."
+      },
+      "SpillDriftForecastResponse": {
+        "properties": {
+          "spill_id": {
+            "type": "string",
+            "title": "Spill Id"
+          },
+          "base_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Base Time"
+          },
+          "initial_area_km2": {
+            "type": "number",
+            "title": "Initial Area Km2"
+          },
+          "drift_model": {
+            "type": "string",
+            "title": "Drift Model",
+            "default": "INCOIS-OOSA Fay Spreading + Arabian Sea Ocean Current Model"
+          },
+          "trajectory_points": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Trajectory Points"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/DriftStepForecastSchema"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "spill_id",
+          "base_time",
+          "initial_area_km2",
+          "trajectory_points",
+          "steps"
+        ],
+        "title": "SpillDriftForecastResponse"
+      },
+      "SpillEventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "detected_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Detected At"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "area_km2": {
+            "type": "number",
+            "title": "Area Km2"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "sentinel_scene_id": {
+            "type": "string",
+            "title": "Sentinel Scene Id"
+          },
+          "top_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/SpillCandidateResponse"
+            },
+            "type": "array",
+            "title": "Top Candidates",
+            "default": []
+          },
+          "geojson_polygon": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Geojson Polygon"
+          },
+          "sar_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sar Image Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "detected_at",
+          "lat",
+          "lon",
+          "area_km2",
+          "confidence",
+          "sentinel_scene_id",
+          "geojson_polygon"
+        ],
+        "title": "SpillEventResponse",
+        "description": "Detected oil spill incident with Copernicus metadata and top correlated vessels."
+      },
+      "StatutoryViolationSchema": {
+        "properties": {
+          "statute": {
+            "type": "string",
+            "title": "Statute"
+          },
+          "regulation": {
+            "type": "string",
+            "title": "Regulation"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "statute",
+          "regulation",
+          "description"
+        ],
+        "title": "StatutoryViolationSchema"
+      },
+      "ThermalHotspotSchema": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "latitude": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "longitude": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "description": "Decimal degrees WGS-84"
+          },
+          "frp": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frp",
+            "description": "Fire Radiative Power in megawatts (MW)"
+          },
+          "brightness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brightness",
+            "description": "Brightness temperature in Kelvin"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence",
+            "description": "FIRMS detection confidence: low | nominal | high"
+          },
+          "satellite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satellite",
+            "description": "Source sensor: VIIRS | MODIS | etc."
+          },
+          "acquired_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Acquired At",
+            "description": "Satellite overpass time (UTC)"
+          },
+          "fire_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FireType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "XGBoost-classified fire category"
+          },
+          "land_use": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Land Use",
+            "description": "Land-use category from OpenStreetMap"
+          },
+          "near_cpcb_cluster": {
+            "type": "boolean",
+            "title": "Near Cpcb Cluster",
+            "description": "True if within 10 km of a CPCB-designated polluted industrial cluster",
+            "default": false
+          },
+          "recurrence_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Recurrence Count",
+            "description": "Number of times this grid cell has fired (rolling 30-day window)",
+            "default": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "responding_agency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responding Agency",
+            "description": "Agency responsible for response, derived from fire type + land use. e.g. 'CPCB + State Fire Services' for industrial fires near CPCB clusters."
+          },
+          "recommended_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommended Action",
+            "description": "Recommended response action. e.g. 'Emergency response + PESO investigation' for gas flares."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "latitude",
+          "longitude",
+          "acquired_at",
+          "created_at"
+        ],
+        "title": "ThermalHotspotSchema",
+        "description": "Full thermal hotspot record \u2014 returned by:\n  GET /api/v1/fire/hotspots         (inside HotspotListResponse)\n  GET /api/v1/fire/recurrence       (hotspots with recurrence_count > threshold)\n  GET /api/v1/pollution/clusters    (CPCB-adjacent hotspots)\n\nresponding_agency and recommended_action are NOT stored in the DB;\nthey are computed at the service/route layer by the fire classifier's\nagency routing table (see services/fire/firms_fetcher.py) and passed in."
+      },
+      "TrackPoint": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "sog": {
+            "type": "number",
+            "title": "Sog"
+          },
+          "cog": {
+            "type": "number",
+            "title": "Cog"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "lat",
+          "lon",
+          "sog",
+          "cog"
+        ],
+        "title": "TrackPoint"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VesselListResponse": {
+        "properties": {
+          "vessels": {
+            "items": {
+              "$ref": "#/components/schemas/VesselResponse"
+            },
+            "type": "array",
+            "title": "Vessels"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vessels",
+          "total",
+          "timestamp"
+        ],
+        "title": "VesselListResponse",
+        "description": "Wrapper for returning a list of vessels with telemetry metadata."
+      },
+      "VesselNearResponse": {
+        "properties": {
+          "mmsi": {
+            "type": "string",
+            "title": "Mmsi",
+            "description": "Maritime Mobile Service Identity (9 digits)"
+          },
+          "vessel_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vessel Name"
+          },
+          "vessel_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vessel Type"
+          },
+          "risk_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Risk Score",
+            "description": "Normalised risk score 0.0\u20131.0"
+          },
+          "is_dark": {
+            "type": "boolean",
+            "title": "Is Dark",
+            "description": "AIS transponder switched off",
+            "default": false
+          },
+          "is_loitering": {
+            "type": "boolean",
+            "title": "Is Loitering",
+            "description": "Speed < 1 kt for > 60 minutes",
+            "default": false
+          },
+          "inside_mpa": {
+            "type": "boolean",
+            "title": "Inside Mpa",
+            "description": "Located inside a Marine Protected Area",
+            "default": false
+          },
+          "last_known_lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Last Known Lat",
+            "description": "Decimal degrees WGS-84"
+          },
+          "last_known_lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Last Known Lon",
+            "description": "Decimal degrees WGS-84"
+          },
+          "ais_gap_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ais Gap Minutes",
+            "description": "Duration (minutes) the AIS transponder was silent"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          },
+          "distance_km": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Distance Km",
+            "description": "Great-circle distance from query point in km"
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level",
+            "description": "Derived from risk_score \u2014 low | medium | high | critical.",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "mmsi",
+          "risk_score",
+          "last_known_lat",
+          "last_known_lon",
+          "recorded_at",
+          "distance_km",
+          "risk_level"
+        ],
+        "title": "VesselNearResponse",
+        "description": "Vessel with computed distance \ufffd returned by GET /api/v1/alerts/near."
+      },
+      "VesselResponse": {
+        "properties": {
+          "mmsi": {
+            "type": "string",
+            "title": "Mmsi"
+          },
+          "vessel_name": {
+            "type": "string",
+            "title": "Vessel Name"
+          },
+          "vessel_type": {
+            "type": "integer",
+            "title": "Vessel Type"
+          },
+          "vessel_type_label": {
+            "type": "string",
+            "title": "Vessel Type Label"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "speed_knots": {
+            "type": "number",
+            "title": "Speed Knots"
+          },
+          "course_deg": {
+            "type": "number",
+            "title": "Course Deg"
+          },
+          "risk_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Risk Score"
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": [
+              "CRITICAL",
+              "WARNING",
+              "WATCH",
+              "NORMAL"
+            ],
+            "title": "Risk Level"
+          },
+          "ais_gap_minutes": {
+            "type": "integer",
+            "title": "Ais Gap Minutes",
+            "default": 0
+          },
+          "is_dark": {
+            "type": "boolean",
+            "title": "Is Dark",
+            "default": false
+          },
+          "in_mpa": {
+            "type": "boolean",
+            "title": "In Mpa",
+            "default": false
+          },
+          "mpa_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mpa Name"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Seen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mmsi",
+          "vessel_name",
+          "vessel_type",
+          "vessel_type_label",
+          "lat",
+          "lon",
+          "speed_knots",
+          "course_deg",
+          "risk_score",
+          "risk_level",
+          "last_seen"
+        ],
+        "title": "VesselResponse",
+        "description": "AIS Vessel entity matching frontend `Vessel` interface."
+      },
+      "VesselTrackResponse": {
+        "properties": {
+          "vessel_id": {
+            "type": "string",
+            "title": "Vessel Id"
+          },
+          "mmsi": {
+            "type": "string",
+            "title": "Mmsi"
+          },
+          "vessel_name": {
+            "type": "string",
+            "title": "Vessel Name"
+          },
+          "ais_status": {
+            "type": "string",
+            "title": "Ais Status"
+          },
+          "track": {
+            "items": {
+              "$ref": "#/components/schemas/TrackPoint"
+            },
+            "type": "array",
+            "title": "Track"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vessel_id",
+          "mmsi",
+          "vessel_name",
+          "ais_status",
+          "track"
+        ],
+        "title": "VesselTrackResponse"
+      },
+      "VesselTracksListResponse": {
+        "properties": {
+          "vessels": {
+            "items": {
+              "$ref": "#/components/schemas/VesselTrackResponse"
+            },
+            "type": "array",
+            "title": "Vessels"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vessels",
+          "total",
+          "timestamp"
+        ],
+        "title": "VesselTracksListResponse"
+      }
+    }
+  }
+}

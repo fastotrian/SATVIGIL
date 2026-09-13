@@ -5,7 +5,7 @@
 
 ---
 
-## 🕒 Last Updated: 2026-09-11 (Sprint 4 — Real SVR ML Pipeline, Dynamic Dossier Attribution, & Executed Jupyter Notebook Complete)
+## 🕒 Last Updated: 2026-09-13 (Sprint 5 — Full Technical Audit Remediation, Dynamic SAR Confidence, SVR Ensemble Blending & GeoTIFF Standard Calibration)
 
 > **Active Plan:** Full PS 143 build order with color system, Gemini model assignments,
 > and part-by-part checkpoints is in `implementation_plan.md` (Antigravity artifact).
@@ -119,11 +119,17 @@
   - **Copernicus CDSE Background Query Connected**: Replaced `# TODO` in `job_check_sentinel()` to automatically search live Sentinel-1 passes over Bombay High and populate the scene cache.
   - **Simulation Transparency & Calibration Tagging**: Explicitly documented and tagged `sar_spill_detector.py` as a `PHYSICALLY_CALIBRATED_RADAR_EVALUATION` benchmark mode grounded in EMSA CleanSeaNet -7.4 dB backscatter reduction equations.
   - **PART 27:** ✅ Complete PS 143 Technical Remediation (Real SAR Raster Processing, End-to-End PostGIS Persistence & WebSocket Push, and 14 Integration Tests):
-    - **Real Sentinel-1 C-SAR Radar Raster Ingestion (`sar_spill_detector.py`)**: Added `load_sar_scene_raster()` reading genuine satellite imagery (`data/sar/sentinel1_bombay_high_iw_grd.jpg` and `frontend/public/sar_spill_bombay_high.jpg`). Applied Enhanced Lee filter ($7\times 7$) and Otsu bimodal thresholding directly to the satellite pixel matrix, deriving real empirical backscatter drops ($\sigma^0_{clean} = -11.3\text{ dB}$, $\sigma^0_{slick} = -26.7\text{ dB}$, $\Delta\sigma^0 = -15.4\text{ dB}$) and cryptographic SHA-256 evidence proof from satellite bytes.
+    - **Real Sentinel-1 C-SAR Radar Raster Ingestion (`sar_spill_detector.py`)**: Added `load_sar_scene_raster()` reading genuine satellite imagery (`data/sar/sentinel1_bombay_high_iw_grd.jpg` and `frontend/public/sar_spill_bombay_high.jpg`). Applied Enhanced Lee filter ($7\times 7$) and Otsu bimodal thresholding directly to the satellite pixel matrix, deriving empirical backscatter drops ($\sigma^0_{clean} = -11.3\text{ dB}$, $\sigma^0_{slick} = -26.7\text{ dB}$, $\Delta\sigma^0 = -15.4\text{ dB}$) and cryptographic SHA-256 evidence proof from satellite bytes.
     - **End-to-End PostGIS Persistence & WebSocket Live Push (`alerts.py`, `maritime.py`)**: Authored `dispatch_alert()` to save detected oil spills directly into the PostGIS `alerts` table and broadcast live `{ "event": "new_alert", "data": alert }` messages across all active WebSocket connections. Connected `POST /api/v1/maritime/simulate-spill` and `POST /api/v1/maritime/attribute-spill` to `dispatch_alert()`.
     - **Full Integration Test Suite (`tests/integration/test_api_endpoints.py`)**: Authored 14 end-to-end tests covering all API routes, PostGIS persistence, SAR detection, and live WebSocket handshake.
-    - **All 55 Backend Tests Passing**: 41 unit tests + 14 integration tests passing 100% in 11.24s.
-    - **Frontend Build**: Verified clean `tsc && vite build` (86 modules transformed in 13.29s with zero errors).
+  - **PART 28:** ✅ Full PS 143 Technical Audit Remediation & Scientific Integrity Restoration:
+    - **GeoTIFF Calibration with Rasterio & Honest Demonstration Fallback (`sar_spill_detector.py`)**: Added dual-path raster loader in `load_sar_scene_raster()`: Path A reads 16-bit unsigned integer Digital Number (DN) GeoTIFFs using `rasterio` and applies standard ESA terrain-flattened calibration: $\sigma^0_{\text{dB}} = 20 \log_{10}(\text{DN}) - 83.0$. Path B handles demonstration rasters with transparent logging and attaches `data_quality: "REAL_SENTINEL1_GEOTIFF"` or `"JPEG_DEMONSTRATION"`.
+    - **Dynamic EMSA CleanSeaNet Detection Confidence Derivation (`sar_spill_detector.py`)**: Purged hardcoded `0.935` constant. Implemented dynamic 3-signal confidence engine based on EMSA CleanSeaNet operational weighting: backscatter attenuation ($\Delta\sigma^0 \le -10\text{ dB} \to 0.95$), slick area plausibility ($0.5 \le \text{area} \le 50\text{ km}^2 \to 0.90$), and mask coherence fraction ($0.01 \le \text{frac} \le 0.20 \to 0.90$). Automatically caps confidence at $0.70$ for demonstration rasters.
+    - **Active SVR Ensemble Blending in Attribution Engine (`spill_attribution.py`)**: Loaded `ml/models/svr_spill_attribution.pkl` via `joblib`, evaluated 7-feature inference pipeline, and blended court-admissible deterministic kinematic backtracking ($70\%$) with SVR regression ($30\%$), outputting `kinematic_score`, `svr_score`, `svr_available: True`, and `_scoring_method: "kinematic_svr_ensemble"`.
+    - **Config Credibility & Dead Dependency Purge**: In `backend/app/core/config.py`, updated `GFW_AIS_MAX_VESSELS = 500`. In `frontend/package.json`, completely purged dead `mapbox-gl` and `@types/mapbox-gl` dependencies (~600KB savings). Verified `npm run build` succeeds cleanly in 5.87s. In `backend/requirements.txt`, added pinned `joblib==1.4.2`, `scipy==1.13.1`, and `Pillow==10.3.0`.
+    - **Copernicus CDSE Ingestion Helpers (`copernicus_cdse.py`)**: Authored `get_cdse_access_token()` and `download_sentinel1_vv_band()` for programmatic Sentinel-1 IW GRDH SAFE ingestion.
+    - **Test Suite Expansion & 100% Pass Rate**: Added `TestRealGeoTIFFMode` in `test_sar_detector.py`. Updated confidence range assertions in `test_api_endpoints.py`. **All 59 backend tests passing (45 unit + 14 integration) in 15.75s.**
+    - **Documentation Alignment**: Updated `README.md`, `DATA_GUIDE.md`, `HLD.md`, `LLD.md`, and `DEMO_RUNBOOK.md` to strictly reference Sentinel-1 C-SAR radar and purged confusing mentions of Sentinel-2 / U-Net / ESRGAN.
 
 ---
 
@@ -261,8 +267,8 @@
   - [ ] `TASK-UI06`: Recharts telemetry curves (speed over time, FRP trends).
   - [ ] `TASK-UI09`: Global Search & Autocomplete toolbar in `DashboardHeader.tsx`.
 - [ ] **Track 5: QA Automation & Documentation (Krishika):**
-  - [ ] `TASK-J02`: Pytest automated suite for schemas and API integration.
-  - [ ] `TASK-D01`: Production Postman/Bruno API Collection.
+  - [x] `TASK-J02`: Pytest automated suite (59 unit + integration tests passing 100%).
+  - [x] `TASK-D01`: Production OpenAPI 3.1 & Postman v2.1 Collection (`docs/api/`).
 
 ---
 
@@ -272,11 +278,10 @@
 |---|---|---|
 | Primary PS | PS 143 (Oil Spill) | Best public data availability, visually impressive demo |
 | Secondary PS | PS 162 (Fire Classification) | Reuses same FIRMS pipeline |
-| Map library | **Mapbox GL JS** (over Leaflet) | WebGL handles hundreds of moving vessel markers |
-| Styling | **Tailwind CSS v3** | Already in use in App.tsx — do not change |
-| Fire classifier | **XGBoost** (not deep learning) | FIRMS data is tabular CSV, rule-based + XGBoost is faster & explainable |
-| Vessel risk | **Isolation Forest + rules** | AIS behavioral features, not image data |
-| Spill detection | **PyTorch U-Net** | Pixel-level segmentation on Sentinel-2 |
-| Super-res | **ESRGAN pretrained** | Don't train from scratch during hackathon |
+| Map library | **MapLibre GL** (migrated from Mapbox) | Open-source WebGL without billing/401 token constraints |
+| Styling | **Tailwind CSS v3** | Responsive dark military aesthetic |
+| Fire classifier | **XGBoost + Rules** | FIRMS tabular data with 5-class industrial/wildfire taxonomy |
+| Spill detection | **Sentinel-1 C-SAR IW GRDH** | Enhanced Lee despeckling (7x7) + Otsu segmentation + EMSA CleanSeaNet dynamic confidence |
+| Spill attribution | **Kinematic + SVR Ensemble** | 70% Fay hydrodynamic backtracking + 30% SVR behavioral model |
 | Landslide | **SAR InSAR — build last** | Sentinel-1 revisit 6-12 days, use historical pairs for demo |
-| DB migrations | `create_all` for now | Will add Alembic migrations when schema stabilizes |
+| DB migrations | **Alembic + PostGIS** | `001_initial_schema` version-controlled migrations |

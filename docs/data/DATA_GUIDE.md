@@ -71,26 +71,31 @@ Key fields: MMSI, LATITUDE, LONGITUDE, SPEED, COURSE, HEADING, TYPE, NAME, TIMES
 
 ---
 
-## Dataset 3: Sentinel-2 Optical Imagery (Oil Spill Detection)
+## Dataset 3: Sentinel-1 C-SAR Radar Imagery (Oil Spill Detection)
 
 **URL:** https://dataspace.copernicus.eu/
-**Cost:** FREE — requires Copernicus account
-**Resolution:** 10m (Band 2,3,4,8) — 20m (Band 11,12 — best for oil spills)
+**Cost:** FREE — requires Copernicus Data Space Ecosystem (CDSE) account
+**Sensor:** C-SAR (5.405 GHz Microwave Radar) — penetrates cloud cover & operates 24/7 (day/night)
+**Mode & Resolution:** IW (Interferometric Wide Swath) GRDH — 10m pixel spacing (VV + VH polarization)
+**Physical Principle:** Oil films dampen ocean capillary waves, attenuating microwave Bragg backscatter ($\Delta\sigma^0 \approx -5 \text{ to } -15 \text{ dB}$).
 
 ### What to Download
-- Band 11 (SWIR 1640nm) and Band 12 (SWIR 2200nm) for oil slick detection
-- Oil appears as a darker anomaly compared to surrounding water
-- Download for: India's west coast (Gujarat coast, Mumbai coast, Goa)
+- Level-1 Ground Range Detected (GRD) products over Indian maritime sectors:
+  - Bombay High offshore oil corridor (`19.20°N, 71.50°E`)
+  - Gulf of Kutch crude terminal approaches (`22.75°N, 69.50°E`)
+- Measurement file: VV polarization GeoTIFF (`s1*-iw-grd-vv-*.tiff`)
+- Calibration metadata: Annotation XML (`s1*-iw-grd-vv-*.xml`) for lookup table (LUT)
 
-### Copernicus Catalog API (programmatic download)
+### Copernicus Catalog OData API (programmatic query)
 ```python
-import requests
+import httpx
 url = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
-params = {
-    "Collection/Name eq 'SENTINEL-2'",
-    "OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((...))')",
-    "$top=5"
-}
+query = (
+    "$filter=Collection/Name eq 'SENTINEL-1' and "
+    "contains(Name,'IW_GRDH') and "
+    "OData.CSC.Intersects(area=geography'SRID=4326;POLYGON((70.8 18.6, 72.4 18.6, 72.4 19.8, 70.8 19.8, 70.8 18.6))')"
+    "&$orderby=ContentDate/Start desc&$top=5"
+)
 ```
 
 ---

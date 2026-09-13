@@ -32,10 +32,40 @@ Act 1958, MARPOL Annex I, and EMSA CleanSeaNet forensic protocols:
 import math
 import json
 import logging
+import joblib
+import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# ── SVR Model (optional — blends with kinematic engine if pkl exists) ─────────
+_SVR_MODEL = None
+
+def _get_svr_model_path() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        cand = parent / "ml" / "models" / "svr_spill_attribution.pkl"
+        if cand.exists():
+            return cand
+    return here.parents[4] / "ml" / "models" / "svr_spill_attribution.pkl"
+
+def _load_svr_model():
+    """Lazy-load the SVR model once at first call. Safe — returns None if pkl missing."""
+    global _SVR_MODEL
+    if _SVR_MODEL is not None:
+        return _SVR_MODEL
+    pkl_path = _get_svr_model_path()
+    if pkl_path.exists():
+        try:
+            _SVR_MODEL = joblib.load(pkl_path)
+            logger.info("SVR spill attribution model loaded from %s", pkl_path)
+        except Exception as exc:
+            logger.warning("SVR pkl found but failed to load: %s. Using kinematic engine only.", exc)
+            _SVR_MODEL = None
+    else:
+        logger.info("SVR pkl not found at %s. Using kinematic engine only.", pkl_path)
+    return _SVR_MODEL
 
 # ── MARPOL Annex I Vessel Risk Priors (ITOPF 2023 / EMSA Casualty Statistics) ──
 VESSEL_TYPE_RISK: Dict[int, float] = {
@@ -331,13 +361,41 @@ def score_vessel_for_spill(
     )
     kinematics_anomaly_score = round(min(max(kinematics_anomaly_score, 0.0), 1.0), 3)
 
+    # ── SIGNAL 5: SVR Model Prediction (if pkl available) ────────────────────
+    svr_model = _load_svr_model()
+    svr_score = 0.0
+    svr_available = False
+    if svr_model is not None:
+        try:
+            features = np.array([[
+                vtype_risk,           # vessel_type_risk_encoded
+                cpa_km,               # dist_to_nearest_spill_km (using CPA)
+                float(ais_gap),       # ais_gap_minutes
+                speed_kts,            # speed_knots
+                speed_dev,            # speed_deviation_from_type_mean
+                float(is_loitering),  # is_loitering
+                float(cpa_km <= 50.0),# near_spill_zone
+            ]], dtype=np.float32)
+            svr_score = float(np.clip(svr_model.predict(features)[0], 0.0, 1.0))
+            svr_available = True
+        except Exception as exc:
+            logger.warning("SVR prediction failed: %s. Using kinematic engine only.", exc)
+
     # ── COMPOSITE FORENSIC LIABILITY SCORE ───────────────────────────────────
-    composite_confidence = (
+    # If SVR available: blend kinematic (70%) + SVR (30%)
+    # If SVR missing: pure kinematic (4-signal weighted sum)
+    kinematic_score = (
         0.35 * spatial_proximity_score +
         0.25 * ais_dark_gap_score +
         0.20 * vtype_risk +
         0.20 * kinematics_anomaly_score
     )
+
+    if svr_available:
+        composite_confidence = round(0.70 * kinematic_score + 0.30 * svr_score, 3)
+    else:
+        composite_confidence = round(kinematic_score, 3)
+
     composite_confidence = round(min(max(composite_confidence, 0.0), 1.0), 3)
 
     has_anomaly = (ais_gap >= 30) or is_loitering or (track_anomaly > 0.0)
@@ -346,6 +404,9 @@ def score_vessel_for_spill(
         "mmsi":                       mmsi,
         "vessel_name":                name,
         "risk_score":                 composite_confidence,
+        "kinematic_score":            round(kinematic_score, 3),
+        "svr_score":                  round(svr_score, 3),
+        "svr_available":              svr_available,
         "distance_km":                dist_direct_km,
         "cpa_km":                     cpa_km,
         "type_risk":                  vtype_risk,
@@ -358,7 +419,7 @@ def score_vessel_for_spill(
         "backtracked_origin_lat":     orig_lat,
         "backtracked_origin_lon":     orig_lon,
         "backtracked_drift_km":       drift_km,
-        "_scoring_method":            "forensic_kinematic_backtracking",
+        "_scoring_method":            "kinematic_svr_ensemble" if svr_available else "forensic_kinematic_backtracking",
     }
 
 

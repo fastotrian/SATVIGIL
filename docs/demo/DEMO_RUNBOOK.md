@@ -68,13 +68,13 @@
   2. A semi-transparent dark red oil slick polygon renders on screen with a pulsing boundary.
   3. The **OIL SPILL DETECTED** popup opens displaying:
      - Area: `4.82 km²`
-     - Model Confidence: `94%`
+     - Model Confidence: Derived dynamically via EMSA CleanSeaNet 3-signal standard (backscatter attenuation $\Delta\sigma^0$, area plausibility, mask coherence)
      - Copernicus Sentinel-1C C-SAR Scene ID (`S1C_IW_GRDH_1SDV_20260910T053649_20260910T053714_055591_06C82F_B7E2`).
-  4. **The 4-Signal ML Attribution breakdown is displayed:**
+  4. **The Kinematic Backtracking + SVR Ensemble Attribution breakdown is displayed:**
      - **Top Suspect:** `MT GUJARAT PRIDE` (MMSI: `419082341`)
-     - **Attribution Risk Score:** `0.95`
-     - **Distance to Spill Center:** `7.2 km`
-     - **Course Alignment:** `95% match` with slick dispersion trail
+     - **Forensic Liability Score:** Blended kinematic hydrodynamic backtracking (70%) + SVR behavioral model (30%)
+     - **Distance to Spill Center / CPA:** Minimum spatiotemporal approach to backtracked release corridor
+     - **AIS Status:** 45-minute transponder blackout detected in proximity to Bombay High assets
 - **Visual Action:** Click `"Inspect Suspect Vessel →"` to immediately target the suspect vessel.
 
 #### Step 5: Real-World National Impact & Conclusion [4:15 – 5:00]

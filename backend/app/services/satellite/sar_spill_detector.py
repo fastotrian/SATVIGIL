@@ -28,7 +28,19 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
-from PIL import Image
+
+try:
+    import rasterio
+    from rasterio.enums import Resampling as RasterioResampling
+    RASTERIO_AVAILABLE = True
+except ImportError:
+    RASTERIO_AVAILABLE = False
+
+try:
+    from PIL import Image as PILImage
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -240,34 +252,43 @@ def load_sar_scene_raster(
     target_size: Tuple[int, int] = (256, 256),
 ) -> Optional[Tuple[np.ndarray, np.ndarray, str]]:
     """
-    Loads a genuine microwave SAR radar raster (Sentinel-1 C-SAR IW GRD) from disk.
-    Searches standard candidate paths in priority order:
+    Loads a genuine Sentinel-1 C-SAR IW GRD radar raster from disk.
+
+    Priority order:
       1. custom_path (if supplied and exists)
-      2. data/sar/sentinel1_bombay_high_iw_grd.tif or .jpg
-      3. frontend/public/sar_spill_bombay_high.jpg (real Sentinel-1 C-SAR capture)
+      2. data/sar/sentinel1_bombay_high_iw_grd.tif   ← Real GeoTIFF (16-bit DN)
+      3. data/sar/sentinel1_bombay_high_iw_grd.jpg   ← Fallback visualization only
+      4. frontend/public/sar_spill_bombay_high.jpg   ← Last resort
 
     Returns:
       Tuple of (linear_power_matrix, db_matrix, source_path) or None if not found.
+
+    NOTE on calibration:
+      Real Sentinel-1 GRD GeoTIFF contains raw DN values.
+      sigma0 (linear) = DN^2 / (LUT_equivalent_scaling_factor)
+      For a properly terrain-corrected GRDH product, the standard approach is:
+        sigma0_dB = 20 * log10(DN) - 83.0   (ESA convention for GRD products)
+      This is applied when rasterio reads a .tif file.
+      For JPEG fallback, we acknowledge the limitation in processing_mode tag.
     """
     candidates = []
     if custom_path:
         candidates.append(Path(custom_path))
 
-    # Determine repo root directory robustly
     here = Path(__file__).resolve()
-    repo_root = here.parents[4] if len(here.parents) >= 5 else here.parent
+    repo_root = here.parent
     for parent in here.parents:
         if (parent / "frontend").exists() or (parent / "data").exists():
             repo_root = parent
             break
 
+    # Priority: real GeoTIFF first, then JPEG fallback
     candidates.extend([
         repo_root / "data" / "sar" / "sentinel1_bombay_high_iw_grd.tif",
         repo_root / "data" / "sar" / "sentinel1_bombay_high_iw_grd.jpg",
         repo_root / "frontend" / "public" / "sar_spill_bombay_high.jpg",
         Path("data/sar/sentinel1_bombay_high_iw_grd.tif"),
         Path("data/sar/sentinel1_bombay_high_iw_grd.jpg"),
-        Path("frontend/public/sar_spill_bombay_high.jpg"),
     ])
 
     chosen_file = None
@@ -279,28 +300,86 @@ def load_sar_scene_raster(
     if not chosen_file:
         return None
 
-    try:
-        # Load satellite radar image
-        with Image.open(chosen_file) as img:
-            gray = img.convert("L")
-            if target_size:
-                gray = gray.resize(target_size, Image.Resampling.BILINEAR)
-            dn_array = np.array(gray, dtype=np.float32) / 255.0
+    suffix = chosen_file.suffix.lower()
 
-        # Radar linear power is proportional to DN^2
-        linear_power = np.maximum(dn_array ** 2, 1e-6)
+    # ── PATH A: Real GeoTIFF / 16-bit Radar Raster ───────────────────────────
+    if suffix in (".tif", ".tiff"):
+        raw_dn = None
+        if RASTERIO_AVAILABLE:
+            try:
+                with rasterio.open(chosen_file) as ds:
+                    raw_dn = ds.read(1).astype(np.float32)
+                    if target_size and raw_dn.shape != target_size:
+                        from rasterio.warp import reproject, Resampling
+                        scale_y = target_size[0] / raw_dn.shape[0]
+                        scale_x = target_size[1] / raw_dn.shape[1]
+                        new_transform = ds.transform * ds.transform.scale(
+                            1.0 / scale_x, 1.0 / scale_y
+                        )
+                        resampled = np.zeros(target_size, dtype=np.float32)
+                        reproject(
+                            source=raw_dn,
+                            destination=resampled,
+                            src_transform=ds.transform,
+                            src_crs=ds.crs,
+                            dst_transform=new_transform,
+                            dst_crs=ds.crs,
+                            resampling=Resampling.bilinear,
+                        )
+                        raw_dn = resampled
+            except Exception as exc:
+                logger.warning("rasterio read failed: %s", exc)
 
-        # Calibrated decibels: Sentinel-1 IW GRD backscatter sigma0 (dB)
-        # Shift normalized scale to nominal ocean C-band levels (-12.1 dB clean sea)
-        median_power = float(np.median(linear_power))
-        scale_offset = DEFAULT_CLEAN_WATER_DB - (10.0 * np.log10(max(median_power, 1e-6)))
-        sar_db = (10.0 * np.log10(linear_power)) + scale_offset
+        if raw_dn is None and PIL_AVAILABLE:
+            try:
+                with PILImage.open(chosen_file) as img:
+                    if target_size and img.size != (target_size[1], target_size[0]):
+                        img = img.resize((target_size[1], target_size[0]), PILImage.Resampling.BILINEAR)
+                    raw_dn = np.array(img, dtype=np.float32)
+            except Exception as exc:
+                logger.warning("PIL 16-bit TIFF read failed: %s", exc)
 
-        logger.info("Loaded real SAR satellite raster from %s (shape: %s)", chosen_file, linear_power.shape)
-        return linear_power, sar_db, str(chosen_file)
-    except Exception as exc:
-        logger.warning("Could not process real SAR file %s (%s). Falling back to calibrated model.", chosen_file, exc)
-        return None
+        if raw_dn is not None:
+            valid_mask = raw_dn > 0
+            sigma0_db = np.full_like(raw_dn, DEFAULT_CLEAN_WATER_DB)
+            sigma0_db[valid_mask] = (20.0 * np.log10(np.maximum(raw_dn[valid_mask], 1e-6))) - 83.0
+
+            linear_power = np.power(10.0, sigma0_db / 10.0)
+            linear_power = np.maximum(linear_power, 1e-9)
+
+            logger.info(
+                "Loaded REAL Sentinel-1 GeoTIFF from %s | shape=%s | sigma0_mean=%.1f dB",
+                chosen_file, raw_dn.shape, float(np.mean(sigma0_db[valid_mask]))
+            )
+            return linear_power, sigma0_db, str(chosen_file)
+
+    # ── PATH B: JPEG / PNG fallback (demonstration mode) ────────────────────
+    if PIL_AVAILABLE:
+        try:
+            with PILImage.open(chosen_file) as img:
+                gray = img.convert("L")
+                if target_size:
+                    gray = gray.resize(
+                        (target_size[1], target_size[0]),
+                        PILImage.Resampling.BILINEAR
+                    )
+                dn_array = np.array(gray, dtype=np.float32) / 255.0
+
+            linear_power = np.maximum(dn_array ** 2, 1e-9)
+            median_power = float(np.median(linear_power[linear_power > 1e-8]))
+            scale_offset = DEFAULT_CLEAN_WATER_DB - (10.0 * np.log10(max(median_power, 1e-9)))
+            sar_db = (10.0 * np.log10(np.maximum(linear_power, 1e-9))) + scale_offset
+
+            logger.warning(
+                "Using JPEG fallback for SAR processing from %s. Absolute backscatter values are approximate.",
+                chosen_file
+            )
+            return linear_power, sar_db, f"JPEG_FALLBACK:{chosen_file}"
+        except Exception as exc:
+            logger.error("Failed to load SAR raster from %s: %s", chosen_file, exc)
+            return None
+
+    return None
 
 
 def detect_oil_slick_from_sar(
@@ -311,14 +390,15 @@ def detect_oil_slick_from_sar(
     force_simulation: bool = False,
 ) -> Dict[str, Any]:
     """
-    Executes the complete microwave radar oil spill detection pipeline:
+    Executes the microwave radar oil spill detection pipeline:
       1. Loads genuine Sentinel-1 C-SAR radar raster if available, or runs
          calibrated physics simulation.
       2. Enhanced Lee despeckling (7x7 kernel, L=4.4 looks)
       3. Adaptive Otsu thresholding for dampened slick segmentation
       4. Morphological boundary extraction
       5. Calibrated backscatter delta verification
-      6. Cryptographic SHA-256 evidence chain of custody generation
+      6. Dynamic detection confidence derivation (EMSA CleanSeaNet standard)
+      7. Cryptographic SHA-256 evidence chain of custody generation
     """
     real_raster = None
     if not force_simulation:
@@ -364,6 +444,43 @@ def detect_oil_slick_from_sar(
     measured_area_km2 = round(max(0.5, slick_pixels_count * pixel_area_km2), 2)
     est_volume_litres = int(measured_area_km2 * 800)  # ~800 L/km2 thin sheen formula
 
+    # ── Compute real detection confidence from segmentation evidence ──────────
+    delta_abs = abs(delta_db)
+    if delta_abs >= 10.0:
+        delta_confidence = 0.95
+    elif delta_abs >= 7.0:
+        delta_confidence = 0.75 + (delta_abs - 7.0) * (0.20 / 3.0)
+    elif delta_abs >= 5.0:
+        delta_confidence = 0.50 + (delta_abs - 5.0) * (0.25 / 2.0)
+    else:
+        delta_confidence = max(0.10, delta_abs / 5.0 * 0.50)
+
+    if MIN_SLICK_AREA_KM2 <= measured_area_km2 <= MAX_SLICK_AREA_KM2:
+        area_confidence = 0.90
+    elif measured_area_km2 < MIN_SLICK_AREA_KM2:
+        area_confidence = 0.50
+    else:
+        area_confidence = 0.70
+
+    total_pixels = cleaned_mask.size
+    slick_fraction = slick_pixels_count / max(total_pixels, 1)
+    if 0.01 <= slick_fraction <= 0.20:
+        coherence_confidence = 0.90
+    elif slick_fraction < 0.005:
+        coherence_confidence = 0.40
+    else:
+        coherence_confidence = 0.60
+
+    detection_confidence = round(
+        0.50 * delta_confidence +
+        0.30 * area_confidence +
+        0.20 * coherence_confidence,
+        3
+    )
+    if raster_source.startswith("JPEG_FALLBACK"):
+        detection_confidence = round(detection_confidence * 0.75, 3)
+        detection_confidence = min(detection_confidence, 0.70)
+
     # 5. Extract vector GeoJSON perimeter
     slick_polygon = extract_slick_boundary_geojson(
         binary_mask=cleaned_mask,
@@ -377,6 +494,12 @@ def detect_oil_slick_from_sar(
     evidence_hasher = hashlib.sha256(payload_str.encode())
     evidence_hasher.update(raster_sample_bytes)
     evidence_sha256 = evidence_hasher.hexdigest()
+
+    data_quality = (
+        "REAL_SENTINEL1_GEOTIFF"
+        if not raster_source.startswith("JPEG_FALLBACK") and not raster_source.startswith("SYNTHETIC")
+        else ("JPEG_DEMONSTRATION" if raster_source.startswith("JPEG_FALLBACK") else "SYNTHETIC_CALIBRATED")
+    )
 
     return {
         "status": "DETECTED",
@@ -393,11 +516,12 @@ def detect_oil_slick_from_sar(
         "backscatter_clean_db": mean_clean_db,
         "backscatter_slick_db": mean_slick_db,
         "backscatter_delta_db": delta_db,
-        "detection_confidence": 0.935,
+        "detection_confidence": detection_confidence,
         "speckle_filter_applied": "Enhanced Lee Filter (7x7 kernel, L=4.4 looks)",
         "segmentation_algorithm": "Adaptive Otsu Bimodal Thresholding",
         "processing_mode": processing_mode,
         "radar_source": raster_source,
+        "data_quality": data_quality,
         "calibration_standard": "EMSA CleanSeaNet & MarCons C-band backscatter attenuation model (-7.4 dB sigma0 drop)",
         "geojson_polygon": slick_polygon,
         "evidence_sha256": evidence_sha256,

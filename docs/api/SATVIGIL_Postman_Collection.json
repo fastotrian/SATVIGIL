@@ -1,0 +1,668 @@
+{
+  "info": {
+    "name": "SATVIGIL API \u2014 Maritime & Remote Sensing Intelligence",
+    "_postman_id": "satvigil-sih-2026",
+    "description": "Production API Collection for SATVIGIL (SIH PS 143 & PS 162)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET Health Check",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "health"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "GET Get Alerts",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/alerts/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "alerts"
+          ]
+        },
+        "description": "Get all active alerts. Supports filtering by type, risk level, and active status.\nUsed by the frontend map to load markers on initial render."
+      }
+    },
+    {
+      "name": "GET Get Alerts Near",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/alerts/near",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "alerts",
+            "near"
+          ]
+        },
+        "description": "Find alerts, vessels, and hotspots within a given radius using PostGIS.\nMax radius is 500km to prevent full table scans."
+      }
+    },
+    {
+      "name": "GET Get Alert",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/alerts/{alert_id}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "alerts",
+            "{alert_id}"
+          ]
+        },
+        "description": "Get details for a single alert (clicked on map)."
+      }
+    },
+    {
+      "name": "GET Get Alert Dossier",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/alerts/{alert_id}/dossier",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "alerts",
+            "{alert_id}",
+            "dossier"
+          ]
+        },
+        "description": "Generate official 1-Click Forensic Evidentiary Dossier for given Alert ID.\nAdheres to MARPOL 73/78 Annex I & Merchant Shipping Act 1958 Sections 356A-356O."
+      }
+    },
+    {
+      "name": "POST Acknowledge Alert",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/alerts/{alert_id}/acknowledge",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "alerts",
+            "{alert_id}",
+            "acknowledge"
+          ]
+        },
+        "description": "Mark an alert as resolved/inactive.\nSets is_active=False and resolved_at=now().\nBroadcasts a resolve_alert WS event to all connected clients."
+      }
+    },
+    {
+      "name": "GET Get Vessels",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/vessels",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "vessels"
+          ]
+        },
+        "description": "Fetch active vessels in Indian waters with live behavioral risk scores.\nCombines live GFW vessels with strategic demo vessels (e.g., MT GUJARAT PRIDE)."
+      }
+    },
+    {
+      "name": "GET Get Vessels Tracks",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/vessels/tracks",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "vessels",
+            "tracks"
+          ]
+        },
+        "description": "Fetch all active vessels in Indian waters with full hourly AIS track history."
+      }
+    },
+    {
+      "name": "GET Get Vessel By Mmsi",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/vessels/{mmsi}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "vessels",
+            "{mmsi}"
+          ]
+        },
+        "description": "Retrieve single vessel by MMSI with current status and risk breakdown."
+      }
+    },
+    {
+      "name": "POST Simulate Dark Vessel",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/simulate-dark-vessel",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "simulate-dark-vessel"
+          ]
+        },
+        "description": "Simulate a dark vessel event for live hackathon demonstrations."
+      }
+    },
+    {
+      "name": "GET Get Oil Spills",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/spills",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "spills"
+          ]
+        },
+        "description": "Retrieve detected oil spills with Copernicus Sentinel-1 SAR scene processing and correlated vessels.\nSegments the oil slick using the Enhanced Lee speckle filter + Adaptive Otsu thresholding."
+      }
+    },
+    {
+      "name": "POST Simulate Oil Spill",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/simulate-spill",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "simulate-spill"
+          ]
+        },
+        "description": "Trigger real-time oil spill detection and multi-factor suspect vessel attribution.\nScores all vessels in the fleet using the 4-signal SVR scoring pipeline."
+      }
+    },
+    {
+      "name": "POST Attribute Spill",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/attribute-spill",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "attribute-spill"
+          ]
+        },
+        "description": "Production oil spill attribution using live GFW data and forensic CPA backtracking."
+      }
+    },
+    {
+      "name": "GET Get Vessel Track",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/vessels/{vessel_id}/track",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "vessels",
+            "{vessel_id}",
+            "track"
+          ]
+        },
+        "description": "Return historical AIS track for a vessel as a GeoJSON FeatureCollection.\nContains:\n  - A LineString of the full route\n  - Individual Point features for each observation (with presence_hours, timestamps)\n  - Highlighted dark gap event if present (47-minute blackout segment in red)\n\nSources:\n  - 419082341 / MT GUJARAT PRIDE: Forensic Bombay High passage across backtracked spill origin\n  - 419001845 / MV KUTCH EXPLORER: GFW presence track in Gulf of Kutch July 2026"
+      }
+    },
+    {
+      "name": "GET Get Forensic Dossier",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/dossier/{identifier}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "dossier",
+            "{identifier}"
+          ]
+        },
+        "description": "Generate official 1-Click Forensic Evidentiary Dossier for Coast Guard / DG Shipping prosecution.\nAdheres to MARPOL 73/78 Annex I & Merchant Shipping Act 1958 Sections 356A-356O.\n\nAttribution ML scores are computed live by the trained SVR model\n(ml/models/svr_spill_attribution.pkl) \u2014 NOT hardcoded constants."
+      }
+    },
+    {
+      "name": "GET Get Spill Drift Forecast",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/spills/{spill_id}/drift-forecast",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "spills",
+            "{spill_id}",
+            "drift-forecast"
+          ]
+        },
+        "description": "Simulate INCOIS-OOSA 72-hour forward oil spill drift and coastal threat trajectory.\nModels surface current vectors (Arabian Sea ESE current) + 3% wind drift + Fay spreading theory."
+      }
+    },
+    {
+      "name": "GET Get Maritime Model Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/maritime/model-status",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "maritime",
+            "model-status"
+          ]
+        },
+        "description": "Returns live forensic engine specifications, statutory compliance standards,\nhydrodynamic drift formulation, and validation metrics for the oil spill attribution engine.\nAllows hackathon judges and admiralty auditors to inspect the scientific pipeline."
+      }
+    },
+    {
+      "name": "GET Get Hotspots",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/fire/hotspots",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "fire",
+            "hotspots"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "GET Get Hotspot",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/fire/hotspots/{id}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "fire",
+            "hotspots",
+            "{id}"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "GET Get Recurrence",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/fire/recurrence",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "fire",
+            "recurrence"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "GET Get Landslide Risk Areas",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/landslide/risk-areas",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "landslide",
+            "risk-areas"
+          ]
+        },
+        "description": "Returns static GeoJSON FeatureCollection of landslide risk zones.\nUsed for Sprint 3 Demo to demonstrate SAR/InSAR data without live pipeline."
+      }
+    },
+    {
+      "name": "GET Get Pollution Clusters",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/pollution/clusters",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "pollution",
+            "clusters"
+          ]
+        },
+        "description": "Returns spatial clusters of recurring thermal hotspots.\nUseful for identifying chronic industrial polluters."
+      }
+    },
+    {
+      "name": "GET Get Pollution Heatmap",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/pollution/heatmap",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "pollution",
+            "heatmap"
+          ]
+        },
+        "description": "Returns thermal recurrence heatmap data formatted as GeoJSON FeatureCollection.\nUsed by Mapbox GL JS for rendering heatmaps."
+      }
+    },
+    {
+      "name": "GET Get Sentinel1 Scenes",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/satellite/scenes",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "satellite",
+            "scenes"
+          ]
+        },
+        "description": "Search live Copernicus Data Space Ecosystem (CDSE) for genuine Sentinel-1\nIW GRDH radar scenes covering Indian maritime surveillance corridors."
+      }
+    },
+    {
+      "name": "POST Analyze Sar Spill Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/satellite/detect-spills",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "satellite",
+            "detect-spills"
+          ]
+        },
+        "description": "Executes the complete microwave radar oil spill detection pipeline:\nEnhanced Lee speckle filtering + Adaptive Otsu bimodal segmentation.\nReturns the vector GeoJSON polygon and physical backscatter metrics."
+      }
+    },
+    {
+      "name": "GET Get Satellite Subsystem Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/satellite/status",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "satellite",
+            "status"
+          ]
+        },
+        "description": "Returns radar processing pipeline telemetry, Copernicus CDSE connection status,\nand Lee filter / Otsu thresholding calibration parameters."
+      }
+    }
+  ]
+}

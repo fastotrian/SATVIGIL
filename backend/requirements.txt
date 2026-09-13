@@ -32,6 +32,9 @@ httpx==0.27.0
 # ── ML ─────────────────────────────────────────────────────────────────────────
 xgboost==2.0.3
 scikit-learn==1.5.0
+joblib==1.4.2
+scipy==1.13.1
+Pillow==10.3.0
 # torch and torchvision installed separately (large — use GPU image if available)
 
 # ── Config & Utilities ─────────────────────────────────────────────────────────
