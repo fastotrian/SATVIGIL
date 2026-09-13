@@ -199,6 +199,7 @@ export function MapView() {
     selectVessel,
     activeFilters,
     toggleFilter,
+    setExclusiveLayer,
     addAlert,
     isDriftSimActive,
     toggleDriftSim,
@@ -1092,63 +1093,81 @@ export function MapView() {
               </div>
             </div>
 
-            {/* Layer Checkboxes */}
+            {/* Layer Controls */}
             <div className="flex flex-col gap-1.5 text-xs pt-2 border-t border-navy-700">
               <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest mb-0.5">
-                GIS Feeds
+                LAYER CONTROL
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={activeFilters.showVessels}
-                  onChange={() => toggleFilter('showVessels')}
-                  className="accent-cyan-400 rounded cursor-pointer"
-                />
+              <button
+                type="button"
+                onClick={() => setExclusiveLayer('showVessels')}
+                className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+              >
                 <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
                   <span className="text-cyan-400">🛥️</span>
-                  <span>AIS Vessel Traffic (Clustered)</span>
+                  <span>AIS Vessels</span>
                 </span>
-              </label>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeFilters.showVessels ? 'text-navy-950 bg-cyan-400' : 'text-gray-500 bg-navy-800'}`}>
+                  {activeFilters.showVessels ? 'ON' : 'OFF'}
+                </span>
+              </button>
 
-              <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={activeFilters.showSpillZones}
-                  onChange={() => toggleFilter('showSpillZones')}
-                  className="accent-red-500 rounded cursor-pointer"
-                />
+              <button
+                type="button"
+                onClick={() => setExclusiveLayer('showSpillZones')}
+                className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+              >
                 <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
                   <span className="text-red-400">🛢️</span>
-                  <span>Sentinel-1C SAR Spills</span>
+                  <span>Spill Zones</span>
                 </span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={activeFilters.showFireHotspots}
-                  onChange={() => toggleFilter('showFireHotspots')}
-                  className="accent-amber-400 rounded cursor-pointer"
-                />
-                <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
-                  <span className="text-amber-400">🔥</span>
-                  <span>NASA VIIRS Thermal (174)</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeFilters.showSpillZones ? 'text-white bg-red-500' : 'text-gray-500 bg-navy-800'}`}>
+                  {activeFilters.showSpillZones ? 'ON' : 'OFF'}
                 </span>
-              </label>
+              </button>
 
-              <label className="flex items-center gap-2 cursor-pointer select-none py-0.5 px-1 rounded hover:bg-white/5 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={activeFilters.showMPABoundaries}
-                  onChange={() => toggleFilter('showMPABoundaries')}
-                  className="accent-emerald-400 rounded cursor-pointer"
-                />
+              <button
+                type="button"
+                onClick={() => setExclusiveLayer('showMPABoundaries')}
+                className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+              >
                 <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
                   <span className="text-emerald-400">🛡️</span>
-                  <span>Marine Protected Areas</span>
+                  <span>MPA Zones</span>
                 </span>
-              </label>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeFilters.showMPABoundaries ? 'text-navy-950 bg-emerald-400' : 'text-gray-500 bg-navy-800'}`}>
+                  {activeFilters.showMPABoundaries ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setExclusiveLayer('showDensityHeatmap')}
+                className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+              >
+                <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
+                  <span className="text-purple-400">📊</span>
+                  <span>Density Heatmap</span>
+                </span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeFilters.showDensityHeatmap ? 'text-white bg-purple-500' : 'text-gray-500 bg-navy-800'}`}>
+                  {activeFilters.showDensityHeatmap ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setExclusiveLayer('showFireHotspots')}
+                className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+              >
+                <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
+                  <span className="text-amber-400">🔥</span>
+                  <span>Fire / Thermal</span>
+                </span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeFilters.showFireHotspots ? 'text-navy-950 bg-amber-400' : 'text-gray-500 bg-navy-800'}`}>
+                  {activeFilters.showFireHotspots ? 'ON' : 'OFF'}
+                </span>
+              </button>
             </div>
 
             {/* Autonomous Sentinel-1C Ingestion Status & Sync */}

@@ -148,6 +148,10 @@
     - **Image Routing & Proxy Fix**: Added `/api` proxy targeting `http://localhost:8000` in `vite.config.ts`, directed image tags directly to `http://localhost:8000/api/v1/satellite/vessel-image`, and added graceful `onError` fallback, completely eliminating broken image placeholders.
     - **AIS Target Signature & Tactical Fusion**: Added `overlay_vessel_target_signature()` in `copernicus_cdse.py`, fusing the vessel's metallic hull radar corner reflection (SAR) or steel hull (Optical), hydrodynamic Kelvin wake trailing behind its course, and tactical AIS correlation reticle with heading vector directly onto the live Copernicus satellite pass.
     - **100% Quality Gates**: All 59 backend tests passing in 22.49s. Frontend production build compiled cleanly in 13.27s.
+  - **PART 32:** ✅ Docker Network Stabilization & UI Layer Control Radio Behavior:
+    - **Docker Fixes**: Standardized frontend container `vite` dev server to strictly map `3001:3000` via `vite.config.ts`, added `restart: on-failure` to `docker-compose.yml`, and injected `VITE_API_URL=http://backend:8000` to properly proxy API calls through the internal Docker DNS, fully resolving port connection drops.
+    - **Layer Control Exclusive (Radio) Toggles**: Redesigned the GIS Feeds panel in `MapView.tsx` from independent checkboxes into an exclusive single-select radio button format. Added `setExclusiveLayer` to `alertStore.ts` enabling rapid cross-layer toggling where turning one layer ON automatically deactivates all others, while preserving toggle-OFF behavior. Styled into color-matched pill badges.
+
 
 ---
 

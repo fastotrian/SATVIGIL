@@ -84,7 +84,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: satvigil_frontend
-    restart: unless-stopped
+    restart: on-failure
     env_file: .env
     ports:
       - "3001:3000"
@@ -94,8 +94,8 @@ services:
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://localhost:8000
-      - VITE_WS_URL=ws://localhost:8000
+      - VITE_API_URL=http://backend:8000
+      - VITE_WS_URL=ws://backend:8000
 
   # ── Nginx Reverse Proxy (optional for production) ───────────────────────────
   nginx:

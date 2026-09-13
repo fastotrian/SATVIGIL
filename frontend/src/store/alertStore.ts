@@ -39,6 +39,7 @@ interface AlertStore {
   setVessels: (vessels: Vessel[]) => void;
   selectVessel: (vessel: Vessel | null) => void;
   toggleFilter: (key: keyof ActiveFilters) => void;
+  setExclusiveLayer: (key: keyof ActiveFilters) => void;
   setIsConnected: (connected: boolean) => void;
   toggleAudio: () => void;
   openDossier: (dossierId?: string) => Promise<void>;
@@ -142,6 +143,31 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
         [key]: !state.activeFilters[key],
       },
     })),
+
+  setExclusiveLayer: (key) =>
+    set((state) => {
+      const isAlreadyExclusive =
+        state.activeFilters[key] === true &&
+        (Object.keys(state.activeFilters) as Array<keyof ActiveFilters>).every(
+          (k) => k === key || state.activeFilters[k] === false
+        );
+
+      const nextFilters = {
+        showVessels: false,
+        showSpillZones: false,
+        showMPABoundaries: false,
+        showDensityHeatmap: false,
+        showFireHotspots: false,
+      };
+
+      if (!isAlreadyExclusive) {
+        nextFilters[key] = true;
+      }
+
+      return {
+        activeFilters: nextFilters,
+      };
+    }),
 
   setIsConnected: (isConnected) => set({ isConnected }),
   
