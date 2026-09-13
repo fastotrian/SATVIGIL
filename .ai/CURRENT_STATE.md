@@ -157,6 +157,11 @@
     - **V2 Competitive Scoring Classifier (`firms_fetcher.py`)**: Replaced sequential rules with a competitive 5-class scoring engine (Industrial, Stubble, Gas Flare, Wildfire, Mining) using proximity CPA zones and authoritative boundaries. Added `classification_score` and `classification_reason` across the database model (`ThermalHotspot`) and Pydantic schemas.
     - **Live India Boundary Layer (`MapView.tsx`)**: Served `india_boundary.geojson` natively via `GET /api/v1/fire/boundary` and added it as a togglable reference layer in the frontend MapLibre interface.
 
+  - **PART 34:** ✅ UI Cleanup & Real Data Stream Fixes:
+    - **Real Alert Data Init**: Modified `connectWebSocket` in `websocket.ts` and `App.tsx` to handle the `init` event sent by the backend. This replaces the hardcoded `INITIAL_ALERTS` dummy data with real data fetched from the API upon application load.
+    - **Hide Static Ports**: Disabled the `StaticPinsLayer` in `MapView.tsx` to hide static port markers and declutter the map, adhering to the requested clean UI configuration.
+    - **Removed India Boundary Filters**: Removed all code enforcing the Indian boundary filter. It has been stripped from both the backend thermal processor (`firms_processor.py`, `fire.py`) and the frontend UI layer (`MapView.tsx`, `alertStore.ts`).
+
 ---
 
 

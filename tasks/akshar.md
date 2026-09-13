@@ -83,6 +83,14 @@
       - Serve `/boundary` and filter invalid offshore hits.
       - Add India Boundary MapLibre layer.
     - **Deliverable:** `geo_intelligence.py` and `MapView.tsx` UI components.
+---
+
+### 🔹 Part 4: Code Quality & Repository Management
+
+11. [x] **TASK-M09: Check for errors and commit changes on main**
+    - **Priority:** 🔴 High
+    - **Goal:** Ensure the codebase compiles correctly without errors (TypeScript, pytest) and safely commit the recent UI cleanup, dummy data removal, and Indian boundary extraction to the `main` branch.
+    - **Deliverable:** Clean tests and successful commit to Git history.
 
 ---
 
@@ -134,6 +142,7 @@
 | TASK-F05  | V2 Fire Intelligence Scoring Engine Integration                            | 🔴 High   | 2026-09-13    | ✅ Done   | Completed and implemented |
 | TASK-F06  | Spatial DBSCAN Recurrence Tracking for hotspots                            | 🔴 High   | 2026-09-13    | ✅ Done   | Completed and implemented |
 | TASK-F07  | GIS Boundaries static loading & Map Layer Control                          | 🟡 Medium | 2026-09-13    | ✅ Done   | Completed and implemented |
+| TASK-M09  | Check for errors and commit changes on main                                | 🔴 High   | 2026-09-13    | ✅ Done   | Completed and committed   |
 
 ---
 

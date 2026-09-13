@@ -214,9 +214,7 @@ async def _get_live_firms_hotspots() -> list[ThermalHotspotSchema]:
                     lat = float(row_dict.get("latitude", 0))
                     lon = float(row_dict.get("longitude", 0))
                     
-                    if not geo_engine.is_within_india(lat, lon):
-                        continue
-                        
+
                     classification = classify_fire_v2(row_dict)
                     fire_type = classification["fire_type"]
                     classification_score = classification.get("classification_score")
@@ -420,18 +418,4 @@ async def get_recurrence(
             limit=limit,
             offset=offset,
         )
-
-from fastapi.responses import FileResponse
-import os
-
-@router.get("/boundary", description="Returns the authoritative India boundary GeoJSON")
-async def get_india_boundary():
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    boundary_path = os.path.join(base_dir, "data", "boundaries", "india_boundary.geojson")
-    
-    if os.path.exists(boundary_path):
-        return FileResponse(boundary_path, media_type="application/geo+json")
-    else:
-        raise HTTPException(status_code=404, detail="Boundary file not found")
-
 
