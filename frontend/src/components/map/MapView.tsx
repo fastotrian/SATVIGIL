@@ -213,6 +213,7 @@ export function MapView() {
   const [sarPopupScreenPos, setSarPopupScreenPos] = useState({ x: 100, y: 100 });
   const [isSimulating, setIsSimulating] = useState(false);
   const [isLayerDockOpen, setIsLayerDockOpen] = useState(true);
+  const [vesselSensor, setVesselSensor] = useState<'sentinel1' | 'sentinel2'>('sentinel1');
 
   // GFW vessel track playback state
   const [showTrackPlayer, setShowTrackPlayer] = useState(false);
@@ -896,6 +897,67 @@ export function MapView() {
                 <span className={selectedVessel.is_dark ? 'text-red-400 font-bold' : 'text-emerald-400'}>
                   {selectedVessel.is_dark ? `DARK (${selectedVessel.ais_gap_minutes}m)` : 'ACTIVE'}
                 </span>
+              </div>
+
+              {/* Live Satellite Reconnaissance Viewport */}
+              <div className="relative rounded border overflow-hidden mt-1" style={{ borderColor: 'var(--navy-500)', background: '#050c18' }}>
+                <div className="flex items-center justify-between px-2 py-1 bg-black/50 border-b border-navy-600/60">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                    <span className="text-[9px] font-mono font-bold tracking-wider text-teal-300">
+                      🛰️ {vesselSensor === 'sentinel1' ? 'SENTINEL-1 C-SAR' : 'SENTINEL-2 OPTICAL'}
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setVesselSensor('sentinel1'); }}
+                      className={`px-1.5 py-0.5 text-[8px] font-mono rounded transition-colors ${
+                        vesselSensor === 'sentinel1'
+                          ? 'bg-teal-500 text-navy-950 font-bold'
+                          : 'text-gray-400 hover:text-white bg-navy-800'
+                      }`}
+                    >
+                      SAR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setVesselSensor('sentinel2'); }}
+                      className={`px-1.5 py-0.5 text-[8px] font-mono rounded transition-colors ${
+                        vesselSensor === 'sentinel2'
+                          ? 'bg-teal-500 text-navy-950 font-bold'
+                          : 'text-gray-400 hover:text-white bg-navy-800'
+                      }`}
+                    >
+                      OPTICAL
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative w-full h-32 bg-black flex items-center justify-center overflow-hidden">
+                  <img
+                    key={`${selectedVessel.mmsi}-${vesselSensor}`}
+                    src={`/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}`}
+                    alt={`Satellite pass of ${selectedVessel.vessel_name}`}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                  />
+                  {/* Tactical HUD Overlay Elements */}
+                  <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5">
+                    <div className="flex justify-between text-[7.5px] font-mono text-teal-400/90 drop-shadow">
+                      <span>10m/px · SWATH 250km</span>
+                      <span>{selectedVessel.lat.toFixed(3)}°N, {selectedVessel.lon.toFixed(3)}°E</span>
+                    </div>
+                    <div className="flex justify-between items-end text-[7.5px] font-mono">
+                      <span className="bg-black/70 px-1 py-0.5 rounded text-[7px] text-teal-300 border border-teal-500/30">
+                        🎯 RECON ACQUIRED
+                      </span>
+                      <span className="text-gray-400 bg-black/60 px-1 rounded text-[6.5px]">
+                        Copernicus CDSE
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* GFW Track Replay Button */}

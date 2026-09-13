@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAlertStore } from '../../store/alertStore';
 import { RISK_COLORS } from '../../constants/riskColors';
 
 export function AlertDetailsDrawer() {
   const { selectedVessel, selectVessel, openDossier } = useAlertStore();
+  const [vesselSensor, setVesselSensor] = useState<'sentinel1' | 'sentinel2'>('sentinel1');
 
   if (!selectedVessel) return null;
 
@@ -34,7 +35,7 @@ export function AlertDetailsDrawer() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Header Block */}
         <div
           className="p-3 rounded-lg border"
@@ -65,6 +66,73 @@ export function AlertDetailsDrawer() {
           </div>
           <div className="text-xs font-mono" style={{ color: 'var(--text-mono)' }}>
             MMSI: {selectedVessel.mmsi} · {selectedVessel.vessel_type_label || 'Vessel'}
+          </div>
+        </div>
+
+        {/* Live Satellite Reconnaissance Viewport */}
+        <div
+          className="rounded-lg border overflow-hidden"
+          style={{ background: 'var(--navy-800)', borderColor: 'var(--navy-500)' }}
+        >
+          <div
+            className="flex items-center justify-between px-3 py-1.5 border-b text-[10px] font-mono"
+            style={{ background: 'var(--navy-900)', borderColor: 'var(--navy-500)' }}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+              <span className="font-bold text-teal-300">
+                🛰️ {vesselSensor === 'sentinel1' ? 'SENTINEL-1 C-SAR' : 'SENTINEL-2 OPTICAL'}
+              </span>
+            </div>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setVesselSensor('sentinel1')}
+                className={`px-1.5 py-0.5 text-[8px] font-mono rounded transition-colors ${
+                  vesselSensor === 'sentinel1'
+                    ? 'bg-teal-500 text-navy-950 font-bold'
+                    : 'text-gray-400 hover:text-white bg-navy-800'
+                }`}
+              >
+                SAR RADAR
+              </button>
+              <button
+                type="button"
+                onClick={() => setVesselSensor('sentinel2')}
+                className={`px-1.5 py-0.5 text-[8px] font-mono rounded transition-colors ${
+                  vesselSensor === 'sentinel2'
+                    ? 'bg-teal-500 text-navy-950 font-bold'
+                    : 'text-gray-400 hover:text-white bg-navy-800'
+                }`}
+              >
+                OPTICAL
+              </button>
+            </div>
+          </div>
+
+          <div className="relative w-full h-44 bg-black flex items-center justify-center overflow-hidden">
+            <img
+              key={`${selectedVessel.mmsi}-${vesselSensor}`}
+              src={`/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}`}
+              alt={`Satellite pass of ${selectedVessel.vessel_name}`}
+              className="w-full h-full object-cover"
+              loading="eager"
+            />
+            {/* Tactical Overlay */}
+            <div className="absolute inset-0 pointer-events-none p-2 flex flex-col justify-between">
+              <div className="flex justify-between text-[8px] font-mono text-teal-400/90 drop-shadow">
+                <span>GSD: 10m · SWATH: 250km</span>
+                <span>{selectedVessel.lat.toFixed(4)}°N, {selectedVessel.lon.toFixed(4)}°E</span>
+              </div>
+              <div className="flex justify-between items-end text-[8px] font-mono">
+                <span className="bg-black/70 px-1.5 py-0.5 rounded text-[8px] text-teal-300 border border-teal-500/40">
+                  🎯 TARGET ACQUIRED
+                </span>
+                <span className="text-gray-400 bg-black/60 px-1 rounded text-[7px]">
+                  Copernicus Process API
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

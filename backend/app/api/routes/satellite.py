@@ -6,12 +6,13 @@ and executing microwave radar oil spill segmentation pipelines.
 """
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel
 
 from app.services.satellite.copernicus_cdse import (
     search_sentinel1_scenes,
     INDIAN_SAR_SECTORS,
+    fetch_vessel_satellite_snapshot,
 )
 from app.services.satellite.sar_spill_detector import (
     detect_oil_slick_from_sar,
@@ -82,3 +83,33 @@ async def get_satellite_subsystem_status():
         "min_backscatter_delta_db": -7.0,
         "monitored_sectors": list(INDIAN_SAR_SECTORS.keys()),
     }
+
+
+@router.get("/vessel-image")
+async def get_vessel_satellite_image(
+    lat: float = Query(..., description="Vessel latitude"),
+    lon: float = Query(..., description="Vessel longitude"),
+    mmsi: Optional[int] = Query(None, description="Vessel MMSI"),
+    sensor: str = Query("sentinel1", description="Satellite sensor: sentinel1 (SAR Radar) or sentinel2 (Optical RGB)"),
+):
+    """
+    Returns an on-the-fly satellite reconnaissance snapshot centered on any vessel's coordinates.
+    Directly connected to Copernicus Sentinel Hub Process API with sub-second tactical fallback.
+    """
+    try:
+        image_bytes, provider = await fetch_vessel_satellite_snapshot(
+            lat=lat,
+            lon=lon,
+            mmsi=mmsi,
+            sensor=sensor,
+        )
+        return Response(
+            content=image_bytes,
+            media_type="image/jpeg",
+            headers={
+                "X-Satellite-Provider": provider,
+                "Cache-Control": "public, max-age=3600",
+            }
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Satellite reconnaissance image generation error: {exc}")
