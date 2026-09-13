@@ -18,15 +18,20 @@ import { connectWebSocket } from "./services/websocket";
 import { playAlarm } from "./services/soundEffects";
 
 export default function App() {
-  const { addAlert, isAudioMuted } = useAlertStore();
+  const { setAlerts, addAlert, isAudioMuted } = useAlertStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     // Connect to backend WebSocket for real-time alerts
-    const ws = connectWebSocket((alert) => {
-      addAlert(alert);
-      if (!isAudioMuted) {
-        playAlarm(alert.risk_level === 'CRITICAL' ? 'critical' : 'warning');
+    const ws = connectWebSocket({
+      onInit: (alerts) => {
+        setAlerts(alerts);
+      },
+      onAlert: (alert) => {
+        addAlert(alert);
+        if (!isAudioMuted) {
+          playAlarm(alert.risk_level === 'CRITICAL' ? 'critical' : 'warning');
+        }
       }
     });
     return () => {
@@ -36,7 +41,7 @@ export default function App() {
         ws.onopen = () => ws.close(1000, "Component unmounted");
       }
     };
-  }, [addAlert, isAudioMuted]);
+  }, [setAlerts, addAlert, isAudioMuted]);
 
   return (
     <div className="flex flex-col h-screen text-white overflow-hidden" style={{ background: 'var(--navy-950)', fontFamily: 'var(--font-ui)' }}>

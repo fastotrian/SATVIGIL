@@ -38,11 +38,7 @@ async def ingest_firms_batch(df: pd.DataFrame, db: AsyncSession):
             # Fallback
             acquired_at = datetime.utcnow()
             
-        from app.services.fire.geo_intelligence import geo_engine
-        if not geo_engine.is_within_india(lat, lon):
-            # Skip hotspots that fall outside India's actual boundary (e.g. oceans or neighboring countries)
-            continue
-            
+
         near_cpcb, _ = is_near_cpcb_cluster(lat, lon)
         
         # Use V2 competitive scoring classifier

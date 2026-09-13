@@ -6,7 +6,13 @@ import { Alert } from "../store/alertStore";
 
 const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
 
-export function connectWebSocket(onAlert: (alert: Alert) => void): WebSocket {
+export function connectWebSocket({
+  onInit,
+  onAlert
+}: {
+  onInit: (alerts: Alert[]) => void;
+  onAlert: (alert: Alert) => void;
+}): WebSocket {
   const ws = new WebSocket(`${WS_URL}/api/v1/alerts/live`);
 
   ws.onopen = () => {
@@ -16,9 +22,11 @@ export function connectWebSocket(onAlert: (alert: Alert) => void): WebSocket {
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-      if (data.type === "ping") return;          // keepalive, ignore
-      if (data.type === "new_alert") {
-        onAlert(data.alert as Alert);
+      if (data.event === "ping") return;          // keepalive, ignore
+      if (data.event === "init") {
+        onInit(data.data as Alert[]);
+      } else if (data.event === "new_alert") {
+        onAlert(data.data as Alert);
       }
     } catch (err) {
       console.error("[SATVIGIL] WebSocket parse error:", err);
@@ -32,7 +40,7 @@ export function connectWebSocket(onAlert: (alert: Alert) => void): WebSocket {
   ws.onclose = (e) => {
     if (e.code !== 1000) {
       console.log("[SATVIGIL] WebSocket disconnected — reconnecting in 5s...");
-      setTimeout(() => connectWebSocket(onAlert), 5000);
+      setTimeout(() => connectWebSocket({ onInit, onAlert }), 5000);
     }
   };
 

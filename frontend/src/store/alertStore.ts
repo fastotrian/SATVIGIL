@@ -13,7 +13,6 @@ export interface ActiveFilters {
   showMPABoundaries: boolean;
   showDensityHeatmap: boolean;
   showFireHotspots: boolean;
-  showIndiaBoundary: boolean;
 }
 
 interface AlertStore {
@@ -57,44 +56,7 @@ interface AlertStore {
   getNormalCount: () => number;
 }
 
-const INITIAL_ALERTS: MaritimeAlert[] = [
-  {
-    id: 'ALERT-SPILL-001',
-    alert_type: 'OIL_SPILL',
-    risk_level: 'CRITICAL',
-    title: 'Active Oil Slick Detected (4.8 km²)',
-    description: 'Sentinel-1C C-SAR (IW Swath, VV/VH) correlation: dark patch 4.8 km² near Bombay High (19.2000°N, 71.5000°E). High-probability suspect: MT GUJARAT PRIDE (MMSI: 419082341).',
-    lat: 19.2000,
-    lon: 71.5000,
-    created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    vessel_mmsi: '419082341',
-    acknowledged: false,
-  },
-  {
-    id: 'ALERT-DARK-419082341',
-    alert_type: 'DARK_VESSEL',
-    risk_level: 'CRITICAL',
-    title: 'AIS Transponder Off: MT GUJARAT PRIDE',
-    description: 'Vessel ceased AIS broadcast for 45m near Bombay High sector. Position: 19.1500°N 71.4500°E.',
-    lat: 19.1500,
-    lon: 71.4500,
-    created_at: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-    vessel_mmsi: '419082341',
-    acknowledged: false,
-  },
-  {
-    id: 'ALERT-MPA-419000003',
-    alert_type: 'ILLEGAL_FISHING',
-    risk_level: 'WARNING',
-    title: 'Protected Area Breach: FV KUTCH FISHERMAN',
-    description: 'Suspicious loitering pattern detected inside Gulf of Kutch MNP. Speed 0.5 kts for 20m in marine sanctuary.',
-    lat: 22.5000,
-    lon: 69.2000,
-    created_at: new Date(Date.now() - 1000 * 60 * 40).toISOString(),
-    vessel_mmsi: '419000003',
-    acknowledged: false,
-  },
-];
+const INITIAL_ALERTS: MaritimeAlert[] = [];
 
 export const useAlertStore = create<AlertStore>((set, get) => ({
   alerts: INITIAL_ALERTS,
@@ -107,7 +69,6 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
     showMPABoundaries: true,
     showDensityHeatmap: false,
     showFireHotspots: false,
-    showIndiaBoundary: false,
   },
   isConnected: true,
   isAudioMuted: false,
@@ -160,7 +121,6 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
         showMPABoundaries: false,
         showDensityHeatmap: false,
         showFireHotspots: false,
-        showIndiaBoundary: false,
       };
 
       if (!isAlreadyExclusive) {
