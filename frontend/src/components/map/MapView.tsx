@@ -934,13 +934,20 @@ export function MapView() {
                   </div>
                 </div>
 
-                <div className="relative w-full h-32 bg-black flex items-center justify-center overflow-hidden">
+                <div className="relative w-full h-32 bg-[#06101e] flex items-center justify-center overflow-hidden">
                   <img
                     key={`${selectedVessel.mmsi}-${vesselSensor}`}
-                    src={`/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}`}
+                    src={`http://localhost:8000/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}`}
                     alt={`Satellite pass of ${selectedVessel.vessel_name}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-opacity duration-300"
                     loading="eager"
+                    onError={(e) => {
+                      // Gracefully fallback to relative path or placeholder if port 8000 is routed differently
+                      const target = e.currentTarget;
+                      if (!target.src.includes('/api/v1/satellite/vessel-image')) {
+                        target.src = `/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}`;
+                      }
+                    }}
                   />
                   {/* Tactical HUD Overlay Elements */}
                   <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5">

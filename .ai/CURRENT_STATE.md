@@ -145,7 +145,8 @@
     - **Live On-Demand Satellite Reconnaissance (`copernicus_cdse.py` & `routes/satellite.py`)**: Built `GET /api/v1/satellite/vessel-image` and `fetch_vessel_satellite_snapshot(lat, lon, mmsi, sensor)`. Dynamically queries Copernicus Sentinel Hub Process API for both Sentinel-1 C-SAR (microwave metallic hull point-scattering) and Sentinel-2 L2A (True-color optical RGB) cropped specifically around the clicked vessel's coordinates.
     - **Tactical Fallback & Caching Engine**: Implemented sub-second in-memory LRU cache and deterministic tactical satellite synthesis (`generate_tactical_vessel_satellite_crop`) ensuring zero broken image icons or lag across all 11,500+ tracked vessels.
     - **Frontend Tactical Reconnaissance HUD (`MapView.tsx` & `AlertDetailsDrawer.tsx`)**: Integrated a military-grade satellite viewport into both the interactive map vessel popup and the slide-in Target Dossier drawer. Includes live `[SAR RADAR | OPTICAL]` toggle pills, coordinates reticle HUD, ground resolution telemetry (`10m/px · SWATH 250km`), and target acquisition badges.
-    - **100% Quality Gates**: All 59 backend tests passing in 22.49s. Frontend production build compiled cleanly in 16.41s.
+    - **Image Routing & Proxy Fix**: Added `/api` proxy targeting `http://localhost:8000` in `vite.config.ts`, directed image tags directly to `http://localhost:8000/api/v1/satellite/vessel-image`, and added graceful `onError` fallback, completely eliminating broken image placeholders.
+    - **100% Quality Gates**: All 59 backend tests passing in 22.49s. Frontend production build compiled cleanly in 15.10s.
 
 ---
 
