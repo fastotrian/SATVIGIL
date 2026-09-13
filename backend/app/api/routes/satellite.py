@@ -91,10 +91,12 @@ async def get_vessel_satellite_image(
     lon: float = Query(..., description="Vessel longitude"),
     mmsi: Optional[int] = Query(None, description="Vessel MMSI"),
     sensor: str = Query("sentinel1", description="Satellite sensor: sentinel1 (SAR Radar) or sentinel2 (Optical RGB)"),
+    course: float = Query(0.0, description="Vessel course over ground in degrees"),
+    speed: float = Query(12.0, description="Vessel speed over ground in knots"),
 ):
     """
     Returns an on-the-fly satellite reconnaissance snapshot centered on any vessel's coordinates.
-    Directly connected to Copernicus Sentinel Hub Process API with sub-second tactical fallback.
+    Directly connected to Copernicus Sentinel Hub Process API with AIS target signature fusion.
     """
     try:
         image_bytes, provider = await fetch_vessel_satellite_snapshot(
@@ -102,6 +104,8 @@ async def get_vessel_satellite_image(
             lon=lon,
             mmsi=mmsi,
             sensor=sensor,
+            course=course,
+            speed=speed,
         )
         return Response(
             content=image_bytes,

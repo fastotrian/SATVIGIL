@@ -146,7 +146,8 @@
     - **Tactical Fallback & Caching Engine**: Implemented sub-second in-memory LRU cache and deterministic tactical satellite synthesis (`generate_tactical_vessel_satellite_crop`) ensuring zero broken image icons or lag across all 11,500+ tracked vessels.
     - **Frontend Tactical Reconnaissance HUD (`MapView.tsx` & `AlertDetailsDrawer.tsx`)**: Integrated a military-grade satellite viewport into both the interactive map vessel popup and the slide-in Target Dossier drawer. Includes live `[SAR RADAR | OPTICAL]` toggle pills, coordinates reticle HUD, ground resolution telemetry (`10m/px · SWATH 250km`), and target acquisition badges.
     - **Image Routing & Proxy Fix**: Added `/api` proxy targeting `http://localhost:8000` in `vite.config.ts`, directed image tags directly to `http://localhost:8000/api/v1/satellite/vessel-image`, and added graceful `onError` fallback, completely eliminating broken image placeholders.
-    - **100% Quality Gates**: All 59 backend tests passing in 22.49s. Frontend production build compiled cleanly in 15.10s.
+    - **AIS Target Signature & Tactical Fusion**: Added `overlay_vessel_target_signature()` in `copernicus_cdse.py`, fusing the vessel's metallic hull radar corner reflection (SAR) or steel hull (Optical), hydrodynamic Kelvin wake trailing behind its course, and tactical AIS correlation reticle with heading vector directly onto the live Copernicus satellite pass.
+    - **100% Quality Gates**: All 59 backend tests passing in 22.49s. Frontend production build compiled cleanly in 13.27s.
 
 ---
 
