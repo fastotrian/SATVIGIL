@@ -130,6 +130,17 @@
     - **Copernicus CDSE Ingestion Helpers (`copernicus_cdse.py`)**: Authored `get_cdse_access_token()` and `download_sentinel1_vv_band()` for programmatic Sentinel-1 IW GRDH SAFE ingestion.
     - **Test Suite Expansion & 100% Pass Rate**: Added `TestRealGeoTIFFMode` in `test_sar_detector.py`. Updated confidence range assertions in `test_api_endpoints.py`. **All 59 backend tests passing (45 unit + 14 integration) in 15.75s.**
     - **Documentation Alignment**: Updated `README.md`, `DATA_GUIDE.md`, `HLD.md`, `LLD.md`, and `DEMO_RUNBOOK.md` to strictly reference Sentinel-1 C-SAR radar and purged confusing mentions of Sentinel-2 / U-Net / ESRGAN.
+  - **PART 29:** ✅ Live Copernicus Sentinel Hub Process API Integration & Real-Time Radar Ingestion:
+    - **Live OAuth2 Authentication**: Authenticated successfully with Copernicus Identity Service (`identity.dataspace.copernicus.eu`) via OAuth2 `client_credentials` grant using user's `COPERNICUS_CLIENT_ID` (`sh-991a5...211f`) and `COPERNICUS_CLIENT_SECRET`.
+    - **Sentinel Hub Process API Client (`copernicus_cdse.py`)**: Authored `fetch_live_sentinel1_process_api_raster()` querying `sh.dataspace.copernicus.eu/api/v1/process` on-the-fly with custom VV 16-bit DN evalscript for any maritime bounding box.
+    - **Live Satellite Radar Ingestion**: Downloaded and verified real 16-bit GeoTIFF (`live_sentinel1_bombay_high_vv.tif`, 256x256, 16-bit unsigned integer) over Bombay High (`19.20°N, 71.50°E`).
+    - **Live Pipeline Execution (`sar_spill_detector.py`)**: Wired as top candidate in `load_sar_scene_raster()`. Runs live Enhanced Lee filter ($7\times 7$), Otsu segmentation, empirical backscatter attenuation verification, and SHA-256 evidence hashing directly on ESA satellite bytes (`data_quality: "REAL_SENTINEL1_GEOTIFF"`, `detection_confidence: 0.805`).
+    - **All 59 Backend Tests Passing**: Verified complete test suite in 22.66s with 100% pass rate.
+  - **PART 30:** ✅ End-to-End Live Verification with User's Copernicus Credentials & Pipeline Validation:
+    - **Live Credentials Validated**: User provided live Copernicus OAuth2 client credentials in `backend/.env`. Executed `scripts/test_copernicus_process_api.py`, successfully authenticating against Copernicus CDSE OpenID token endpoint and pulling live calibrated Sentinel-1 C-SAR radar bytes over Bombay High.
+    - **GeoTIFF Telemetry**: Confirmed 16-bit unsigned integer raster `data/sar/live_sentinel1_bombay_high_vv.tif` (shape=(256, 256), dtype=`>u2`, min=0, max=1099, mean=10.08).
+    - **Pipeline Output Verified**: Executed `detect_oil_slick_from_sar()`, yielding `processing_mode: "SENTINEL1_CSAR_IW_GRDH_CALIBRATED_RASTER"`, `data_quality: "REAL_SENTINEL1_GEOTIFF"`, `detection_confidence: 0.805`, and SHA-256 evidence hash `31281edf1116125e61f003bde6356f2d20b287b6409db626338c84f51bb7dd4c`.
+    - **Continuous Test & Build Verification**: All 59 tests in `backend/tests/` passing 100% (22.26s). Frontend `npm run build` cleanly compiled in 16.12s with zero TypeScript/Vite errors.
 
 ---
 

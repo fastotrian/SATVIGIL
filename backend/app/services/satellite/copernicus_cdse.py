@@ -290,3 +290,125 @@ async def download_sentinel1_vv_band(
         logger.error("CDSE download error: %s", exc)
         return False
 
+
+async def fetch_live_sentinel1_process_api_raster(
+    bbox: Optional[List[float]] = None,
+    output_path: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Fetches a genuine on-the-fly Sentinel-1 C-SAR radar raster directly from
+    the Copernicus Sentinel Hub Processing API (sh.dataspace.copernicus.eu/api/v1/process)
+    using OAuth2 Client Credentials.
+
+    Default bbox: Bombay High [70.8, 18.6, 72.4, 19.8]
+    Returns path to downloaded .tif or None on error.
+    """
+    from app.core.config import settings
+    import io
+    import tarfile
+    from pathlib import Path
+
+    client_id = settings.COPERNICUS_CLIENT_ID.strip()
+    client_secret = settings.COPERNICUS_CLIENT_SECRET.strip()
+
+    if not client_id or not client_secret:
+        logger.info("Copernicus client credentials not set, using pre-loaded SAR raster.")
+        return None
+
+    if bbox is None:
+        bbox = [70.8, 18.6, 72.4, 19.8]
+
+    if output_path is None:
+        here = Path(__file__).resolve()
+        for parent in here.parents:
+            if (parent / "data").exists():
+                output_path = str(parent / "data" / "sar" / "live_sentinel1_bombay_high_vv.tif")
+                break
+        if output_path is None:
+            output_path = "data/sar/live_sentinel1_bombay_high_vv.tif"
+
+    token_url = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+    token_payload = {
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            token_resp = await client.post(token_url, data=token_payload)
+            if token_resp.status_code != 200:
+                logger.warning("CDSE OAuth2 authentication failed: HTTP %d", token_resp.status_code)
+                return None
+            access_token = token_resp.json().get("access_token")
+
+        evalscript = """
+//VERSION=3
+function setup() {
+  return {
+    input: ["VV"],
+    output: { id: "default", bands: 1, sampleType: "UINT16" }
+  };
+}
+function evaluatePixel(samples) {
+  let val = Math.min(Math.max(Math.round(samples.VV * 1000.0), 1), 65535);
+  return [val];
+}
+"""
+        request_payload = {
+            "input": {
+                "bounds": {
+                    "bbox": bbox,
+                    "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}
+                },
+                "data": [{
+                    "type": "sentinel-1-grd",
+                    "dataFilter": {
+                        "timeRange": {
+                            "from": (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%dT00:00:00Z"),
+                            "to": datetime.now(timezone.utc).strftime("%Y-%m-%dT23:59:59Z")
+                        },
+                        "acquisitionMode": "IW",
+                        "polarization": "DV"
+                    }
+                }]
+            },
+            "output": {
+                "width": 256,
+                "height": 256,
+                "responses": [{"identifier": "default", "format": {"type": "image/tiff"}}]
+            },
+            "evalscript": evalscript
+        }
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/tar"
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            proc_resp = await client.post(
+                "https://sh.dataspace.copernicus.eu/api/v1/process",
+                json=request_payload,
+                headers=headers
+            )
+            if proc_resp.status_code == 200:
+                out_p = Path(output_path)
+                out_p.parent.mkdir(parents=True, exist_ok=True)
+                if proc_resp.content.startswith(b"default.tif"):
+                    with tarfile.open(fileobj=io.BytesIO(proc_resp.content)) as tar:
+                        member = tar.extractfile("default.tif")
+                        out_p.write_bytes(member.read())
+                else:
+                    out_p.write_bytes(proc_resp.content)
+                logger.info("Successfully fetched live Sentinel-1 C-SAR raster to %s", output_path)
+                return str(out_p)
+            else:
+                logger.warning("CDSE Process API returned HTTP %d", proc_resp.status_code)
+                return None
+
+    except Exception as exc:
+        logger.warning("Error fetching live Sentinel-1 C-SAR raster: %s", exc)
+        return None
+
+

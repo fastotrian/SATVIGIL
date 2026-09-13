@@ -282,11 +282,13 @@ def load_sar_scene_raster(
             repo_root = parent
             break
 
-    # Priority: real GeoTIFF first, then JPEG fallback
+    # Priority: live Process API GeoTIFF first, then calibrated GeoTIFF, then JPEG fallback
     candidates.extend([
+        repo_root / "data" / "sar" / "live_sentinel1_bombay_high_vv.tif",
         repo_root / "data" / "sar" / "sentinel1_bombay_high_iw_grd.tif",
         repo_root / "data" / "sar" / "sentinel1_bombay_high_iw_grd.jpg",
         repo_root / "frontend" / "public" / "sar_spill_bombay_high.jpg",
+        Path("data/sar/live_sentinel1_bombay_high_vv.tif"),
         Path("data/sar/sentinel1_bombay_high_iw_grd.tif"),
         Path("data/sar/sentinel1_bombay_high_iw_grd.jpg"),
     ])

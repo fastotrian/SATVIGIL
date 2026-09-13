@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     SENTINEL_FETCH_INTERVAL_SECONDS: int = 86400 # 24 hours
 
     class Config:
-        env_file = [".env", "../.env"]
+        env_file = [".env", "backend/.env", "../.env"]
         extra = "ignore"
 
 
