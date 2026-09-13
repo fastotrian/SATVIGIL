@@ -151,7 +151,11 @@
   - **PART 32:** ✅ Docker Network Stabilization & UI Layer Control Radio Behavior:
     - **Docker Fixes**: Standardized frontend container `vite` dev server to strictly map `3001:3000` via `vite.config.ts`, added `restart: on-failure` to `docker-compose.yml`, and injected `VITE_API_URL=http://backend:8000` to properly proxy API calls through the internal Docker DNS, fully resolving port connection drops.
     - **Layer Control Exclusive (Radio) Toggles**: Redesigned the GIS Feeds panel in `MapView.tsx` from independent checkboxes into an exclusive single-select radio button format. Added `setExclusiveLayer` to `alertStore.ts` enabling rapid cross-layer toggling where turning one layer ON automatically deactivates all others, while preserving toggle-OFF behavior. Styled into color-matched pill badges.
-
+  - **PART 33:** ✅ Advanced V2 Fire Intelligence Integration (Boundary, DBSCAN, V2 Scoring Engine):
+    - **Geo Intelligence Engine (`geo_intelligence.py`)**: Authored a static GIS boundary loader using `geopandas`/`shapely` to cache the `india_boundary.geojson` at server startup. Drops all false-positive FIRMS detections occurring outside India. Ready for `india_forest.geojson` and `legal_mining_leases.geojson`.
+    - **DBSCAN Recurrence Tracking (`recurrence_tracker.py`)**: Migrated DBSCAN spatial clustering logic from Jupyter notebooks into the live pipeline. Recursively identifies persistent gas flares and industrial hotspots.
+    - **V2 Competitive Scoring Classifier (`firms_fetcher.py`)**: Replaced sequential rules with a competitive 5-class scoring engine (Industrial, Stubble, Gas Flare, Wildfire, Mining) using proximity CPA zones and authoritative boundaries. Added `classification_score` and `classification_reason` across the database model (`ThermalHotspot`) and Pydantic schemas.
+    - **Live India Boundary Layer (`MapView.tsx`)**: Served `india_boundary.geojson` natively via `GET /api/v1/fire/boundary` and added it as a togglable reference layer in the frontend MapLibre interface.
 
 ---
 

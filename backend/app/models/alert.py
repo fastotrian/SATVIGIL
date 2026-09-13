@@ -87,10 +87,12 @@ class ThermalHotspot(Base):
     satellite = Column(String(50))
     acquired_at = Column(DateTime(timezone=True), nullable=False)
     fire_type = Column(String(50))                         # classified type
+    classification_score = Column(Float)                   # V2 numeric score
     classification_reason = Column(Text)                   # Reason for classification (e.g. from CPCB)
     land_use = Column(String(100))                         # from OSM
     near_cpcb_cluster = Column(Boolean, default=False)
     recurrence_count = Column(Integer, default=1)
+    recurrence_cluster_id = Column(Integer)                # DBSCAN cluster id
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

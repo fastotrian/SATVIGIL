@@ -74,6 +74,12 @@ class ThermalHotspotSchema(BaseModel):
     fire_type:          Optional[FireType] = Field(
         None, description="XGBoost-classified fire category"
     )
+    classification_score: Optional[float] = Field(
+        None, description="Numeric confidence score from V2 engine (0-100)"
+    )
+    classification_reason: Optional[str] = Field(
+        None, description="Reason for classification"
+    )
     land_use:           Optional[str]   = Field(
         None, description="Land-use category from OpenStreetMap"
     )
@@ -82,6 +88,9 @@ class ThermalHotspotSchema(BaseModel):
     )
     recurrence_count:   int             = Field(
         1, ge=1, description="Number of times this grid cell has fired (rolling 30-day window)"
+    )
+    recurrence_cluster_id: Optional[int] = Field(
+        None, description="DBSCAN recurrence cluster ID"
     )
     created_at:         datetime
 

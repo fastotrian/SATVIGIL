@@ -13,6 +13,7 @@ export interface ActiveFilters {
   showMPABoundaries: boolean;
   showDensityHeatmap: boolean;
   showFireHotspots: boolean;
+  showIndiaBoundary: boolean;
 }
 
 interface AlertStore {
@@ -106,6 +107,7 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
     showMPABoundaries: true,
     showDensityHeatmap: false,
     showFireHotspots: false,
+    showIndiaBoundary: false,
   },
   isConnected: true,
   isAudioMuted: false,
@@ -158,6 +160,7 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
         showMPABoundaries: false,
         showDensityHeatmap: false,
         showFireHotspots: false,
+        showIndiaBoundary: false,
       };
 
       if (!isAlreadyExclusive) {

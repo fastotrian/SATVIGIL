@@ -588,7 +588,8 @@ export function MapView() {
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['get', 'frp'], 0, 4, 1000, 14],
       'circle-color': [
-        'match', ['get', 'fire_type'],
+        'match',
+        ['get', 'fire_type'],
         'gas_flare', '#8B5CF6',
         'industrial', '#F97316',
         'stubble', '#EAB308',
@@ -598,7 +599,29 @@ export function MapView() {
       ],
       'circle-opacity': 0.8,
       'circle-stroke-width': 1,
-      'circle-stroke-color': '#FFFFFF',
+      'circle-stroke-color': 'rgba(0,0,0,0.8)',
+    },
+  };
+
+  // India Boundary Layer
+  const boundaryFillLayer: FillLayer = {
+    id: 'india-boundary-fill',
+    type: 'fill',
+    source: 'india-boundary',
+    paint: {
+      'fill-color': 'rgba(255, 100, 0, 0.05)',
+      'fill-outline-color': 'rgba(255, 100, 0, 0.6)',
+    },
+  };
+
+  const boundaryLineLayer: LineLayer = {
+    id: 'india-boundary-line',
+    type: 'line',
+    source: 'india-boundary',
+    paint: {
+      'line-color': '#FF6400',
+      'line-width': 1.5,
+      'line-opacity': 0.6,
     },
   };
 
@@ -820,6 +843,14 @@ export function MapView() {
         {activeFilters.showFireHotspots && (
           <Source id="hotspots" type="geojson" data={hotspotsGeoJSON}>
             <Layer {...hotspotsLayer} />
+          </Source>
+        )}
+
+        {/* Layer: India Boundary */}
+        {activeFilters.showIndiaBoundary && (
+          <Source id="india-boundary" type="geojson" data="http://localhost:8000/api/v1/fire/boundary">
+            <Layer {...boundaryFillLayer} />
+            <Layer {...boundaryLineLayer} />
           </Source>
         )}
 
@@ -1166,6 +1197,20 @@ export function MapView() {
                 </span>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeFilters.showFireHotspots ? 'text-navy-950 bg-amber-400' : 'text-gray-500 bg-navy-800'}`}>
                   {activeFilters.showFireHotspots ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setExclusiveLayer('showIndiaBoundary')}
+                className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+              >
+                <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
+                  <span className="text-orange-500">🗺️</span>
+                  <span>India Boundary</span>
+                </span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${activeFilters.showIndiaBoundary ? 'text-white bg-orange-500' : 'text-gray-500 bg-navy-800'}`}>
+                  {activeFilters.showIndiaBoundary ? 'ON' : 'OFF'}
                 </span>
               </button>
             </div>

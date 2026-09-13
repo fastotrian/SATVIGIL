@@ -27,9 +27,12 @@ def enrich_hotspot(hotspot: ThermalHotspot) -> ThermalHotspotSchema:
         satellite=hotspot.satellite,
         acquired_at=hotspot.acquired_at,
         fire_type=hotspot.fire_type,
+        classification_score=hotspot.classification_score,
+        classification_reason=hotspot.classification_reason,
         land_use=hotspot.land_use,
         near_cpcb_cluster=hotspot.near_cpcb_cluster,
         recurrence_count=hotspot.recurrence_count,
+        recurrence_cluster_id=hotspot.recurrence_cluster_id,
         created_at=hotspot.created_at,
         responding_agency=agency_info.get("agency"),
         recommended_action=agency_info.get("action")
@@ -196,14 +199,29 @@ async def _get_live_firms_hotspots() -> list[ThermalHotspotSchema]:
 
     if settings.FIRMS_MAP_KEY:
         try:
+            from app.services.fire.geo_intelligence import geo_engine
+            from app.services.fire.recurrence_tracker import run_dbscan_recurrence
+            from app.services.fire.firms_fetcher import classify_fire_v2
+            
             df = await fetch_firms_india(days=1)
             if not df.empty:
+                # Apply DBSCAN Recurrence
+                df = run_dbscan_recurrence(df)
+                
                 results = []
                 for idx, row in df.iterrows():
                     row_dict = row.to_dict()
-                    fire_type = classify_fire(row_dict)
                     lat = float(row_dict.get("latitude", 0))
                     lon = float(row_dict.get("longitude", 0))
+                    
+                    if not geo_engine.is_within_india(lat, lon):
+                        continue
+                        
+                    classification = classify_fire_v2(row_dict)
+                    fire_type = classification["fire_type"]
+                    classification_score = classification.get("classification_score")
+                    classification_reason = classification.get("classification_reason")
+                    
                     frp = float(row_dict.get("frp", 0) or 0)
                     brightness = float(row_dict.get("bright_ti4", row_dict.get("brightness", 300)) or 300)
                     confidence = str(row_dict.get("confidence", "nominal"))
@@ -229,9 +247,12 @@ async def _get_live_firms_hotspots() -> list[ThermalHotspotSchema]:
                             satellite=satellite,
                             acquired_at=acquired_at,
                             fire_type=fire_type,
+                            classification_score=classification_score,
+                            classification_reason=classification_reason,
                             land_use="industrial" if near_cpcb else ("farmland" if fire_type == "stubble" else "unknown"),
                             near_cpcb_cluster=near_cpcb,
                             recurrence_count=1,
+                            recurrence_cluster_id=row_dict.get("recurrence_cluster_id"),
                             created_at=now,
                             responding_agency=agency_info.get("agency"),
                             recommended_action=agency_info.get("action"),
@@ -240,8 +261,8 @@ async def _get_live_firms_hotspots() -> list[ThermalHotspotSchema]:
                 _LIVE_HOTSPOTS_CACHE = results
                 _LIVE_HOTSPOTS_CACHE_TIME = now
                 return results
-        except Exception:
-            pass
+        except Exception as e:
+            print("Error in live hotspots:", str(e))
 
     return _get_demo_hotspots()
 
@@ -399,4 +420,18 @@ async def get_recurrence(
             limit=limit,
             offset=offset,
         )
+
+from fastapi.responses import FileResponse
+import os
+
+@router.get("/boundary", description="Returns the authoritative India boundary GeoJSON")
+async def get_india_boundary():
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    boundary_path = os.path.join(base_dir, "data", "boundaries", "india_boundary.geojson")
+    
+    if os.path.exists(boundary_path):
+        return FileResponse(boundary_path, media_type="application/geo+json")
+    else:
+        raise HTTPException(status_code=404, detail="Boundary file not found")
+
 

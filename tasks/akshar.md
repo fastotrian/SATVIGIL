@@ -59,6 +59,33 @@
 
 ---
 
+### 🔹 Part 3: Advanced Fire Intelligence (V2)
+
+8. [x] **TASK-F05: V2 Fire Intelligence Scoring Engine Integration**
+   - **Priority:** 🔴 High
+   - **Goal:** Implement the V2 competitive scoring engine for hotspots.
+   - **Requirements:** 
+     - Update schema and DB model to include `classification_score` and `classification_reason`.
+     - Support 19 CPA zones and updated fallbacks.
+   - **Deliverable:** Working `firms_fetcher.py` and `firms_processor.py`.
+
+9. [x] **TASK-F06: Spatial DBSCAN Recurrence Tracking**
+   - **Priority:** 🔴 High
+   - **Goal:** Run haversine DBSCAN clustering on FIRMS data.
+   - **Requirements:** 
+     - Apply clustering dynamically before saving to PostGIS.
+   - **Deliverable:** `recurrence_tracker.py` integrated into pipeline.
+
+10. [x] **TASK-F07: GIS Boundaries Loading & Map Layer Control**
+    - **Priority:** 🟡 Medium
+    - **Goal:** Cache `india_boundary.geojson` (and future boundary files) dynamically.
+    - **Requirements:** 
+      - Serve `/boundary` and filter invalid offshore hits.
+      - Add India Boundary MapLibre layer.
+    - **Deliverable:** `geo_intelligence.py` and `MapView.tsx` UI components.
+
+---
+
 ### 🔹 Part 2: Frontend UI & Interactive Analytics
 
 5. [x] **TASK-UI05: Vessel & Alert Detail Slide-In Drawer**
@@ -104,6 +131,9 @@
 | TASK-M07  | AIS Background Worker & PostGIS Upsert                                     | 🟡 Medium | 2026-09-08    | ✅ Done   | Completed and implemented |
 | TASK-UI07 | Tactical Audio Alarm & Desktop Notifications                               | 🟡 Medium | 2026-09-08    | ✅ Done   | Completed and implemented |
 | TASK-M08  | GFW AIS Integration & Mapbox Fixes                                         | 🔴 High   | 2026-09-12    | ✅ Done   | Completed and implemented |
+| TASK-F05  | V2 Fire Intelligence Scoring Engine Integration                            | 🔴 High   | 2026-09-13    | ✅ Done   | Completed and implemented |
+| TASK-F06  | Spatial DBSCAN Recurrence Tracking for hotspots                            | 🔴 High   | 2026-09-13    | ✅ Done   | Completed and implemented |
+| TASK-F07  | GIS Boundaries static loading & Map Layer Control                          | 🟡 Medium | 2026-09-13    | ✅ Done   | Completed and implemented |
 
 ---
 

@@ -9,7 +9,7 @@ import structlog
 from datetime import datetime
 
 from app.models.alert import ThermalHotspot
-from app.services.fire.firms_fetcher import classify_fire, is_near_cpcb_cluster
+from app.services.fire.firms_fetcher import classify_fire_v2, is_near_cpcb_cluster
 
 logger = structlog.get_logger()
 
@@ -38,11 +38,19 @@ async def ingest_firms_batch(df: pd.DataFrame, db: AsyncSession):
             # Fallback
             acquired_at = datetime.utcnow()
             
+        from app.services.fire.geo_intelligence import geo_engine
+        if not geo_engine.is_within_india(lat, lon):
+            # Skip hotspots that fall outside India's actual boundary (e.g. oceans or neighboring countries)
+            continue
+            
         near_cpcb, _ = is_near_cpcb_cluster(lat, lon)
-        # We need OSM land use theoretically, but for now we fallback to 'unknown' 
-        # or mock it if we don't have the OSM pipeline ready.
-        # Here we just pass unknown and let classify_fire use the CPCB/FRP fallback.
-        fire_type = classify_fire(row, land_use="unknown")
+        
+        # Use V2 competitive scoring classifier
+        row_dict = row.to_dict()
+        classification = classify_fire_v2(row_dict)
+        fire_type = classification["fire_type"]
+        classification_score = classification.get("classification_score")
+        classification_reason = classification.get("classification_reason")
         
         point = f"SRID=4326;POINT({lon} {lat})"
         
@@ -56,9 +64,11 @@ async def ingest_firms_batch(df: pd.DataFrame, db: AsyncSession):
             satellite=row.get("satellite", "VIIRS"),
             acquired_at=acquired_at,
             fire_type=fire_type,
+            classification_score=classification_score,
+            classification_reason=classification_reason,
             land_use="unknown",
             near_cpcb_cluster=near_cpcb,
-            recurrence_count=1 # Default, will be updated by recurrence tracker
+            recurrence_count=1 # Default, updated by tracker
         )
         
         # On conflict do nothing for (latitude, longitude, acquired_at)
@@ -86,6 +96,8 @@ async def ingest_firms_batch(df: pd.DataFrame, db: AsyncSession):
                 satellite=row.get("satellite", "VIIRS"),
                 acquired_at=acquired_at,
                 fire_type=fire_type,
+                classification_score=classification_score,
+                classification_reason=classification_reason,
                 land_use="unknown",
                 near_cpcb_cluster=near_cpcb,
                 recurrence_count=1
