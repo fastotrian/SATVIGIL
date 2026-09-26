@@ -3,6 +3,7 @@
  * Command center top bar with telemetry indicators, sensor badges, quick sector jump pills, and live UTC clock.
  */
 import React, { useEffect, useState } from 'react';
+import { Ship, Flame, Mountain, Volume2, VolumeX } from 'lucide-react';
 import { useAlertStore } from '../../store/alertStore';
 
 // ── Live UTC Clock ─────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ function LiveClock() {
     return () => clearInterval(id);
   }, []);
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-navy-800/80 border border-navy-500/60">
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-navy-800/80 border border-navy-500/60 shadow-sm">
       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
       <span className="font-mono text-xs font-bold tracking-wider text-cyan-300">
         {time.toUTCString().split(' ').slice(4, 5).join('')} UTC
@@ -37,146 +38,134 @@ function SatIcon() {
   );
 }
 
-export function DashboardHeader({ onJumpSector }: { onJumpSector?: (sector: string) => void }) {
-  const { vessels, alerts, isConnected, isAudioMuted, toggleAudio } = useAlertStore();
-
-  const criticalCount = alerts.filter((a) => a.risk_level === 'CRITICAL' && !a.acknowledged).length;
-  const warningCount  = alerts.filter((a) => a.risk_level === 'WARNING'  && !a.acknowledged).length;
-  const darkCount     = vessels.filter((v) => v.is_dark).length;
-  const mpaCount      = vessels.filter((v) => v.in_mpa).length;
-  const totalVessels  = vessels.length;
+export function DashboardHeader() {
+  const { activeNavTab, setNavTab, activeFilters, toggleFilter, isAudioMuted, toggleAudio } = useAlertStore();
 
   return (
     <header
-      className="shrink-0 z-20 flex flex-col select-none"
+      className="shrink-0 z-20 flex flex-col select-none shadow-md"
       style={{ background: 'var(--navy-950)', borderBottom: '1px solid var(--navy-500)' }}
     >
-      {/* ── Top Bar ──────────────────────────────────────────────────────── */}
-      <div className="h-13 px-3.5 py-1.5 flex items-center justify-between gap-3">
+      {/* ── Top Bar with Brand, Central 3-Tab Navigation, and Utilities ── */}
+      <div className="h-14 px-4 py-1.5 flex items-center justify-between gap-4">
 
-        {/* Left: Branding + Sensor Badges */}
+        {/* Left: Branding */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5">
-            <SatIcon />
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span
-                  className="font-bold text-base tracking-[0.16em] uppercase"
-                  style={{ color: 'var(--teal-400)', letterSpacing: '0.18em' }}
-                >
-                  SATVIGIL
-                </span>
-                <span
-                  className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-widest border"
-                  style={{
-                    background: 'rgba(0,212,232,0.08)',
-                    borderColor: 'rgba(0,212,232,0.35)',
-                    color: 'var(--teal-400)',
-                  }}
-                >
-                  DEFENSE &amp; MARITIME INTEL
-                </span>
-              </div>
-              <span className="text-[10px] text-gray-400 tracking-wide">
-                Autonomous Satellite Hydrocarbon &amp; Dark Vessel Detection
+          <SatIcon />
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span
+                className="font-bold text-base tracking-[0.16em] uppercase"
+                style={{ color: 'var(--teal-400)', letterSpacing: '0.18em' }}
+              >
+                SATVIGIL
+              </span>
+              <span
+                className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-widest border"
+                style={{
+                  background: 'rgba(0,212,232,0.08)',
+                  borderColor: 'rgba(0,212,232,0.35)',
+                  color: 'var(--teal-400)',
+                }}
+              >
+                DEFENSE &amp; SURVEILLANCE
               </span>
             </div>
-          </div>
-
-          {/* Vertical Separator */}
-          <div className="w-px h-7 bg-navy-600/80 mx-1 hidden lg:block" />
-
-          {/* Sensor Telemetry Badges */}
-          <div className="hidden xl:flex items-center gap-2 text-[10px] font-mono">
-            {/* Sentinel-1C C-SAR */}
-            <div
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded border"
-              style={{ background: 'rgba(15,31,61,0.8)', borderColor: 'var(--navy-500)', color: 'var(--text-secondary)' }}
-            >
-              <span className="text-cyan-400">🛰️</span>
-              <span className="font-semibold text-gray-200">Sentinel-1C C-SAR</span>
-              <span className="text-emerald-400 font-bold">● ACTIVE</span>
-            </div>
-
-            {/* GFW AIS */}
-            <div
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded border"
-              style={{ background: 'rgba(15,31,61,0.8)', borderColor: 'var(--navy-500)', color: 'var(--text-secondary)' }}
-            >
-              <span className="text-emerald-400">🚢</span>
-              <span className="font-semibold text-gray-200">GFW AIS</span>
-              <span className="text-cyan-400 font-bold">{totalVessels > 0 ? `${(totalVessels / 1000).toFixed(1)}K` : '11.3K'}</span>
-            </div>
-
-            {/* NASA VIIRS */}
-            <div
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded border"
-              style={{ background: 'rgba(15,31,61,0.8)', borderColor: 'var(--navy-500)', color: 'var(--text-secondary)' }}
-            >
-              <span className="text-amber-400">🔥</span>
-              <span className="font-semibold text-gray-200">NASA VIIRS</span>
-              <span className="text-amber-400 font-bold">174 Hotspots</span>
-            </div>
+            <span className="text-[10px] text-gray-400 tracking-wide">
+              Satellite Early Warning &amp; Multi-Hazard Command
+            </span>
           </div>
         </div>
 
-        {/* Center/Right: Quick Threat Pills */}
-        <div className="flex items-center gap-2">
-          {/* Active Spills */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold border transition-all"
-            style={{
-              borderColor: 'rgba(239,68,68,0.6)',
-              color: '#FCA5A5',
-              background: 'rgba(239,68,68,0.15)',
-            }}
+        {/* Center: 3 Navigation Bar Buttons (Maritime, Thermal Zone, Geological) */}
+        <nav className="flex items-center gap-1.5 p-1 rounded-lg border border-navy-700 bg-navy-900/90 shadow-inner">
+          <button
+            type="button"
+            onClick={() => setNavTab('maritime')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-mono text-xs font-bold transition-all ${
+              activeNavTab === 'maritime'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-navy-800 border border-transparent'
+            }`}
           >
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-            <span>1 SPILL (4.8 km²)</span>
-          </div>
+            <Ship className="w-3.5 h-3.5 text-cyan-400" />
+            <span>MARITIME</span>
+          </button>
 
-          {/* Dark Vessels */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold border"
-            style={{
-              borderColor: darkCount > 0 ? 'rgba(245,158,11,0.6)' : 'var(--navy-500)',
-              color: darkCount > 0 ? '#FDE68A' : 'var(--text-dim)',
-              background: darkCount > 0 ? 'rgba(245,158,11,0.12)' : 'transparent',
-            }}
+          <button
+            type="button"
+            onClick={() => setNavTab('thermal')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-mono text-xs font-bold transition-all ${
+              activeNavTab === 'thermal'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-navy-800 border border-transparent'
+            }`}
           >
-            <span>📡</span>
-            <span>{darkCount} DARK</span>
-          </div>
+            <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <span>THERMAL ZONE</span>
+          </button>
 
-          {/* MPA Breaches */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-bold border"
-            style={{
-              borderColor: mpaCount > 0 ? 'rgba(192,132,252,0.6)' : 'var(--navy-500)',
-              color: mpaCount > 0 ? '#E9D5FF' : 'var(--text-dim)',
-              background: mpaCount > 0 ? 'rgba(192,132,252,0.12)' : 'transparent',
-            }}
+          <button
+            type="button"
+            onClick={() => setNavTab('geological')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-mono text-xs font-bold transition-all ${
+              activeNavTab === 'geological'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-400/60 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-navy-800 border border-transparent'
+            }`}
           >
-            <span>🏊</span>
-            <span>{mpaCount} MPA</span>
-          </div>
+            <Mountain className="w-3.5 h-3.5 text-rose-400" />
+            <span>GEOLOGICAL</span>
+          </button>
+        </nav>
 
-          {/* Audio toggle */}
+        {/* Right: Thermal Toggle (when in thermal zone) + Utilities */}
+        <div className="flex items-center gap-3">
+          {/* Thermal Zone Only Toggle */}
+          {activeNavTab === 'thermal' && (
+            <div className="flex items-center gap-2 px-2.5 py-1 rounded border border-amber-500/40 bg-amber-950/30">
+              <Flame className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[11px] font-mono text-amber-300 font-bold">FIRE / THERMAL:</span>
+              <button
+                type="button"
+                onClick={() => toggleFilter('showFireHotspots')}
+                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                  activeFilters.showFireHotspots
+                    ? 'bg-amber-400 text-navy-950 shadow'
+                    : 'bg-navy-800 text-gray-400 border border-navy-600 hover:text-gray-200'
+                }`}
+              >
+                {activeFilters.showFireHotspots ? 'ON' : 'OFF'}
+              </button>
+            </div>
+          )}
+
+          {/* Geological Status Pill */}
+          {activeNavTab === 'geological' && (
+            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded border border-rose-500/40 bg-rose-950/30">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="text-[11px] font-mono text-rose-300 font-bold">
+                LANDSLIDE DANGER ZONES: ACTIVE
+              </span>
+            </div>
+          )}
+
+          {/* Audio Mute Toggle */}
           <button
             id="audio-mute-btn"
             onClick={toggleAudio}
             title={isAudioMuted ? 'Unmute Alarms' : 'Mute Alarms'}
-            className="p-1.5 rounded border transition-all hover:opacity-80 ml-1"
+            className="p-1.5 rounded border transition-all hover:opacity-80"
             style={{
               background: isAudioMuted ? 'rgba(220,38,38,0.15)' : 'rgba(16,185,129,0.10)',
               borderColor: isAudioMuted ? 'rgba(220,38,38,0.4)' : 'rgba(16,185,129,0.3)',
               color: isAudioMuted ? 'var(--red-400)' : 'var(--emerald-400)',
             }}
           >
-            {isAudioMuted ? '🔇' : '🔊'}
+            {isAudioMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
           </button>
 
-          {/* Clock */}
+          {/* Live Clock */}
           <LiveClock />
         </div>
       </div>

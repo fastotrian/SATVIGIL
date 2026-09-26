@@ -1,3 +1,4 @@
+@import 'cesium/Build/Cesium/Widgets/widgets.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,17 +100,34 @@ html, body, #root {
 /* ── Data / Mono Text ───────────────────────────────────────────────────── */
 .font-data { font-family: var(--font-data); }
 
-/* ── Mapbox / MapLibre Popup Override ───────────────────────────────────── */
-.mapboxgl-popup-content,
-.maplibregl-popup-content {
-  background: transparent !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-  border: none !important;
+/* ── Cesium 3D WebGL Canvas & Widget Styling ───────────────────────────── */
+
+.cesium-viewer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #040812;
 }
-.mapboxgl-popup-tip,
-.maplibregl-popup-tip {
+
+.cesium-widget,
+.cesium-widget canvas {
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+}
+
+/* Hide default Cesium branding & credit container */
+.cesium-viewer-bottom,
+.cesium-widget-credits {
   display: none !important;
+}
+
+/* ── Custom SATVIGIL Tactical Popups ────────────────────────────────────── */
+.satvigil-cesium-popup {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  z-index: 40;
+  pointer-events: auto;
 }
 
 /* ── Command Panel (glass card) ─────────────────────────────────────────── */

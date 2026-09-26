@@ -52,7 +52,7 @@
 |---|---|---|
 | **Frontend** | React 18 + TypeScript + Vite | Initialized, working |
 | **Styling** | Tailwind CSS (v3) | Already in use — `App.tsx` uses Tailwind classes |
-| **Map Engine** | Mapbox GL JS + react-map-gl | WebGL rendering, handles 1000s of moving vessel markers |
+| **Map Engine** | CesiumJS (WebGL 3D Globe) | High-performance 3D Earth, handles 11,000+ vessels + clustering |
 | **State** | Zustand (`alertStore.ts`) | Global alert state, active layer filters |
 | **Charts** | Recharts | Risk score timelines, recurrence graphs |
 | **Backend** | Python FastAPI (async) | All endpoints use `async def` + `AsyncSession` |

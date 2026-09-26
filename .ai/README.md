@@ -38,7 +38,7 @@
 
 1. **Database:** Always use **PostgreSQL 15 + PostGIS**. Never propose MongoDB or plain MySQL. Spatial queries must use PostGIS functions (`ST_DWithin`, `ST_Contains`).
 2. **Backend:** Python 3.10+ with **FastAPI** (asynchronous endpoints with `async def`, SQLAlchemy async sessions).
-3. **Frontend:** React 18 + TypeScript + **Tailwind CSS (v3)**. Do NOT add plain CSS or styled-components. Mapbox GL JS for the map (WebGL, handles moving vessel markers at scale).
+3. **Frontend:** React 18 + TypeScript + **Tailwind CSS (v3)**. Do NOT add plain CSS or styled-components. CesiumJS (WebGL 3D globe) for the map (handles moving vessel markers at scale with clustering).
 4. **ML Stack:** PyTorch (U-Net spill detection, ESRGAN super-res) + XGBoost (fire classification) + Isolation Forest (vessel risk scoring). Do NOT switch ML frameworks without discussion.
 5. **Task Queue:** Celery + Redis for asynchronous ML / satellite raster processing.
 6. **No Hallucinated Surveillance:** Satellite revisit over India is physics-limited (Sentinel: 2–5 days, VIIRS/MODIS: 2–4x/day). Never claim "real-time optical live video streaming".

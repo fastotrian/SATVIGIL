@@ -162,6 +162,32 @@
     - **Hide Static Ports**: Disabled the `StaticPinsLayer` in `MapView.tsx` to hide static port markers and declutter the map, adhering to the requested clean UI configuration.
     - **Removed India Boundary Filters**: Removed all code enforcing the Indian boundary filter. It has been stripped from both the backend thermal processor (`firms_processor.py`, `fire.py`) and the frontend UI layer (`MapView.tsx`, `alertStore.ts`).
 
+  - **PART 35:** ✅ Defense-Grade CesiumJS & WebGL 3D Globe Migration:
+    - **Replaced MapLibre GL JS with CesiumJS**: Completely eliminated 2D MapLibre (`maplibre-gl`, `react-map-gl`) in favor of high-performance 3D WebGL globe rendering with `cesium` and `vite-plugin-cesium`.
+    - **Zero-Token Dark Marine Basemap Configuration (`cesiumConfig.ts`)**: Integrated ESRI World Dark Gray Base and Reference layers using `UrlTemplateImageryProvider`, dark atmosphere tint, and zero-token Cesium Ion configuration (`Ion.defaultAccessToken = ''`).
+    - **Clustered 3D AIS Fleet Rendering (`MapView.tsx`)**: Rendered 11,000+ GFW AIS vessels across Indian Ocean & Arabian Sea EEZ with native Cesium `CustomDataSource` clustering, cluster click-to-zoom, and tactical risk color mapping (Electric Cyan, Crimson, Amber, Purple).
+    - **3D Geospatial Hazard Layers**: Integrated Copernicus Sentinel-1C SAR hydrocarbon slicks, Fay drift corridor line, active dynamic drift step polygon with centroid ping, NASA VIIRS thermal anomaly hotspots with FRP point sizing and hover tooltips, and Marine Protected Areas (MPAs).
+    - **3D Camera Controls & Waypoint Navigation**: Built top-right 3D navigation HUD (Zoom In, Zoom Out, Reset North, 3D Horizon Tilt) and quick sector jumps (All India EEZ, Bombay High, JNPT Approach, Kutch Sanctuary).
+    - **3D Screen-Anchored Telemetry Popup**: Replaced static 2D popup with dynamic `scene.postRender` screen-projected HUD tracking 3D coordinates on globe tilt and rotation, including live Copernicus SAR/Optical reconnaissance satellite feed toggle.
+    - **3D Historical Track Playback (`VesselTrackPlayer.tsx`)**: Replaced MapLibre layers with Cesium dynamic `Polyline` and `CallbackProperty` animated vessel position with blackout dark gap alerts.
+  - **PART 36:** ✅ UI Overhaul & Multi-Hazard Command Integration (3-Tab Navigation, Directional Arrow Billboards, Zoom-Out Heat Map, Lucide SVG Icons & Geological Landslide Hazard Zones):
+    - **Header Clean-Up**: Removed top sensor badge palette (Sentinel-1C / GFW / NASA VIIRS) and threat pill palette (`1 SPILL`, `1 DARK`, `15 MPA`) from `DashboardHeader.tsx`, creating clean space for top-level navigation.
+    - **3-Tab Tactical Navigation Bar**: Embedded centralized 3-tab navigation (`[ MARITIME ] [ THERMAL ZONE ] [ GEOLOGICAL ]`) with crisp Lucide SVG icons (`Ship`, `Flame`, `Mountain`).
+    - **Directional Vessel Arrows**: Replaced circular vessel points with directional navigation arrow billboards (`ARROW_ICONS` for Cyan, Crimson, Amber, Purple) dynamically rotated to `vessel.course_deg`, exactly matching real tactical AIS displays.
+    - **Zoom-Out Traffic & Spill Heat Map**: Added camera altitude listener (`height > 1,800,000m`). When viewing all of India, renders color-coded 2.5° grid density heat map: yellow for high traffic, green for moderate/low traffic, and pulsing blinking red (`CallbackProperty` on `ColorMaterialProperty`) for active oil spill hazard cells.
+    - **Lucide SVG Icons in Layer Dock**: Replaced all emojis in the floating surveillance dock with clean Lucide icons (`MapPin`, `Droplets`, `Navigation`, `Shield`, `Radio`, `Waves`, `Compass`).
+    - **Thermal Layer Control Isolation**: Removed the Fire/Thermal toggle from the Maritime dock; it is now exclusively housed inside the Thermal Zone layer and header.
+    - **Hardcoded Geological Landslide Zones**: Mapped 5 high-risk landslide polygons across India (Chamoli & Joshimath in Uttarakhand, Wayanad Meppadi in Kerala, Kullu-Manali in Himachal, Sikkim Teesta Basin, Nilgiris Ghats) with high-contrast hazard fills, risk badges, sector jump buttons, and interactive click popup detailing slope gradient and monitoring agencies (GSI/NDMA).
+  - **PART 37:** ✅ Full Visual Spec Alignment (Organic Bay of Bengal Heatmap, Blinking Oil Spill, Vessel Number Removal, Blank Footer & Cesium Runtime Hardening):
+    - **Cesium Property Type Correction**: Wrapped all polygon `outline`, `outlineColor`, and `outlineWidth` in `ConstantProperty` for 100% Cesium TypeScript and runtime type compliance.
+    - **SingleTileImageryProvider Modernization**: Migrated deprecated constructor to `SingleTileImageryProvider.fromUrl` async factory pattern, eliminating Cesium 1.104+ runtime exceptions.
+    - **Organic Multi-Tone Heat Map (Bay of Bengal & Arabian Sea)**: Enhanced `generateSmoothHeatmapCanvas` with soft emerald-green ambient density wash (`rgba(16, 185, 129, 0.42)`), luminous amber/yellow traffic corridors (`rgba(234, 179, 8, 0.58)`), and crimson fast/hazardous hot nodes (`rgba(239, 68, 68, 0.65)`), dynamically triggered when zoomed out over India.
+    - **Pulsating Blinking Oil Spill Area**: Implemented continuous dynamic red flashing (`CallbackProperty` modulating alpha between 0.35 and 0.95 at 220ms period) for detected Bombay High hydrocarbon slicks.
+    - **Zero Vessel Numbers**: Disabled clustering (`clustering.enabled = false`); vessel markers are rendered strictly as clean tactical directional arrows rotated by heading with no cluster bubbles or number badges.
+    - **Blank Moving Ticker Removal**: Replaced the previous animated text marquee in `OpsLogFooter.tsx` with a minimal, blank 2px status strip (`bg-[var(--navy-950)]`).
+    - **Immediate Fleet & Spill Seed Data**: Added `seedMaritimeData.ts` with 30+ coastal & high-seas vessels across Arabian Sea & Bay of Bengal and Bombay High Sentinel-1C spill geometry for instantaneous cold-start visualization.
+    - **Clean Verification**: TypeScript checks (`tsc --noEmit`) and Vite production build pass cleanly with 0 errors. Dev server running on `http://localhost:3000`.
+
 ---
 
 

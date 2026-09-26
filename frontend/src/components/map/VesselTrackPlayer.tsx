@@ -1,51 +1,59 @@
 /**
- * SATVIGIL — Vessel Track Player
+ * SATVIGIL — Vessel Track Player (CesiumJS 3D WebGL)
  *
- * Animated AIS route playback using GFW track data.
+ * Animated AIS route playback using GFW track data on 3D globe.
  * Features:
  *   - Fetches track from /api/v1/maritime/vessels/{vessel_id}/track
- *   - Shows full route as dashed line on map
- *   - Animates vessel position frame-by-frame through observations
+ *   - Renders route as 3D Polyline on Cesium Globe
  *   - Highlights AIS dark gap segment in red dashed line
+ *   - Animates vessel position frame-by-frame with heading/ping
  *   - Play / Pause / Reset controls with speed selector
- *   - Dark gap warning banner when vessel goes silent
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Source, Layer, Marker } from 'react-map-gl/maplibre';
-import type { LineLayer } from 'react-map-gl/maplibre';
+import {
+  Viewer,
+  Entity,
+  Cartesian3,
+  Color,
+  PolylineDashMaterialProperty,
+  CallbackProperty,
+  NearFarScalar,
+} from 'cesium';
 import type { VesselTrack, TrackPoint } from '../../types/maritime';
 
 const API_BASE = 'http://localhost:8000/api/v1';
 
-// ─────────────────────────────────────────────────────────
-// Demo vessel IDs that have track data available
-// ─────────────────────────────────────────────────────────
 export const DEMO_TRACK_VESSEL_ID = 'gfw-v-419001-kutch-tanker';
 export const DEMO_TRACK_MMSI = '419001845';
 
 interface Props {
   /** MMSI or vessel_id to load track for */
   vesselId: string;
+  /** Cesium viewer reference */
+  viewer: Viewer | null;
   /** Called when a track point is active (frame) */
   onFrameChange?: (point: TrackPoint, index: number, total: number) => void;
   /** Called when track fully loaded */
   onTrackLoaded?: (track: VesselTrack) => void;
 }
 
-export function VesselTrackPlayer({ vesselId, onFrameChange, onTrackLoaded }: Props) {
+export function VesselTrackPlayer({ vesselId, viewer, onFrameChange, onTrackLoaded }: Props) {
   const [track, setTrack] = useState<VesselTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [frameIndex, setFrameIndex] = useState(0);
   const [speed, setSpeed] = useState(3); // frames per second
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keep ref to frameIndex for animation callback
+  const frameIndexRef = useRef(frameIndex);
+  frameIndexRef.current = frameIndex;
+
+  const trackRef = useRef<VesselTrack | null>(null);
+  trackRef.current = track;
 
   // ── Fetch track data ─────────────────────────────────────
   useEffect(() => {
     if (!vesselId) return;
-    setIsLoading(true);
-    setError(null);
     setIsPlaying(false);
     setFrameIndex(0);
 
@@ -58,8 +66,7 @@ export function VesselTrackPlayer({ vesselId, onFrameChange, onTrackLoaded }: Pr
         setTrack(data);
         onTrackLoaded?.(data);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setIsLoading(false));
+      .catch((e) => console.error('Track fetch error:', e));
   }, [vesselId]);
 
   // ── Animation loop ───────────────────────────────────────
@@ -92,119 +99,87 @@ export function VesselTrackPlayer({ vesselId, onFrameChange, onTrackLoaded }: Pr
     };
   }, [isPlaying, speed, track, stopPlayback, onFrameChange]);
 
-  // ── Current animated position ────────────────────────────
-  const currentPoint = track?.track_points[frameIndex];
-  const isDarkGap = (currentPoint?.ais_gap_minutes ?? 0) > 30;
+  // ── Cesium Entities Management ───────────────────────────
+  useEffect(() => {
+    if (!viewer || !track) return;
 
-  // ── Build route geometry up to current frame ─────────────
-  const trailCoords = track
-    ? track.track_points.slice(0, frameIndex + 1).map((p) => [p.lon, p.lat])
-    : [];
+    const entities: Entity[] = [];
 
-  // ── Detect dark gap segment in full track ────────────────
-  const darkGapCoords: number[][] = [];
-  if (track?.dark_gap_event) {
-    const gap = track.dark_gap_event;
-    darkGapCoords.push([gap.lon, gap.lat], [gap.reappear_lon, gap.reappear_lat]);
-  }
+    // 1. Trail Polyline up to current frame
+    const trailEntity = viewer.entities.add({
+      name: `track-trail-${vesselId}`,
+      polyline: {
+        positions: new CallbackProperty(() => {
+          const t = trackRef.current;
+          if (!t || t.track_points.length === 0) return [];
+          const endIdx = Math.min(frameIndexRef.current + 1, t.track_points.length);
+          const points = t.track_points.slice(0, Math.max(endIdx, 2));
+          return points.map((p) => Cartesian3.fromDegrees(p.lon, p.lat, 20));
+        }, false),
+        width: 2.5,
+        material: Color.fromCssColorString('#38BDF8'),
+        clampToGround: false,
+      },
+    });
+    entities.push(trailEntity);
 
-  // ── GeoJSON for trail layer ──────────────────────────────
-  const trailGeoJSON: GeoJSON.FeatureCollection = {
-    type: 'FeatureCollection',
-    features:
-      trailCoords.length >= 2
-        ? [
-            {
-              type: 'Feature',
-              geometry: { type: 'LineString', coordinates: trailCoords },
-              properties: {},
-            },
-          ]
-        : [],
-  };
+    // 2. Dark Gap Polyline if event exists
+    if (track.dark_gap_event) {
+      const gap = track.dark_gap_event;
+      const darkGapEntity = viewer.entities.add({
+        name: `track-dark-gap-${vesselId}`,
+        polyline: {
+          positions: [
+            Cartesian3.fromDegrees(gap.lon, gap.lat, 25),
+            Cartesian3.fromDegrees(gap.reappear_lon, gap.reappear_lat, 25),
+          ],
+          width: 3.5,
+          material: new PolylineDashMaterialProperty({
+            color: Color.fromCssColorString('#EF4444'),
+            dashLength: 16.0,
+          }),
+        },
+      });
+      entities.push(darkGapEntity);
+    }
 
-  // ── GeoJSON for AIS dark gap segment ────────────────────
-  const darkGapGeoJSON: GeoJSON.FeatureCollection = {
-    type: 'FeatureCollection',
-    features:
-      darkGapCoords.length >= 2
-        ? [
-            {
-              type: 'Feature',
-              geometry: { type: 'LineString', coordinates: darkGapCoords },
-              properties: {},
-            },
-          ]
-        : [],
-  };
+    // 3. Animated Vessel Dot Marker
+    const vesselMarkerEntity = viewer.entities.add({
+      name: `track-marker-${vesselId}`,
+      position: new CallbackProperty(() => {
+        const t = trackRef.current;
+        if (!t || t.track_points.length === 0) return Cartesian3.ZERO;
+        const pt = t.track_points[frameIndexRef.current] || t.track_points[0];
+        return Cartesian3.fromDegrees(pt.lon, pt.lat, 40);
+      }, false) as any,
+      point: {
+        pixelSize: 12,
+        color: new CallbackProperty(() => {
+          const t = trackRef.current;
+          const pt = t?.track_points[frameIndexRef.current];
+          const isDark = (pt?.ais_gap_minutes ?? 0) > 30;
+          return isDark ? Color.fromCssColorString('#EF4444') : Color.fromCssColorString('#00E5FF');
+        }, false) as any,
+        outlineColor: Color.fromCssColorString('#060E1C'),
+        outlineWidth: 2,
+        scaleByDistance: new NearFarScalar(1.5e2, 1.5, 8.0e6, 0.7),
+      },
+    });
+    entities.push(vesselMarkerEntity);
 
-  const trailLayer: LineLayer = {
-    id: 'vessel-trail',
-    type: 'line',
-    source: 'vessel-trail',
-    paint: {
-      'line-color': '#38BDF8',   // sky-blue trail
-      'line-width': 2,
-      'line-opacity': 0.8,
-      'line-dasharray': [2, 1],
-    },
-  };
+    return () => {
+      // Clean up track entities when unmounted
+      for (const e of entities) {
+        viewer.entities.remove(e);
+      }
+    };
+  }, [viewer, track, vesselId]);
 
-  const darkGapLayer: LineLayer = {
-    id: 'vessel-dark-gap',
-    type: 'line',
-    source: 'vessel-dark-gap',
-    paint: {
-      'line-color': '#EF4444',   // red — AIS signal lost
-      'line-width': 3,
-      'line-opacity': 0.9,
-      'line-dasharray': [3, 2],
-    },
-  };
-
-  if (isLoading) return null;
-  if (error || !track) return null;
-
-  return (
-    <>
-      {/* ── Map Layers ── */}
-      <Source id="vessel-trail" type="geojson" data={trailGeoJSON}>
-        <Layer {...trailLayer} />
-      </Source>
-
-      {darkGapCoords.length >= 2 && (
-        <Source id="vessel-dark-gap" type="geojson" data={darkGapGeoJSON}>
-          <Layer {...darkGapLayer} />
-        </Source>
-      )}
-
-      {/* ── Animated vessel dot ── */}
-      {currentPoint && (
-        <Marker longitude={currentPoint.lon} latitude={currentPoint.lat} anchor="center">
-          <div className="relative flex items-center justify-center">
-            {isDarkGap && (
-              <div className="absolute w-10 h-10 rounded-full border-2 border-red-500 bg-red-500/20 animate-ping opacity-75" />
-            )}
-            <div
-              className={`w-5 h-5 rounded-full border-2 shadow-lg ${
-                isDarkGap
-                  ? 'bg-red-600 border-red-300'
-                  : 'bg-sky-400 border-white'
-              }`}
-              title={isDarkGap ? '⚠️ AIS Dark Gap — Vessel Signal Lost' : `Position at ${currentPoint.date}`}
-            />
-          </div>
-        </Marker>
-      )}
-
-      {/* ── Dark gap warning banner (rendered outside Map, handled by parent) ── */}
-    </>
-  );
+  return null;
 }
 
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Track Playback Controls Panel (rendered in UI, outside the Map)
+// Track Playback Controls Panel (rendered in UI, outside the 3D canvas)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ControlsProps {
@@ -221,20 +196,26 @@ interface ControlsProps {
 }
 
 export function TrackPlaybackControls({
-  track, isPlaying, frameIndex, speed,
-  onPlay, onPause, onReset, onSpeedChange, onSeek, onClose,
+  track,
+  isPlaying,
+  frameIndex,
+  speed,
+  onPlay,
+  onPause,
+  onReset,
+  onSpeedChange,
+  onSeek,
+  onClose,
 }: ControlsProps) {
   if (!track) return null;
 
   const total = track.track_points.length;
   const current = track.track_points[frameIndex];
   const isDarkGap = (current?.ais_gap_minutes ?? 0) > 30;
-  const progress = total > 1 ? (frameIndex / (total - 1)) * 100 : 0;
 
   return (
     <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-[480px]">
       <div className="bg-gray-900/95 backdrop-blur-md border border-gray-700 rounded-2xl p-4 shadow-2xl">
-
         {/* Vessel info header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -276,7 +257,7 @@ export function TrackPlaybackControls({
             id="track-scrubber"
             type="range"
             min={0}
-            max={total - 1}
+            max={Math.max(total - 1, 0)}
             value={frameIndex}
             onChange={(e) => onSeek(Number(e.target.value))}
             className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-700 accent-sky-400"
@@ -328,7 +309,11 @@ export function TrackPlaybackControls({
         {/* Dark gap event summary */}
         {track.dark_gap_event && (
           <div className="mt-3 border-t border-gray-700 pt-2 text-xs text-gray-400">
-            🔴 Dark gap recorded: <span className="text-red-400 font-medium">{track.dark_gap_event.duration_minutes}min</span> at {track.dark_gap_event.lat.toFixed(3)}°N, {track.dark_gap_event.lon.toFixed(3)}°E
+            🔴 Dark gap recorded:{' '}
+            <span className="text-red-400 font-medium">
+              {track.dark_gap_event.duration_minutes}min
+            </span>{' '}
+            at {track.dark_gap_event.lat.toFixed(3)}°N, {track.dark_gap_event.lon.toFixed(3)}°E
           </div>
         )}
       </div>

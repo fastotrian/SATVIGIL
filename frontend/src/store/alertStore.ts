@@ -7,15 +7,20 @@ import type { Vessel, Alert as MaritimeAlert, ForensicDossier, SpillDriftForecas
 
 export type { Alert } from "../types/maritime";
 
+export type NavTab = 'maritime' | 'thermal' | 'geological';
+
 export interface ActiveFilters {
   showVessels: boolean;
   showSpillZones: boolean;
   showMPABoundaries: boolean;
   showDensityHeatmap: boolean;
   showFireHotspots: boolean;
+  showGeologicalZones: boolean;
 }
 
 interface AlertStore {
+  activeNavTab: NavTab;
+  setNavTab: (tab: NavTab) => void;
   alerts: MaritimeAlert[];
   selectedAlert: MaritimeAlert | null;
   vessels: Vessel[];
@@ -56,12 +61,13 @@ interface AlertStore {
   getNormalCount: () => number;
 }
 
-const INITIAL_ALERTS: MaritimeAlert[] = [];
+import { SEED_ALERTS, SEED_VESSELS } from "../data/seedMaritimeData";
 
 export const useAlertStore = create<AlertStore>((set, get) => ({
-  alerts: INITIAL_ALERTS,
+  activeNavTab: 'maritime',
+  alerts: SEED_ALERTS,
   selectedAlert: null,
-  vessels: [],
+  vessels: SEED_VESSELS,
   selectedVessel: null,
   activeFilters: {
     showVessels: true,
@@ -69,6 +75,7 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
     showMPABoundaries: true,
     showDensityHeatmap: false,
     showFireHotspots: false,
+    showGeologicalZones: false,
   },
   isConnected: true,
   isAudioMuted: false,
@@ -78,6 +85,48 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
   selectedDriftHour: 0,
   isDriftSimActive: false,
   isDriftPlaying: false,
+
+  setNavTab: (tab) =>
+    set((state) => {
+      if (tab === 'maritime') {
+        return {
+          activeNavTab: 'maritime',
+          activeFilters: {
+            ...state.activeFilters,
+            showVessels: true,
+            showSpillZones: true,
+            showMPABoundaries: true,
+            showFireHotspots: false,
+            showGeologicalZones: false,
+          },
+        };
+      } else if (tab === 'thermal') {
+        return {
+          activeNavTab: 'thermal',
+          activeFilters: {
+            ...state.activeFilters,
+            showVessels: false,
+            showSpillZones: false,
+            showMPABoundaries: false,
+            showFireHotspots: true,
+            showGeologicalZones: false,
+          },
+        };
+      } else {
+        // geological
+        return {
+          activeNavTab: 'geological',
+          activeFilters: {
+            ...state.activeFilters,
+            showVessels: false,
+            showSpillZones: false,
+            showMPABoundaries: false,
+            showFireHotspots: false,
+            showGeologicalZones: true,
+          },
+        };
+      }
+    }),
 
   setAlerts: (alerts) => set({ alerts }),
 
@@ -121,6 +170,7 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
         showMPABoundaries: false,
         showDensityHeatmap: false,
         showFireHotspots: false,
+        showGeologicalZones: false,
       };
 
       if (!isAlreadyExclusive) {

@@ -1,11 +1,8 @@
 /**
  * SATVIGIL — Static Strategic Maritime Pins
- * High-reliability HTML markers for offshore assets, major ports, and marine sanctuaries.
- * Bypasses WebGL glyph font loading to eliminate any 403 font PBF errors.
+ * High-reliability coordinates for offshore assets, major ports, and marine sanctuaries.
  */
-import React from 'react';
-import { Marker } from 'react-map-gl/maplibre';
-
+import { Cartesian3, Color, Entity, VerticalOrigin, HorizontalOrigin } from 'cesium';
 
 export interface StrategicPin {
   name: string;
@@ -47,30 +44,32 @@ export const STRATEGIC_PINS: StrategicPin[] = [
   },
 ];
 
-export function StaticPinsLayer() {
-  return (
-    <>
-      {STRATEGIC_PINS.map((pin) => (
-        <Marker
-          key={pin.name}
-          longitude={pin.coordinates[0]}
-          latitude={pin.coordinates[1]}
-          anchor="bottom"
-        >
-          <div
-            className="flex items-center gap-1.5 backdrop-blur-md px-2 py-0.5 rounded shadow-xl text-[10px] font-medium pointer-events-none select-none transition-all"
-            style={{
-              background: 'rgba(10, 22, 40, 0.88)',
-              border: '1px solid var(--navy-500)',
-              color: 'var(--text-primary)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-            }}
-          >
-            <span className="text-xs">{pin.icon}</span>
-            <span className="tracking-wide font-semibold">{pin.name}</span>
-          </div>
-        </Marker>
-      ))}
-    </>
-  );
+/**
+ * Creates Cesium Entity objects for strategic pins
+ */
+export function createStrategicPinEntities(): Entity[] {
+  return STRATEGIC_PINS.map((pin) => {
+    return new Entity({
+      name: pin.name,
+      position: Cartesian3.fromDegrees(pin.coordinates[0], pin.coordinates[1], 50),
+      point: {
+        pixelSize: 8,
+        color: Color.fromCssColorString('#00D4E8'),
+        outlineColor: Color.fromCssColorString('#060E1C'),
+        outlineWidth: 2,
+      },
+      label: {
+        text: `${pin.icon} ${pin.name}`,
+        font: 'bold 11px JetBrains Mono, monospace',
+        fillColor: Color.WHITE,
+        outlineColor: Color.fromCssColorString('#0A1628'),
+        outlineWidth: 2,
+        style: 2, // FILL_AND_OUTLINE
+        verticalOrigin: VerticalOrigin.BOTTOM,
+        horizontalOrigin: HorizontalOrigin.CENTER,
+        pixelOffset: { x: 0, y: -12 } as any,
+        scaleByDistance: undefined,
+      },
+    });
+  });
 }
