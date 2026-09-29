@@ -305,8 +305,46 @@
       - Replaced generic AI-style pill switches (`[ON]` / `[OFF]`) with sleek aerospace micro-switch hardware toggles featuring sliding thumb LEDs and dynamic glow drop shadows (Cyan for AIS, Rose for Spills, Emerald for MPAs).
       - Redesigned Sector Waypoints into a 2x2 grid of dark slate military cards (`All India EEZ`, `Bombay High`, `JNPT Approach`, `Kutch Sanctuary`) with hover states and active indicators.
       - Streamlined autonomous stream actions into refined tactical command buttons (`SYNC SAR ORBIT #142` with live status tag, `INCOIS 72H DRIFT SIM`).
+  - **PART 46:** ✅ Dark Blue Translucent Glass UI Overhaul & High-Contrast Typography:
+    - **Root Cause of Washed-Out / Transparent Glass Backgrounds**:
+      - Tailwind CSS configuration did not extend the `navy` palette, causing classes like `bg-navy-900/90` and `bg-navy-950/95` to produce no CSS rules, rendering controls as 100% transparent glass with no backdrop tint.
+      - Neutral slate blur allowed bright beige/yellow terrain from the satellite map to bleed through and wash out the subtext.
+    - **Fix Applied**:
+      - Extended `frontend/tailwind.config.js` with full `navy` 400–950 color palette (`#060E1C` through `#1B6CA8`).
+      - Redesigned the floating surveillance dock panel (`MapView.tsx`) with a rich dark blue translucent glass background (`bg-[#061022]/90 backdrop-blur-xl border border-cyan-500/30 border-t-cyan-400/80 shadow-[0_16px_40px_rgba(0,0,0,0.85)]`).
+      - Elevated typography contrast across all waypoint cards, micro-switches, and action triggers: titles styled in crisp `text-white font-semibold`, subtext in luminous `text-cyan-200/70 font-mono`, and headers in bold `text-cyan-300`.
+      - Updated Camera HUD buttons (`[+]`, `[-]`, `[▲ N]`, `[3D]`) and `Threat Feed` button (`App.tsx`) with dark blue glass backgrounds (`bg-[#071326]/85 backdrop-blur-md border border-cyan-500/40 text-cyan-300 shadow-2xl`), eliminating background terrain bleed-through.
+  - **PART 47:** ✅ Centered Camera Focus, Ocean Hotspot Suppression & Professional Dock Typography:
+    - **Spill & Waypoint Camera Off-Center Calibration**:
+      - *Root Cause*: Previous `flyTo()` invocations used angled pitches (`-55°`, `-60°`, `-65°`). When the camera is pitched forward toward the horizon, the geographic coordinate at the camera's base sits behind the look-ray, causing the target spill polygon and waypoint to visually shift toward the top of the viewport.
+      - *Fix*: Standardized camera pitch across `jumpToWaypoint()`, spill click animations, suspect vessel clicks, and simulation triggers to top-down nadir `pitch: -88°` in both `MapView.tsx` and `cesiumConfig.ts` (`SECTOR_WAYPOINTS`), locking target coordinates directly at true screen center.
+    - **Thermal Hotspot Oceanic Exclusion**:
+      - *Fix*: Integrated `isPointInIndiaOceanicZone(lat, lon)` into `filteredHotspots` and `thermalCounts` inside `MapView.tsx`, strictly filtering out any thermal anomaly detections located in the ocean (including 14 offshore gas flare points off Mumbai), ensuring thermal icons only appear over terrestrial landmasses.
+    - **Surveillance Dock Typography Scaling**:
+      - Upgraded font sizes across the surveillance dock panel: section headers to `text-[11px] font-bold`, layer titles to `text-[13px] font-semibold`, technical subtext to `text-[10.5px] font-mono`, sector waypoint titles to `text-[12px] font-bold`, and action triggers to `text-[11.5px] font-bold`.
+      - Expanded dock panel width from `276px` to `305px` for a balanced, defense-grade C4ISR layout with zero awkward text truncation.
     - **Verification**:
-      - Frontend build: `tsc && vite build` compiled 1,930 modules with zero errors in 3.99s.
+      - Clean production build with `tsc && vite build` (1,930 modules transformed in 4.00s, zero errors).
+  - **PART 48:** ✅ Spill SAR Popup Upward Offset & Surveillance Dock Dark Blue Translucent Glass:
+    - **Spill SAR Popup Vertical Repositioning**:
+      - *Root Cause*: `SpillSARPopup.tsx` was clamped with `top: Math.min(screenY ?? 120, window.innerHeight - 600)`. On typical laptop displays and viewports (~768px-900px), a popup starting around 300px pushed the bottom action buttons (`⚖️ Legal Dossier`, `🌊 72h Drift Sim`, and `🚨 Task ICGS Samudra Prahari`) off the bottom of the screen.
+      - *Fix*: Offset popup positioning higher up (`top: Math.max(16, Math.min((screenY ?? 100) - 240, window.innerHeight - 660))`), constrained max height with `max-h-[calc(100vh-36px)] overflow-y-auto`, and streamlined satellite image height (`h-40`), ensuring all bottom action buttons are 100% visible and accessible above the screen edge.
+    - **Surveillance Dock Translucent Dark Blue Aesthetics**:
+      - *Fix*: Updated surveillance dock panel in `MapView.tsx` to a rich, luminous dark navy blue with calibrated transparency (`bg-[#081b38]/90 backdrop-blur-2xl border border-cyan-500/40 border-t-cyan-400/90`).
+      - Updated inner card rows to dark blue glass (`bg-[#0c2349]/80 hover:bg-[#123366]`), while strictly preserving all existing typography, font sizes, icons, and text labels as requested.
+    - **Verification**:
+      - Clean production build with `tsc && vite build` (1,930 modules transformed in 3.57s, zero errors).
+  - **PART 49:** ✅ Legal Prosecution Dossier Zero-Latency Activation & Viewport Elevation:
+    - **Modal Opening Latency & Stacking Context Fix**:
+      - *Root Cause*: Previously, `openDossier()` in `alertStore.ts` awaited a direct backend network fetch to `http://localhost:8000/api/v1/maritime/dossier/...` before calling `set({ isDossierOpen: true })`. If the backend was slow or unreachable, the browser fetch hung, causing clicking the button to visually "do nothing". Additionally, `<ForensicDossierModal />` was mounted inside the inner `.flex.flex-1.overflow-hidden.relative` container in `App.tsx`, which trapped its `fixed z-[100]` overlay inside the map's clipping context.
+      - *Fix*:
+        1. In `alertStore.ts`, updated `openDossier()` to synchronously set `isDossierOpen: true` with 0ms latency, instantly rendering the dossier modal.
+        2. Dynamically enriched `activeDossier` with the currently active `selectedVessel` (name, MMSI, vessel type, kinematics, telemetry, and dark gap duration) with immediate fallback to `DEFAULT_DOSSIER`.
+        3. Wrapped backend API synchronization in a fast non-blocking `AbortController` (2s timeout) targeting the proxied `/api/v1/maritime/dossier/${dossierId}` endpoint.
+        4. Moved `<ForensicDossierModal />` to the root of `App.tsx` outside all `overflow-hidden` wrappers, ensuring full-screen uninhibited viewport rendering above the drawer and footer.
+        5. Enhanced button interaction states in `AlertDetailsDrawer.tsx` (`active:scale-[0.98] cursor-pointer hover:brightness-125`).
+    - **Verification**:
+      - Clean production build with `tsc && vite build` (1,930 modules transformed in 9.56s, zero errors).
 
 ---
 

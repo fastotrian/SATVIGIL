@@ -3,7 +3,7 @@ import { useAlertStore } from '../../store/alertStore';
 import type { ForensicDossier } from '../../types/maritime';
 
 // Hardcoded fallback in case backend is loading
-const DEFAULT_DOSSIER: ForensicDossier = {
+export const DEFAULT_DOSSIER: ForensicDossier = {
   dossier_id: 'ICG-DOS-2026-AR-0941',
   classification: 'RESTRICTED // LAW ENFORCEMENT & MARITIME EVIDENCE',
   issuing_authority: 'DIRECTORATE GENERAL OF SHIPPING / INDIAN COAST GUARD (WESTERN COMMAND)',

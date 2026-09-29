@@ -282,9 +282,9 @@ export function AlertDetailsDrawer() {
         <button
           type="button"
           onClick={() => openDossier('latest')}
-          className="w-full font-bold text-xs py-2 px-3 rounded transition-colors flex justify-center items-center gap-1.5 shadow border"
+          className="w-full font-bold text-xs py-2 px-3 rounded transition-all flex justify-center items-center gap-1.5 shadow border active:scale-[0.98] cursor-pointer hover:brightness-125"
           style={{
-            background: 'linear-gradient(90deg, rgba(0, 212, 232, 0.2), rgba(0, 212, 232, 0.4))',
+            background: 'linear-gradient(90deg, rgba(0, 212, 232, 0.25), rgba(0, 212, 232, 0.5))',
             borderColor: 'var(--teal-500)',
             color: 'var(--teal-300)',
           }}

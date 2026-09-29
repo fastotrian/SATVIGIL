@@ -4,6 +4,7 @@
  */
 import { create } from "zustand";
 import type { Vessel, Alert as MaritimeAlert, ForensicDossier, SpillDriftForecast, DriftStepForecast } from "../types/maritime";
+import { DEFAULT_DOSSIER } from "../components/dossier/ForensicDossierModal";
 
 export type { Alert } from "../types/maritime";
 
@@ -187,16 +188,50 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
   toggleAudio: () => set((state) => ({ isAudioMuted: !state.isAudioMuted })),
 
   openDossier: async (dossierId = "latest") => {
+    // 1. Immediately activate modal for 0ms latency feedback
+    const vessel = get().selectedVessel;
+    if (vessel) {
+      set({
+        isDossierOpen: true,
+        activeDossier: {
+          ...DEFAULT_DOSSIER,
+          culprit_vessel: {
+            ...DEFAULT_DOSSIER.culprit_vessel,
+            name: vessel.vessel_name || DEFAULT_DOSSIER.culprit_vessel.name,
+            mmsi: vessel.mmsi || DEFAULT_DOSSIER.culprit_vessel.mmsi,
+            vessel_type: vessel.vessel_type_label || DEFAULT_DOSSIER.culprit_vessel.vessel_type,
+            incident_speed_kts: vessel.speed_knots ?? DEFAULT_DOSSIER.culprit_vessel.incident_speed_kts,
+            course_deg: vessel.course_deg ?? DEFAULT_DOSSIER.culprit_vessel.course_deg,
+            ais_gap_duration_minutes: vessel.ais_gap_minutes ?? DEFAULT_DOSSIER.culprit_vessel.ais_gap_duration_minutes,
+          },
+          location: {
+            lat: vessel.lat ?? DEFAULT_DOSSIER.location.lat,
+            lon: vessel.lon ?? DEFAULT_DOSSIER.location.lon,
+            zone: 'Arabian Sea — Mumbai High Offshore Sector (28 NM WNW)',
+            eez_status: 'Indian Exclusive Economic Zone (200 NM Sovereign Boundary)',
+          },
+        },
+      });
+    } else {
+      set({
+        isDossierOpen: true,
+        activeDossier: get().activeDossier || DEFAULT_DOSSIER,
+      });
+    }
+
+    // 2. Fetch live official dossier from backend with 2s timeout
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/maritime/dossier/${dossierId}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const url = `/api/v1/maritime/dossier/${dossierId}`;
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
-        set({ activeDossier: data, isDossierOpen: true });
-      } else {
-        set({ isDossierOpen: true });
+        set({ activeDossier: data });
       }
     } catch {
-      set({ isDossierOpen: true });
+      // Seamless fallback: modal is already open with pre-seeded evidentiary dossier
     }
   },
 

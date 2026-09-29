@@ -463,14 +463,19 @@ export function MapView() {
   const [hoveredHotspotPos, setHoveredHotspotPos] = useState<{ x: number; y: number } | null>(null);
 
   const filteredHotspots = useMemo(() => {
-    if (thermalCategoryFilter === 'all') return hotspots;
-    if (thermalCategoryFilter === 'cpcb') return hotspots.filter((h) => h.near_cpcb_cluster);
-    return hotspots.filter((h) => h.fire_type === thermalCategoryFilter);
+    // Strictly filter out any thermal hotspots located in the oceanic / marine zone
+    const landHotspots = hotspots.filter(
+      (h) => !isPointInIndiaOceanicZone(h.latitude, h.longitude)
+    );
+    if (thermalCategoryFilter === 'all') return landHotspots;
+    if (thermalCategoryFilter === 'cpcb') return landHotspots.filter((h) => h.near_cpcb_cluster);
+    return landHotspots.filter((h) => h.fire_type === thermalCategoryFilter);
   }, [hotspots, thermalCategoryFilter]);
 
   const thermalCounts = useMemo(() => {
     const counts = { industrial: 0, wildfire: 0, stubble: 0, gas_flare: 0, mining: 0, cpcb: 0 };
     for (const h of hotspots) {
+      if (isPointInIndiaOceanicZone(h.latitude, h.longitude)) continue;
       if (h.fire_type && h.fire_type in counts) {
         counts[h.fire_type as keyof typeof counts]++;
       }
@@ -708,12 +713,12 @@ export function MapView() {
             ? entity.properties.getValue(viewer.clock.currentTime).spill_data
             : DEFAULT_BOMBAY_HIGH_SPILL) as SpillEvent;
 
-          // 1. Smoothly fly camera to zoom in on Bombay High spill (altitude ~160,000m)
+          // 1. Smoothly fly camera to zoom in on Bombay High spill (altitude ~160,000m) centered exactly at target
           viewer.camera.flyTo({
             destination: Cartesian3.fromDegrees(71.50, 19.20, 160000),
             orientation: {
               heading: CesiumMath.toRadians(0),
-              pitch: CesiumMath.toRadians(-55),
+              pitch: CesiumMath.toRadians(-88),
               roll: 0,
             },
             duration: 1.8,
@@ -740,11 +745,11 @@ export function MapView() {
           setSelectedHazardZone(null);
 
           if (v.mmsi === '419082341') {
-            // Also zoom in on Bombay High spill if suspect vessel clicked
+            // Also zoom in on Bombay High spill if suspect vessel clicked centered
             viewer.camera.flyTo({
               destination: Cartesian3.fromDegrees(v.lon, v.lat, 160000),
               orientation: {
-                pitch: CesiumMath.toRadians(-55),
+                pitch: CesiumMath.toRadians(-88),
               },
               duration: 1.8,
             });
@@ -1322,11 +1327,11 @@ export function MapView() {
         const data: SpillEvent = await resp.json();
         setActiveSpill(data);
 
-        // Fly 3D camera to Bombay High spill
+        // Fly 3D camera to Bombay High spill directly centered
         viewerRef.current?.camera.flyTo({
           destination: Cartesian3.fromDegrees(data.lon, data.lat, 180000),
           orientation: {
-            pitch: CesiumMath.toRadians(-60),
+            pitch: CesiumMath.toRadians(-88),
           },
           duration: 2.0,
         });
@@ -1362,7 +1367,7 @@ export function MapView() {
         <button
           type="button"
           onClick={() => viewerRef.current?.camera.zoomIn(viewerRef.current.camera.positionCartographic.height * 0.35)}
-          className="w-8 h-8 rounded-lg bg-navy-900/90 border border-navy-500 hover:border-cyan-400 text-cyan-300 font-mono font-bold flex items-center justify-center shadow-lg transition-all"
+          className="w-8 h-8 rounded-lg bg-[#071326]/85 hover:bg-[#0c2242]/95 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 font-mono font-bold flex items-center justify-center shadow-2xl backdrop-blur-md transition-all"
           title="Zoom In"
         >
           +
@@ -1370,7 +1375,7 @@ export function MapView() {
         <button
           type="button"
           onClick={() => viewerRef.current?.camera.zoomOut(viewerRef.current.camera.positionCartographic.height * 0.45)}
-          className="w-8 h-8 rounded-lg bg-navy-900/90 border border-navy-500 hover:border-cyan-400 text-cyan-300 font-mono font-bold flex items-center justify-center shadow-lg transition-all"
+          className="w-8 h-8 rounded-lg bg-[#071326]/85 hover:bg-[#0c2242]/95 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 font-mono font-bold flex items-center justify-center shadow-2xl backdrop-blur-md transition-all"
           title="Zoom Out"
         >
           −
@@ -1390,7 +1395,7 @@ export function MapView() {
               duration: 1.0,
             });
           }}
-          className="w-8 h-8 rounded-lg bg-navy-900/90 border border-navy-500 hover:border-cyan-400 text-cyan-300 font-mono text-[11px] font-bold flex items-center justify-center shadow-lg transition-all"
+          className="w-8 h-8 rounded-lg bg-[#071326]/85 hover:bg-[#0c2242]/95 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 font-mono text-[11px] font-bold flex items-center justify-center shadow-2xl backdrop-blur-md transition-all"
           title="Reset North"
         >
           ▲ N
@@ -1411,7 +1416,7 @@ export function MapView() {
               duration: 1.2,
             });
           }}
-          className="w-8 h-8 rounded-lg bg-navy-900/90 border border-navy-500 hover:border-cyan-400 text-teal-300 font-mono text-[9px] font-bold flex items-center justify-center shadow-lg transition-all"
+          className="w-8 h-8 rounded-lg bg-[#071326]/85 hover:bg-[#0c2242]/95 border border-cyan-500/40 hover:border-cyan-400 text-teal-300 font-mono text-[9px] font-bold flex items-center justify-center shadow-2xl backdrop-blur-md transition-all"
           title="Toggle 3D Tilt Horizon"
         >
           3D
@@ -1424,81 +1429,81 @@ export function MapView() {
         <button
           type="button"
           onClick={() => setIsLayerDockOpen((prev) => !prev)}
-          className="self-start px-3 py-1.5 rounded-lg font-mono text-xs font-semibold flex items-center gap-2.5 shadow-xl border border-slate-700/80 bg-slate-950/90 hover:bg-slate-900 text-slate-200 hover:text-white transition-all backdrop-blur-md"
+          className="self-start px-3 py-1.5 rounded-lg font-mono text-xs font-semibold flex items-center gap-2.5 shadow-2xl border border-cyan-500/50 bg-[#091b38]/90 hover:bg-[#0e2a56]/95 text-cyan-100 hover:text-white transition-all backdrop-blur-md"
         >
           <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#00E5FF]" />
           <span className="tracking-wide">Surveillance Layers</span>
-          <span className="text-[10px] text-slate-400">{isLayerDockOpen ? '▲' : '▼'}</span>
+          <span className="text-[10px] text-cyan-300">{isLayerDockOpen ? '▲' : '▼'}</span>
         </button>
 
         {/* Expanded Defense Command Panel */}
         {isLayerDockOpen && (
-          <div className="w-[268px] p-3 rounded-xl bg-slate-950/92 backdrop-blur-xl border border-slate-800 border-t-cyan-500/50 shadow-[0_16px_40px_rgba(0,0,0,0.7)] flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-[305px] p-3.5 rounded-xl bg-[#081b38]/90 backdrop-blur-2xl border border-cyan-500/40 border-t-cyan-400/90 shadow-[0_16px_40px_rgba(0,0,0,0.85)] flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-150 max-h-[calc(100vh-60px)] overflow-y-auto">
             {/* ── Tab 1: MARITIME CONTROLS ── */}
             {activeNavTab === 'maritime' && (
               <>
                 {/* Sector Waypoints */}
                 <div>
-                  <div className="flex items-center justify-between text-[9px] font-mono tracking-widest text-slate-400 uppercase font-semibold mb-2">
+                  <div className="flex items-center justify-between text-[11px] font-mono tracking-wider text-cyan-300 uppercase font-bold mb-2">
                     <span className="flex items-center gap-1.5">
-                      <Compass className="w-3 h-3 text-cyan-400" />
+                      <Compass className="w-3.5 h-3.5 text-cyan-400" />
                       <span>SECTOR WAYPOINTS (3D)</span>
                     </span>
-                    <span className="text-[8px] text-cyan-400/80 font-mono">WGS-84</span>
+                    <span className="text-[9.5px] text-cyan-400 font-mono font-semibold">WGS-84</span>
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.ALL_INDIA)}
-                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 text-left transition-all group"
+                      className="px-2.5 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-800/40 hover:border-cyan-400/60 text-left transition-all group"
                     >
-                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-cyan-300 flex items-center gap-1">
-                        <MapPin className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+                      <div className="text-[12px] font-bold text-white group-hover:text-cyan-200 flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-cyan-400 shrink-0" />
                         <span className="truncate">All India EEZ</span>
                       </div>
-                      <div className="text-[8px] font-mono text-slate-500 pl-3.5">Overview</div>
+                      <div className="text-[9.5px] font-mono text-cyan-200/80 pl-4">Overview</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.BOMBAY_HIGH)}
-                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 text-left transition-all group"
+                      className="px-2.5 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-rose-900/40 hover:border-rose-400/60 text-left transition-all group"
                     >
-                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-rose-300 flex items-center gap-1">
-                        <Droplets className="w-2.5 h-2.5 text-rose-400 shrink-0" />
-                        <span className="truncate font-semibold">Bombay High</span>
+                      <div className="text-[12px] font-bold text-white group-hover:text-rose-200 flex items-center gap-1.5">
+                        <Droplets className="w-3 h-3 text-rose-400 shrink-0" />
+                        <span className="truncate">Bombay High</span>
                       </div>
-                      <div className="text-[8px] font-mono text-rose-400/80 pl-3.5">Incident Zone</div>
+                      <div className="text-[9.5px] font-mono text-rose-300 pl-4">Incident Zone</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.JNPT_APPROACH)}
-                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 text-left transition-all group"
+                      className="px-2.5 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-800/40 hover:border-cyan-400/60 text-left transition-all group"
                     >
-                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-cyan-300 flex items-center gap-1">
-                        <Navigation className="w-2.5 h-2.5 text-teal-400 shrink-0" />
+                      <div className="text-[12px] font-bold text-white group-hover:text-cyan-200 flex items-center gap-1.5">
+                        <Navigation className="w-3 h-3 text-teal-400 shrink-0" />
                         <span className="truncate">JNPT Approach</span>
                       </div>
-                      <div className="text-[8px] font-mono text-slate-500 pl-3.5">Port Channel</div>
+                      <div className="text-[9.5px] font-mono text-cyan-200/80 pl-4">Port Channel</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.KUTCH_SANCTUARY)}
-                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-purple-950/40 border border-slate-800 hover:border-purple-500/40 text-left transition-all group"
+                      className="px-2.5 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-purple-900/40 hover:border-purple-400/60 text-left transition-all group"
                     >
-                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-purple-300 flex items-center gap-1">
-                        <Shield className="w-2.5 h-2.5 text-purple-400 shrink-0" />
+                      <div className="text-[12px] font-bold text-white group-hover:text-purple-200 flex items-center gap-1.5">
+                        <Shield className="w-3 h-3 text-purple-400 shrink-0" />
                         <span className="truncate">Kutch Sanctuary</span>
                       </div>
-                      <div className="text-[8px] font-mono text-slate-500 pl-3.5">Sanctuary</div>
+                      <div className="text-[9.5px] font-mono text-purple-200/80 pl-4">Sanctuary</div>
                     </button>
                   </div>
                 </div>
 
                 {/* Layer Hardware-Style Micro-Switches */}
-                <div className="flex flex-col gap-2 pt-2.5 border-t border-slate-800/80">
-                  <div className="flex items-center justify-between text-[9px] font-mono tracking-widest text-slate-400 uppercase font-semibold">
+                <div className="flex flex-col gap-2 pt-2.5 border-t border-cyan-900/40">
+                  <div className="flex items-center justify-between text-[11px] font-mono tracking-wider text-cyan-300 uppercase font-bold">
                     <span>SURVEILLANCE LAYERS</span>
-                    <span className="text-[8px] text-cyan-400 font-mono">
+                    <span className="text-[10px] text-cyan-400 font-mono font-semibold">
                       {isZoomedOut ? 'HEAT GRADIENT' : 'TACTICAL FLEET'}
                     </span>
                   </div>
@@ -1506,17 +1511,17 @@ export function MapView() {
                   {/* AIS Vessels Switch */}
                   <div
                     onClick={() => toggleFilter('showVessels')}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-slate-900/60 hover:bg-slate-850/80 border border-slate-800/80 hover:border-slate-700 transition-all cursor-pointer select-none group"
+                    className="flex items-center justify-between py-2 px-2.5 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-900/40 hover:border-cyan-500/50 transition-all cursor-pointer select-none group"
                   >
-                    <div className="flex items-center gap-2">
-                      <Navigation className="w-3.5 h-3.5 text-cyan-400" />
+                    <div className="flex items-center gap-2.5">
+                      <Navigation className="w-4 h-4 text-cyan-400" />
                       <div>
-                        <div className="text-[11px] font-medium text-slate-200 group-hover:text-white">AIS Vessels</div>
-                        <div className="text-[8.5px] font-mono text-slate-500">Directional Vectors</div>
+                        <div className="text-[13px] font-semibold text-white group-hover:text-cyan-200">AIS Vessels</div>
+                        <div className="text-[10.5px] font-mono text-cyan-200/80">Directional Vectors</div>
                       </div>
                     </div>
                     <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center p-0.5 ${
-                      activeFilters.showVessels ? 'bg-cyan-500/25 border border-cyan-400/80' : 'bg-slate-800 border border-slate-700'
+                      activeFilters.showVessels ? 'bg-cyan-500/30 border border-cyan-400' : 'bg-slate-800 border border-slate-700'
                     }`}>
                       <div className={`w-3 h-3 rounded-full transition-transform ${
                         activeFilters.showVessels ? 'translate-x-4 bg-cyan-400 shadow-[0_0_8px_#00E5FF]' : 'translate-x-0 bg-slate-500'
@@ -1527,20 +1532,20 @@ export function MapView() {
                   {/* Spill Zones Switch */}
                   <div
                     onClick={() => toggleFilter('showSpillZones')}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-slate-900/60 hover:bg-slate-850/80 border border-slate-800/80 hover:border-slate-700 transition-all cursor-pointer select-none group"
+                    className="flex items-center justify-between py-2 px-2.5 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-900/40 hover:border-rose-500/50 transition-all cursor-pointer select-none group"
                   >
-                    <div className="flex items-center gap-2">
-                      <Droplets className="w-3.5 h-3.5 text-rose-400" />
+                    <div className="flex items-center gap-2.5">
+                      <Droplets className="w-4 h-4 text-rose-400" />
                       <div>
-                        <div className="text-[11px] font-medium text-slate-200 group-hover:text-white">Oil Spill Slicks</div>
-                        <div className="text-[8.5px] font-mono text-slate-500">Sentinel-1 Radar</div>
+                        <div className="text-[13px] font-semibold text-white group-hover:text-rose-200">Oil Spill Slicks</div>
+                        <div className="text-[10.5px] font-mono text-rose-300/90">Sentinel-1 Radar</div>
                       </div>
                     </div>
                     <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center p-0.5 ${
-                      activeFilters.showSpillZones ? 'bg-rose-500/25 border border-rose-400/80' : 'bg-slate-800 border border-slate-700'
+                      activeFilters.showSpillZones ? 'bg-rose-500/30 border border-rose-400' : 'bg-slate-800 border border-slate-700'
                     }`}>
                       <div className={`w-3 h-3 rounded-full transition-transform ${
-                        activeFilters.showSpillZones ? 'translate-x-4 bg-rose-400 shadow-[0_0_8px_#F43F5E]' : 'translate-x-0 bg-slate-500'
+                        activeFilters.showSpillZones ? 'translate-x-4 bg-rose-400 shadow-[0_0_8px_#EF4444]' : 'translate-x-0 bg-slate-500'
                       }`} />
                     </div>
                   </div>
@@ -1548,17 +1553,17 @@ export function MapView() {
                   {/* MPA Zones Switch */}
                   <div
                     onClick={() => toggleFilter('showMPABoundaries')}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-slate-900/60 hover:bg-slate-850/80 border border-slate-800/80 hover:border-slate-700 transition-all cursor-pointer select-none group"
+                    className="flex items-center justify-between py-2 px-2.5 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-900/40 hover:border-emerald-500/50 transition-all cursor-pointer select-none group"
                   >
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className="flex items-center gap-2.5">
+                      <Shield className="w-4 h-4 text-emerald-400" />
                       <div>
-                        <div className="text-[11px] font-medium text-slate-200 group-hover:text-white">MPA Zones</div>
-                        <div className="text-[8.5px] font-mono text-slate-500">Marine Reserves</div>
+                        <div className="text-[13px] font-semibold text-white group-hover:text-emerald-200">MPA Zones</div>
+                        <div className="text-[10.5px] font-mono text-emerald-300/90">Marine Reserves</div>
                       </div>
                     </div>
                     <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center p-0.5 ${
-                      activeFilters.showMPABoundaries ? 'bg-emerald-500/25 border border-emerald-400/80' : 'bg-slate-800 border border-slate-700'
+                      activeFilters.showMPABoundaries ? 'bg-emerald-500/30 border border-emerald-400' : 'bg-slate-800 border border-slate-700'
                     }`}>
                       <div className={`w-3 h-3 rounded-full transition-transform ${
                         activeFilters.showMPABoundaries ? 'translate-x-4 bg-emerald-400 shadow-[0_0_8px_#10B981]' : 'translate-x-0 bg-slate-500'
@@ -1568,27 +1573,27 @@ export function MapView() {
                 </div>
 
                 {/* Autonomous Sentinel-1C Ingestion Status & Actions */}
-                <div className="pt-2.5 border-t border-slate-800/80 flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 px-0.5">
-                    <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981] animate-pulse" />
+                <div className="pt-2.5 border-t border-cyan-900/40 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-cyan-300 px-0.5">
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981] animate-pulse" />
                       S1C STREAM: ACTIVE
                     </span>
-                    <span className="text-slate-500">15m AUTO</span>
+                    <span className="text-[10px] text-cyan-400 font-semibold font-mono">15m AUTO</span>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleSimulateSpillDemo}
                     disabled={isSimulating}
-                    className="w-full py-2 px-2.5 rounded-lg text-[10px] font-mono font-semibold tracking-wider flex items-center justify-between transition-all bg-slate-900/90 hover:bg-rose-950/40 border border-slate-700/80 hover:border-rose-500/60 text-slate-200 hover:text-rose-200 group"
+                    className="w-full py-2 px-3 rounded-lg text-[11.5px] font-mono font-bold tracking-wider flex items-center justify-between transition-all bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-900/40 hover:border-rose-500/60 text-white hover:text-rose-200 group"
                     title="Force Sentinel-1C C-SAR Orbit #142 Hydrocarbon Slick Ingestion & ML Attribution Sync"
                   >
                     <span className="flex items-center gap-2">
-                      <Radio className="w-3.5 h-3.5 text-rose-400 group-hover:animate-pulse" />
+                      <Radio className="w-4 h-4 text-rose-400 group-hover:animate-pulse" />
                       <span>{isSimulating ? 'SYNCING S-1C...' : 'SYNC SAR ORBIT #142'}</span>
                     </span>
-                    <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
                       LIVE
                     </span>
                   </button>
@@ -1596,18 +1601,18 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => toggleDriftSim()}
-                    className={`w-full py-2 px-2.5 rounded-lg text-[10px] font-mono font-semibold tracking-wider flex items-center justify-between transition-all border ${
+                    className={`w-full py-2 px-3 rounded-lg text-[11.5px] font-mono font-bold tracking-wider flex items-center justify-between transition-all border ${
                       isDriftSimActive
-                        ? 'bg-amber-500/20 border-amber-500/80 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-                        : 'bg-slate-900/90 hover:bg-slate-850 border-slate-700/80 hover:border-amber-500/50 text-slate-200'
+                        ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                        : 'bg-[#0c2349]/80 hover:bg-[#123366] border-cyan-900/40 hover:border-amber-500/50 text-white'
                     }`}
                   >
                     <span className="flex items-center gap-2">
-                      <Waves className="w-3.5 h-3.5 text-amber-400" />
+                      <Waves className="w-4 h-4 text-amber-400" />
                       <span>INCOIS 72H DRIFT SIM</span>
                     </span>
-                    <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded ${
-                      isDriftSimActive ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded ${
+                      isDriftSimActive ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 text-slate-300 border border-slate-700'
                     }`}>
                       {isDriftSimActive ? 'RUNNING' : 'STANDBY'}
                     </span>
@@ -1786,11 +1791,11 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.CHAMOLI_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded bg-navy-800/90 hover:bg-rose-950/60 text-left border border-navy-600 hover:border-rose-500/60 transition-all flex items-center justify-between"
+                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-rose-300">Chamoli &amp; Joshimath</div>
-                      <div className="text-[9px] text-gray-400">Uttarakhand · Flash Rockslide</div>
+                      <div className="text-[11px] font-bold text-white">Chamoli &amp; Joshimath</div>
+                      <div className="text-[9px] text-cyan-200/70">Uttarakhand · Flash Rockslide</div>
                     </div>
                     <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
                       CRITICAL
@@ -1800,11 +1805,11 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.WAYANAD_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded bg-navy-800/90 hover:bg-rose-950/60 text-left border border-navy-600 hover:border-rose-500/60 transition-all flex items-center justify-between"
+                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-rose-300">Wayanad Meppadi</div>
-                      <div className="text-[9px] text-gray-400">Kerala · Monsoon Mudslide</div>
+                      <div className="text-[11px] font-bold text-white">Wayanad Meppadi</div>
+                      <div className="text-[9px] text-cyan-200/70">Kerala · Monsoon Mudslide</div>
                     </div>
                     <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
                       CRITICAL
@@ -1814,11 +1819,11 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.KULLU_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded bg-navy-800/90 hover:bg-amber-950/60 text-left border border-navy-600 hover:border-amber-500/60 transition-all flex items-center justify-between"
+                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-amber-500/60 transition-all flex items-center justify-between"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-amber-300">Kullu-Manali Valley</div>
-                      <div className="text-[9px] text-gray-400">Himachal · Bank Slumping</div>
+                      <div className="text-[11px] font-bold text-white">Kullu-Manali Valley</div>
+                      <div className="text-[9px] text-cyan-200/70">Himachal · Bank Slumping</div>
                     </div>
                     <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                       HIGH
@@ -1828,11 +1833,11 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.SIKKIM_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded bg-navy-800/90 hover:bg-rose-950/60 text-left border border-navy-600 hover:border-rose-500/60 transition-all flex items-center justify-between"
+                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-rose-300">Sikkim Teesta Basin</div>
-                      <div className="text-[9px] text-gray-400">Sikkim · Moraine Dam Failure</div>
+                      <div className="text-[11px] font-bold text-white">Sikkim Teesta Basin</div>
+                      <div className="text-[9px] text-cyan-200/70">Sikkim · Moraine Dam Failure</div>
                     </div>
                     <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
                       CRITICAL

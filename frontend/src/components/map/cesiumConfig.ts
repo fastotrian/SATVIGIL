@@ -68,7 +68,7 @@ export const SECTOR_WAYPOINTS = {
     latitude: 20.5937,
     height: 3800000,
     heading: 0,
-    pitch: -85,
+    pitch: -88,
     roll: 0,
   },
   BOMBAY_HIGH: {
@@ -76,15 +76,15 @@ export const SECTOR_WAYPOINTS = {
     latitude: 19.2000,
     height: 250000,
     heading: 0,
-    pitch: -65,
+    pitch: -88,
     roll: 0,
   },
   JNPT_APPROACH: {
     longitude: 72.9500,
     latitude: 18.9500,
     height: 120000,
-    heading: 345,
-    pitch: -60,
+    heading: 0,
+    pitch: -88,
     roll: 0,
   },
   KUTCH_SANCTUARY: {
@@ -92,7 +92,7 @@ export const SECTOR_WAYPOINTS = {
     latitude: 22.5000,
     height: 180000,
     heading: 0,
-    pitch: -65,
+    pitch: -88,
     roll: 0,
   },
   CHAMOLI_LANDSLIDE: {
@@ -100,7 +100,7 @@ export const SECTOR_WAYPOINTS = {
     latitude: 30.5000,
     height: 140000,
     heading: 0,
-    pitch: -55,
+    pitch: -88,
     roll: 0,
   },
   WAYANAD_LANDSLIDE: {
@@ -108,7 +108,7 @@ export const SECTOR_WAYPOINTS = {
     latitude: 11.5500,
     height: 90000,
     heading: 0,
-    pitch: -55,
+    pitch: -88,
     roll: 0,
   },
   KULLU_LANDSLIDE: {
@@ -116,7 +116,7 @@ export const SECTOR_WAYPOINTS = {
     latitude: 32.1000,
     height: 150000,
     heading: 0,
-    pitch: -55,
+    pitch: -88,
     roll: 0,
   },
   SIKKIM_LANDSLIDE: {
@@ -124,7 +124,7 @@ export const SECTOR_WAYPOINTS = {
     latitude: 27.4800,
     height: 130000,
     heading: 0,
-    pitch: -55,
+    pitch: -88,
     roll: 0,
   },
 };

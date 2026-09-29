@@ -70,7 +70,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="absolute top-3 right-14 z-30 px-3 py-1.5 rounded-md font-mono text-xs font-bold border border-teal-500/60 bg-navy-950/95 text-cyan-300 shadow-2xl flex items-center gap-1.5 hover:bg-navy-900 transition-all pointer-events-auto"
+            className="absolute top-3 right-3 z-30 px-6 py-1.5 rounded-md font-mono text-xs font-bold border border-cyan-500/50 bg-[#071326]/85 backdrop-blur-md text-cyan-300 shadow-2xl flex items-center gap-1.5 hover:bg-[#0d2244] hover:text-white transition-all pointer-events-auto"
             title="Expand Threat Feed"
           >
             <span>◀</span>
@@ -80,13 +80,13 @@ export default function App() {
 
         {/* Slide-in details drawer */}
         <AlertDetailsDrawer />
-
-        {/* Forensic Evidentiary Legal Dossier Modal */}
-        <ForensicDossierModal />
       </div>
 
       {/* ── Bottom Strip: Single-Line Operational Marquee Ticker ── */}
       <OpsLogFooter />
+
+      {/* Forensic Evidentiary Legal Dossier Modal (Root Level Overlay) */}
+      <ForensicDossierModal />
     </div>
   );
 }

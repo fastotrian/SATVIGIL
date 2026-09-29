@@ -34,17 +34,17 @@ export function SpillSARPopup({ spill, onClose, onLaunchDrift, screenX, screenY 
   return (
     <div
       id={`sar-popup-${spill.id}`}
-      className="absolute z-40 w-[420px] pointer-events-auto"
+      className="absolute z-40 w-[420px] max-h-[calc(100vh-36px)] pointer-events-auto flex flex-col"
       style={{
-        // Position near click, clamp to screen edges
-        top: Math.min(screenY ?? 120, window.innerHeight - 600),
-        left: Math.min(screenX ?? 40, window.innerWidth - 450),
+        // Position popup higher up so all bottom action buttons are always clearly visible above screen edge
+        top: Math.max(16, Math.min((screenY ?? 100) - 240, window.innerHeight - 660)),
+        left: Math.max(16, Math.min(screenX ?? 40, window.innerWidth - 450)),
       }}
     >
-      <div className="bg-gray-900/97 backdrop-blur-xl border border-cyan-900/60 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-[#081326]/95 backdrop-blur-xl border border-cyan-500/40 rounded-2xl shadow-2xl overflow-y-auto max-h-full">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-cyan-950 to-blue-950 border-b border-cyan-800/40">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-cyan-950 to-blue-950 border-b border-cyan-800/40">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
             <span className="text-cyan-300 font-bold text-sm tracking-wider uppercase">
@@ -66,7 +66,7 @@ export function SpillSARPopup({ spill, onClose, onLaunchDrift, screenX, screenY 
           <img
             src={sarImageSrc}
             alt={`SAR satellite image — ${spill.id}`}
-            className="w-full h-48 object-cover"
+            className="w-full h-40 object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
