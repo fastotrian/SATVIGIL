@@ -27,11 +27,14 @@ import {
   PolylineDashMaterialProperty,
   CallbackProperty,
   ColorMaterialProperty,
+  ImageMaterialProperty,
   ConstantProperty,
   Rectangle as CesiumRectangle,
   SingleTileImageryProvider,
   ImageryLayer,
   defined,
+  HeightReference,
+  PropertyBag,
 } from 'cesium';
 
 import {
@@ -54,7 +57,10 @@ import {
 import { useAlertStore } from '../../store/alertStore';
 import { RISK_COLORS } from '../../constants/riskColors';
 import { DEFAULT_BOMBAY_HIGH_SPILL } from '../../data/seedMaritimeData';
+import { DEFAULT_HOTSPOTS } from '../../data/seedThermalData';
 import type { Vessel, SpillEvent, VesselTrack } from '../../types/maritime';
+import { isPointInIndiaOceanicZone } from '../../utils/geoBounds';
+import { getVesselSatelliteApiUrl, generateTacticalSatelliteDataUrl } from '../../utils/satelliteImage';
 import type { ThermalHotspot } from '../../types/fire';
 import { VesselTrackPlayer, TrackPlaybackControls } from './VesselTrackPlayer';
 import { SpillSARPopup } from './SpillSARPopup';
@@ -288,7 +294,29 @@ const ARROW_ICONS = {
   GREEN: createVesselArrowSvg('#10B981'),
 };
 
-// ── Smooth Organic Marine Traffic Heatmap Canvas Generator (Image 1 Style) ──
+// Pre-generated 256x256 soft radial alpha gradient for smooth GPU heatmaps
+const SOFT_GRADIENT_IMAGE_DATA_URL: string = (() => {
+  if (typeof document === 'undefined') return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+  grad.addColorStop(0.20, 'rgba(255, 255, 255, 0.92)');
+  grad.addColorStop(0.48, 'rgba(255, 255, 255, 0.60)');
+  grad.addColorStop(0.78, 'rgba(255, 255, 255, 0.18)');
+  grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  return canvas.toDataURL('image/png');
+})();
+
+// ── Smooth Organic Marine Traffic Heatmap Canvas Generator ──
+// - Low vessel density: Green
+// - High vessel density: Yellow
+// - Bombay High oil spill incident zone: Ambient Yellow halo (dynamic blinking red & yellow handled by entity layer)
 function generateSmoothHeatmapCanvas(vessels: Vessel[]): string {
   const width = 1024;
   const height = 768;
@@ -310,51 +338,81 @@ function generateSmoothHeatmapCanvas(vessels: Vessel[]): string {
 
   ctx.clearRect(0, 0, width, height);
 
-  // 1. Broad soft emerald-green maritime traffic wash (as seen in Image 1 over Bay of Bengal)
-  for (const v of vessels) {
+  // 1. Calculate local vessel density to differentiate less vs more
+  const neighborCounts: number[] = new Array(vessels.length).fill(0);
+  for (let i = 0; i < vessels.length; i++) {
+    for (let j = i + 1; j < vessels.length; j++) {
+      const dLon = vessels[i].lon - vessels[j].lon;
+      const dLat = vessels[i].lat - vessels[j].lat;
+      if (dLon * dLon + dLat * dLat < 1.44) {
+        neighborCounts[i]++;
+        neighborCounts[j]++;
+      }
+    }
+  }
+
+  // 2. Areas with fewer vessels: GREEN
+  for (let i = 0; i < vessels.length; i++) {
+    const v = vessels[i];
     if (v.lon < minLon || v.lon > maxLon || v.lat < minLat || v.lat > maxLat) continue;
     const { x, y } = project(v.lon, v.lat);
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, 110);
-    grad.addColorStop(0, 'rgba(16, 185, 129, 0.42)');
-    grad.addColorStop(0.45, 'rgba(5, 150, 105, 0.24)');
-    grad.addColorStop(0.8, 'rgba(4, 120, 87, 0.08)');
+    const count = neighborCounts[i];
+
+    const radius = 70 + Math.min(count * 5, 40);
+    const alpha = count <= 1 ? 0.48 : 0.30;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    grad.addColorStop(0, `rgba(16, 185, 129, ${alpha})`);
+    grad.addColorStop(0.45, 'rgba(5, 150, 105, 0.22)');
+    grad.addColorStop(0.8, 'rgba(4, 120, 87, 0.06)');
     grad.addColorStop(1, 'rgba(4, 120, 87, 0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(x, y, 110, 0, Math.PI * 2);
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 2. Luminous amber/yellow concentrated traffic corridors & choke points
-  for (const v of vessels) {
+  // 3. Areas with more vessels: YELLOW
+  for (let i = 0; i < vessels.length; i++) {
+    const v = vessels[i];
     if (v.lon < minLon || v.lon > maxLon || v.lat < minLat || v.lat > maxLat) continue;
-    const { x, y } = project(v.lon, v.lat);
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, 55);
-    grad.addColorStop(0, 'rgba(234, 179, 8, 0.58)');
-    grad.addColorStop(0.5, 'rgba(202, 138, 4, 0.32)');
-    grad.addColorStop(0.85, 'rgba(161, 98, 7, 0.10)');
-    grad.addColorStop(1, 'rgba(161, 98, 7, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, 55, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // 3. High-intensity orange & crimson hazard/fast-traffic hot nodes
-  for (const v of vessels) {
-    if (v.lon < minLon || v.lon > maxLon || v.lat < minLat || v.lat > maxLat) continue;
-    if (v.speed_knots > 7 || v.risk_score > 0.4 || v.is_dark) {
+    const count = neighborCounts[i];
+    if (count >= 2) {
       const { x, y } = project(v.lon, v.lat);
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, 32);
-      grad.addColorStop(0, 'rgba(239, 68, 68, 0.65)');
-      grad.addColorStop(0.45, 'rgba(249, 115, 22, 0.38)');
-      grad.addColorStop(0.85, 'rgba(249, 115, 22, 0.08)');
-      grad.addColorStop(1, 'rgba(249, 115, 22, 0)');
+      const intensity = Math.min(1.0, count / 6.0);
+      const radius = 45 + Math.min(count * 6, 45);
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      grad.addColorStop(0, `rgba(234, 179, 8, ${0.45 + 0.35 * intensity})`);
+      grad.addColorStop(0.45, `rgba(202, 138, 4, ${0.25 + 0.20 * intensity})`);
+      grad.addColorStop(0.8, 'rgba(161, 98, 7, 0.08)');
+      grad.addColorStop(1, 'rgba(161, 98, 7, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(x, y, 32, 0, Math.PI * 2);
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+
+  // 4. In "that specific region" (Bombay High Oil Spill Zone & Blackout Corridor):
+  // Warm yellow ambient traffic halo on the base tile (active blinking red & yellow is driven by dynamic entity layer)
+  const incidentPoints = [
+    { lon: 71.50, lat: 19.20, r: 85 }, // Bombay High slick centroid
+    { lon: 71.45, lat: 19.15, r: 75 }, // dark gap boundary
+    { lon: 71.60, lat: 19.45, r: 70 }, // corridor north
+    { lon: 71.30, lat: 18.85, r: 70 }, // corridor south
+    { lon: 71.72, lat: 19.65, r: 65 },
+  ];
+
+  for (const pt of incidentPoints) {
+    const { x, y } = project(pt.lon, pt.lat);
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, pt.r);
+    grad.addColorStop(0, 'rgba(234, 179, 8, 0.65)');
+    grad.addColorStop(0.45, 'rgba(245, 158, 11, 0.40)');
+    grad.addColorStop(0.8, 'rgba(217, 119, 6, 0.12)');
+    grad.addColorStop(1, 'rgba(217, 119, 6, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, pt.r, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   return canvas.toDataURL('image/png');
@@ -399,9 +457,27 @@ export function MapView() {
   const [trackIsPlaying, setTrackIsPlaying] = useState(false);
   const [trackSpeed, setTrackSpeed] = useState(3);
 
-  const [hotspots, setHotspots] = useState<ThermalHotspot[]>([]);
+  const [hotspots, setHotspots] = useState<ThermalHotspot[]>(DEFAULT_HOTSPOTS);
+  const [thermalCategoryFilter, setThermalCategoryFilter] = useState<string>('all');
   const [hoveredHotspot, setHoveredHotspot] = useState<ThermalHotspot | null>(null);
   const [hoveredHotspotPos, setHoveredHotspotPos] = useState<{ x: number; y: number } | null>(null);
+
+  const filteredHotspots = useMemo(() => {
+    if (thermalCategoryFilter === 'all') return hotspots;
+    if (thermalCategoryFilter === 'cpcb') return hotspots.filter((h) => h.near_cpcb_cluster);
+    return hotspots.filter((h) => h.fire_type === thermalCategoryFilter);
+  }, [hotspots, thermalCategoryFilter]);
+
+  const thermalCounts = useMemo(() => {
+    const counts = { industrial: 0, wildfire: 0, stubble: 0, gas_flare: 0, mining: 0, cpcb: 0 };
+    for (const h of hotspots) {
+      if (h.fire_type && h.fire_type in counts) {
+        counts[h.fire_type as keyof typeof counts]++;
+      }
+      if (h.near_cpcb_cluster) counts.cpcb++;
+    }
+    return counts;
+  }, [hotspots]);
 
   // Data sources references
   const vesselsDataSourceRef = useRef<CustomDataSource | null>(null);
@@ -479,12 +555,104 @@ export function MapView() {
 
     GeoJsonDataSource.load(DEMO_TRACKS_GEOJSON, {
       stroke: Color.fromCssColorString('#F59E0B'),
-      strokeWidth: 3,
+      strokeWidth: 4,
+      clampToGround: true,
     }).then((ds) => {
+      // Clean static trajectory corridor (hidden while zoomed out, visible when zoomed in)
+      for (const entity of ds.entities.values) {
+        if (entity.polyline) {
+          entity.polyline.material = new ColorMaterialProperty(
+            Color.fromCssColorString('#F59E0B').withAlpha(0.70)
+          );
+          entity.polyline.width = new ConstantProperty(3.0);
+          entity.polyline.clampToGround = new ConstantProperty(true);
+        }
+        entity.properties = entity.properties || new PropertyBag();
+        entity.properties.addProperty('spill_corridor', new ConstantProperty(true));
+      }
       viewer.dataSources.add(ds);
       demoTracksDataSourceRef.current = ds;
-      ds.show = activeFilters.showVessels;
+      const camHeight = viewer.camera.positionCartographic?.height ?? 3000000;
+      const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+      ds.show = activeFilters.showVessels && heatFactor < 0.98;
     });
+
+    // High-visibility dynamic heat gradient at Bombay High (19.20°N, 71.50°E)
+    // Pulsing & blinking between RED and YELLOW across the incident region
+    viewer.entities.add({
+      name: 'bombay-high-blinking-gradient-halo',
+      position: Cartesian3.fromDegrees(71.50, 19.20, 10),
+      ellipse: {
+        show: new CallbackProperty(() => {
+          const storeState = useAlertStore.getState();
+          if (storeState.activeNavTab !== 'maritime' || !storeState.activeFilters.showVessels) {
+            return false;
+          }
+          const camHeight = viewer.camera.positionCartographic?.height ?? 3000000;
+          const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+          return heatFactor > 0.01;
+        }, false),
+        semiMajorAxis: new ConstantProperty(125000), // 125 km radius outer halo
+        semiMinorAxis: new ConstantProperty(125000),
+        heightReference: new ConstantProperty(HeightReference.CLAMP_TO_GROUND),
+        material: new ImageMaterialProperty({
+          image: SOFT_GRADIENT_IMAGE_DATA_URL,
+          color: new CallbackProperty(() => {
+            const camHeight = viewer.camera.positionCartographic?.height ?? 3000000;
+            const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+            const isRed = Math.sin(Date.now() / 240) > 0;
+            const baseColor = isRed
+              ? Color.fromCssColorString('#EF4444')
+              : Color.fromCssColorString('#F59E0B');
+            const targetAlpha = (isRed ? 0.88 : 0.82) * Math.max(0, heatFactor);
+            return new Color(baseColor.red, baseColor.green, baseColor.blue, targetAlpha);
+          }, false),
+          transparent: true,
+        }),
+      },
+      properties: {
+        spill_beacon: true,
+        spill_data: DEFAULT_BOMBAY_HIGH_SPILL,
+      },
+    });
+
+    viewer.entities.add({
+      name: 'bombay-high-blinking-gradient-core',
+      position: Cartesian3.fromDegrees(71.50, 19.20, 20),
+      ellipse: {
+        show: new CallbackProperty(() => {
+          const storeState = useAlertStore.getState();
+          if (storeState.activeNavTab !== 'maritime' || !storeState.activeFilters.showVessels) {
+            return false;
+          }
+          const camHeight = viewer.camera.positionCartographic?.height ?? 3000000;
+          const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+          return heatFactor > 0.01;
+        }, false),
+        semiMajorAxis: new ConstantProperty(75000), // 75 km radius intense core
+        semiMinorAxis: new ConstantProperty(75000),
+        heightReference: new ConstantProperty(HeightReference.CLAMP_TO_GROUND),
+        material: new ImageMaterialProperty({
+          image: SOFT_GRADIENT_IMAGE_DATA_URL,
+          color: new CallbackProperty(() => {
+            const camHeight = viewer.camera.positionCartographic?.height ?? 3000000;
+            const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+            const isRed = Math.sin(Date.now() / 240) > 0;
+            const baseColor = isRed
+              ? Color.fromCssColorString('#DC2626')
+              : Color.fromCssColorString('#FEF08A');
+            const targetAlpha = (isRed ? 0.96 : 0.92) * Math.max(0, heatFactor);
+            return new Color(baseColor.red, baseColor.green, baseColor.blue, targetAlpha);
+          }, false),
+          transparent: true,
+        }),
+      },
+      properties: {
+        spill_beacon: true,
+        spill_data: DEFAULT_BOMBAY_HIGH_SPILL,
+      },
+    });
+
 
     // Setup Geological Hazard Danger Zones
     GeoJsonDataSource.load(INDIA_GEOLOGICAL_GEOJSON, {
@@ -519,21 +687,69 @@ export function MapView() {
           return;
         }
 
+        // Clicked the oil spill, trajectory corridor, or pulsing hazard beacon: ZOOM IN!
+        const isSpillClick =
+          (entity.properties && (
+            entity.properties.hasProperty('spill_data') ||
+            entity.properties.hasProperty('spill_beacon') ||
+            entity.properties.hasProperty('spill_corridor') ||
+            (entity.properties.hasProperty('vessel_mmsi') &&
+              entity.properties.getValue(viewer.clock.currentTime).vessel_mmsi === '419082341')
+          )) ||
+          (entity.name && (
+            entity.name.includes('spill') ||
+            entity.name.includes('drift') ||
+            entity.name.includes('corridor') ||
+            entity.name.includes('beacon')
+          ));
+
+        if (isSpillClick) {
+          const s = (entity.properties?.hasProperty('spill_data')
+            ? entity.properties.getValue(viewer.clock.currentTime).spill_data
+            : DEFAULT_BOMBAY_HIGH_SPILL) as SpillEvent;
+
+          // 1. Smoothly fly camera to zoom in on Bombay High spill (altitude ~160,000m)
+          viewer.camera.flyTo({
+            destination: Cartesian3.fromDegrees(71.50, 19.20, 160000),
+            orientation: {
+              heading: CesiumMath.toRadians(0),
+              pitch: CesiumMath.toRadians(-55),
+              roll: 0,
+            },
+            duration: 1.8,
+          });
+
+          // 2. Open SAR Spill Popup
+          setSarPopupSpill(s);
+          setSarPopupScreenPos({ x: click.position.x || window.innerWidth / 2, y: click.position.y || window.innerHeight / 2 });
+          setSelectedHazardZone(null);
+
+          // 3. Highlight culprit vessel MT GUJARAT PRIDE
+          const culprit = vessels.find((v) => v.mmsi === '419082341');
+          if (culprit) {
+            selectVessel(culprit);
+          }
+          return;
+        }
+
         // Clicked a vessel
         if (entity.properties && entity.properties.hasProperty('vessel_data')) {
           const v = entity.properties.getValue(viewer.clock.currentTime).vessel_data as Vessel;
           selectVessel(v);
           setSarPopupSpill(null);
           setSelectedHazardZone(null);
-          return;
-        }
 
-        // Clicked a spill
-        if (entity.properties && entity.properties.hasProperty('spill_data')) {
-          const s = entity.properties.getValue(viewer.clock.currentTime).spill_data as SpillEvent;
-          setSarPopupSpill(s);
-          setSarPopupScreenPos({ x: click.position.x, y: click.position.y });
-          setSelectedHazardZone(null);
+          if (v.mmsi === '419082341') {
+            // Also zoom in on Bombay High spill if suspect vessel clicked
+            viewer.camera.flyTo({
+              destination: Cartesian3.fromDegrees(v.lon, v.lat, 160000),
+              orientation: {
+                pitch: CesiumMath.toRadians(-55),
+              },
+              duration: 1.8,
+            });
+            setSarPopupSpill(DEFAULT_BOMBAY_HIGH_SPILL);
+          }
           return;
         }
 
@@ -565,11 +781,48 @@ export function MapView() {
       }
     }, ScreenSpaceEventType.MOUSE_MOVE);
 
-    // Dynamic screen coordinate updater & zoom-out detector
+    // Dynamic screen coordinate updater & smooth zoom transition cross-fader
     const removePostRenderListener = viewer.scene.postRender.addEventListener(() => {
       const camHeight = viewer.camera.positionCartographic.height;
       const zoomedOut = camHeight > 1600000;
       setIsZoomedOut((prev) => (prev !== zoomedOut ? zoomedOut : prev));
+
+      // Continuous cross-fade factor:
+      // heatFactor: 1.0 at >= 2,200,000m (fully zoomed out), 0.0 at <= 900,000m (zoomed in)
+      const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+
+      // 1. Smoothly fade the oceanic heat gradient (disappears slowly as user zooms in)
+      if (heatmapLayerRef.current) {
+        const storeState = useAlertStore.getState();
+        const isMaritime = storeState.activeNavTab === 'maritime';
+        const showVessels = storeState.activeFilters.showVessels;
+        if (isMaritime && showVessels && heatFactor > 0.01) {
+          heatmapLayerRef.current.show = true;
+          try {
+            heatmapLayerRef.current.alpha = 0.85 * heatFactor;
+          } catch {
+            // Ignore if alpha property is non-writable
+          }
+        } else {
+          heatmapLayerRef.current.show = false;
+        }
+      }
+
+      // 2. Control tactical vessel fleet visibility (hidden when fully zoomed out)
+      if (vesselsDataSourceRef.current) {
+        const storeState = useAlertStore.getState();
+        const isMaritime = storeState.activeNavTab === 'maritime';
+        const showVessels = storeState.activeFilters.showVessels;
+        // Vessels and trajectory tracks only appear as you zoom in (camHeight < 2,200,000m)
+        vesselsDataSourceRef.current.show = isMaritime && showVessels && heatFactor < 0.98;
+      }
+
+      if (demoTracksDataSourceRef.current) {
+        const storeState = useAlertStore.getState();
+        const isMaritime = storeState.activeNavTab === 'maritime';
+        const showVessels = storeState.activeFilters.showVessels;
+        demoTracksDataSourceRef.current.show = isMaritime && showVessels && heatFactor < 0.98;
+      }
 
       const storeState = useAlertStore.getState();
       const currentSelectedVessel = storeState.selectedVessel;
@@ -663,7 +916,9 @@ export function MapView() {
     const isGeological = activeNavTab === 'geological';
 
     if (vesselsDataSourceRef.current) {
-      vesselsDataSourceRef.current.show = isMaritime && activeFilters.showVessels;
+      const camHeight = viewerRef.current?.camera.positionCartographic.height ?? 3000000;
+      const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+      vesselsDataSourceRef.current.show = isMaritime && activeFilters.showVessels && heatFactor < 0.98;
     }
     if (spillsDataSourceRef.current) {
       spillsDataSourceRef.current.show = isMaritime && activeFilters.showSpillZones;
@@ -672,7 +927,9 @@ export function MapView() {
       mpasDataSourceRef.current.show = isMaritime && activeFilters.showMPABoundaries;
     }
     if (demoTracksDataSourceRef.current) {
-      demoTracksDataSourceRef.current.show = isMaritime && activeFilters.showVessels;
+      const camHeight = viewerRef.current?.camera.positionCartographic.height ?? 3000000;
+      const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+      demoTracksDataSourceRef.current.show = isMaritime && activeFilters.showVessels && heatFactor < 0.98;
     }
     if (hotspotsDataSourceRef.current) {
       hotspotsDataSourceRef.current.show = isThermal && activeFilters.showFireHotspots;
@@ -682,6 +939,39 @@ export function MapView() {
     }
   }, [activeNavTab, activeFilters, isZoomedOut]);
 
+  // ── Indian Oceanic Zone Filtering & Fleet Volume Control (100 - 200 vessels) ──
+  const oceanicVessels = useMemo(() => {
+    // 1. Strictly retain only vessels inside the Indian Oceanic Zone
+    const valid = vessels.filter((v) => isPointInIndiaOceanicZone(v.lat, v.lon));
+
+    // 2. Prioritize: Suspect vessel (MT GUJARAT PRIDE), dark vessels, critical/high-risk targets
+    const prioritized = [...valid].sort((a, b) => {
+      const aSuspect = a.mmsi === '419082341' ? 1 : 0;
+      const bSuspect = b.mmsi === '419082341' ? 1 : 0;
+      if (aSuspect !== bSuspect) return bSuspect - aSuspect;
+      const aDark = a.is_dark ? 1 : 0;
+      const bDark = b.is_dark ? 1 : 0;
+      if (aDark !== bDark) return bDark - aDark;
+      return b.risk_score - a.risk_score;
+    });
+
+    // 3. Limit to 100 - 200 vessels (target ~140-160 vessels for clear tactical display)
+    if (prioritized.length > 160) {
+      const critical = prioritized.filter(
+        (v) => v.is_dark || v.risk_score >= 0.6 || v.mmsi === '419082341'
+      );
+      const regular = prioritized.filter((v) => !critical.includes(v));
+      const targetCount = 150;
+      const neededRegular = Math.max(70, Math.min(130, targetCount - critical.length));
+      const stride = Math.max(1, Math.floor(regular.length / neededRegular));
+      const sampledRegular = regular
+        .filter((_, idx) => idx % stride === 0)
+        .slice(0, neededRegular);
+      return [...critical, ...sampledRegular];
+    }
+    return prioritized;
+  }, [vessels]);
+
   // ── 3. Render Vessels on Cesium Globe (Directional Arrows) ─────────────────
   useEffect(() => {
     const ds = vesselsDataSourceRef.current;
@@ -689,13 +979,18 @@ export function MapView() {
 
     ds.entities.removeAll();
     const isMaritime = activeNavTab === 'maritime';
-    ds.show = isMaritime && activeFilters.showVessels;
+    const viewer = viewerRef.current;
+    const camHeight = viewer?.camera.positionCartographic.height ?? 3000000;
+    const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
 
-    if (!isMaritime || !activeFilters.showVessels || vessels.length === 0) return;
+    // Vessels are hidden when zoomed out (heatFactor >= 0.98)
+    ds.show = isMaritime && activeFilters.showVessels && heatFactor < 0.98;
+
+    if (!isMaritime || !activeFilters.showVessels || oceanicVessels.length === 0) return;
 
     ds.entities.suspendEvents();
 
-    for (const v of vessels) {
+    for (const v of oceanicVessels) {
       const isDark = v.is_dark;
       const isCritical = v.risk_level === 'CRITICAL';
       const isWarning = v.risk_level === 'WARNING';
@@ -710,7 +1005,7 @@ export function MapView() {
         arrowIcon = ARROW_ICONS.PURPLE; // Purple
       }
 
-      // Render as directional navigation arrow billboard
+      // Render as directional navigation arrow billboard with smooth altitude translucency
       ds.entities.add({
         name: v.vessel_name || `MMSI: ${v.mmsi}`,
         position: Cartesian3.fromDegrees(v.lon, v.lat, 18),
@@ -720,6 +1015,7 @@ export function MapView() {
           width: isCritical ? 20 : 16,
           height: isCritical ? 20 : 16,
           scaleByDistance: new NearFarScalar(1.0e2, 1.4, 8.0e6, 0.65),
+          translucencyByDistance: new NearFarScalar(900000, 1.0, 2200000, 0.0),
         },
         properties: {
           vessel_data: v,
@@ -728,9 +1024,9 @@ export function MapView() {
     }
 
     ds.entities.resumeEvents();
-  }, [vessels, activeFilters.showVessels, activeNavTab]);
+  }, [oceanicVessels, activeFilters.showVessels, activeNavTab]);
 
-  // ── 4. Render Zoom-Out Organic Continuous Gradient Heat Map (Image 1) ───
+  // ── 4. Render Zoom-Out Organic Continuous Gradient Heat Map ───────────────
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer) return;
@@ -741,10 +1037,10 @@ export function MapView() {
     }
 
     const isMaritime = activeNavTab === 'maritime';
-    const shouldShow = isMaritime && isZoomedOut && activeFilters.showVessels;
-    if (!shouldShow || vessels.length === 0) return;
+    const shouldShow = isMaritime && activeFilters.showVessels;
+    if (!shouldShow || oceanicVessels.length === 0) return;
 
-    const dataUrl = generateSmoothHeatmapCanvas(vessels);
+    const dataUrl = generateSmoothHeatmapCanvas(oceanicVessels);
     if (!dataUrl) return;
 
     let active = true;
@@ -755,7 +1051,11 @@ export function MapView() {
       const v = viewerRef.current;
       if (!v || v.isDestroyed()) return;
       const layer = v.imageryLayers.addImageryProvider(provider);
-      layer.alpha = 0.82;
+      // Calculate current alpha from camera height
+      const camHeight = v.camera.positionCartographic.height;
+      const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
+      layer.alpha = 0.85 * heatFactor;
+      layer.show = heatFactor > 0.01;
       heatmapLayerRef.current = layer;
     }).catch((err) => {
       console.warn('Failed to load traffic heatmap layer:', err);
@@ -769,7 +1069,7 @@ export function MapView() {
         heatmapLayerRef.current = null;
       }
     };
-  }, [vessels, isZoomedOut, activeNavTab, activeFilters.showVessels]);
+  }, [oceanicVessels, activeNavTab, activeFilters.showVessels]);
 
   // ── 5. Render Oil Spills on Cesium Globe (Blinking in Red - Image 2) ──────
   useEffect(() => {
@@ -799,18 +1099,22 @@ export function MapView() {
       strokeWidth: 3,
       clampToGround: true,
     }).then((ds) => {
-      // Dynamic pulsating/blinking red fill for detected hydrocarbon slick
+      // Dynamic high-intensity pulsating/blinking red fill for detected hydrocarbon slick
       for (const entity of ds.entities.values) {
         if (entity.polygon) {
           entity.polygon.material = new ColorMaterialProperty(
             new CallbackProperty(() => {
-              const alpha = 0.25 + 0.65 * Math.abs(Math.sin(Date.now() / 250));
+              const flash = Math.sin(Date.now() / 150) > 0;
+              const alpha = flash ? 0.95 : 0.30;
               return Color.fromCssColorString('#EF4444').withAlpha(alpha);
             }, false)
           );
           entity.polygon.outline = new ConstantProperty(true);
-          entity.polygon.outlineColor = new ConstantProperty(Color.fromCssColorString('#FECACA'));
-          entity.polygon.outlineWidth = new ConstantProperty(2.5);
+          entity.polygon.outlineColor = new CallbackProperty(() => {
+            const flash = Math.sin(Date.now() / 150) > 0;
+            return flash ? Color.WHITE : Color.fromCssColorString('#FECACA');
+          }, false);
+          entity.polygon.outlineWidth = new ConstantProperty(3.5);
         }
       }
       viewer.dataSources.add(ds);
@@ -844,18 +1148,22 @@ export function MapView() {
       strokeWidth: 3,
       clampToGround: true,
     }).then((ds) => {
-      // Dynamic pulsating/blinking red fill for active oil slick
+      // Dynamic high-intensity pulsating/blinking red fill for active oil slick
       for (const entity of ds.entities.values) {
         if (entity.polygon) {
           entity.polygon.material = new ColorMaterialProperty(
             new CallbackProperty(() => {
-              const alpha = 0.25 + 0.65 * Math.abs(Math.sin(Date.now() / 250));
+              const flash = Math.sin(Date.now() / 150) > 0;
+              const alpha = flash ? 0.95 : 0.30;
               return Color.fromCssColorString('#EF4444').withAlpha(alpha);
             }, false)
           );
           entity.polygon.outline = new ConstantProperty(true);
-          entity.polygon.outlineColor = new ConstantProperty(Color.fromCssColorString('#FECACA'));
-          entity.polygon.outlineWidth = new ConstantProperty(3);
+          entity.polygon.outlineColor = new CallbackProperty(() => {
+            const flash = Math.sin(Date.now() / 150) > 0;
+            return flash ? Color.WHITE : Color.fromCssColorString('#FECACA');
+          }, false);
+          entity.polygon.outlineWidth = new ConstantProperty(3.5);
         }
       }
       viewer.dataSources.add(ds);
@@ -871,28 +1179,30 @@ export function MapView() {
     ds.entities.removeAll();
     ds.show = activeFilters.showFireHotspots;
 
-    if (!activeFilters.showFireHotspots || hotspots.length === 0) return;
+    if (!activeFilters.showFireHotspots || filteredHotspots.length === 0) return;
 
     ds.entities.suspendEvents();
 
-    for (const h of hotspots) {
-      let color = Color.fromCssColorString('#A1A1AA');
-      if (h.fire_type === 'gas_flare') color = Color.fromCssColorString('#8B5CF6');
+    for (const h of filteredHotspots) {
+      let color = Color.fromCssColorString('#9CA3AF');
+      if (h.fire_type === 'gas_flare') color = Color.fromCssColorString('#A855F7');
       else if (h.fire_type === 'industrial') color = Color.fromCssColorString('#F97316');
       else if (h.fire_type === 'stubble') color = Color.fromCssColorString('#EAB308');
       else if (h.fire_type === 'wildfire') color = Color.fromCssColorString('#EF4444');
-      else if (h.fire_type === 'mining') color = Color.fromCssColorString('#6B7280');
+      else if (h.fire_type === 'mining') color = Color.fromCssColorString('#EA580C');
 
-      const radius = Math.max(5, Math.min(14, 4 + (h.frp ?? 0) / 100));
+      const radius = Math.max(7, Math.min(16, 6 + (h.frp ?? 0) / 40));
 
       ds.entities.add({
         name: `${h.fire_type} Hotspot`,
-        position: Cartesian3.fromDegrees(h.longitude, h.latitude, 10),
+        position: Cartesian3.fromDegrees(h.longitude, h.latitude, 20),
         point: {
           pixelSize: radius,
-          color: color.withAlpha(0.85),
-          outlineColor: Color.fromCssColorString('#060E1C'),
-          outlineWidth: 1.5,
+          color: color.withAlpha(0.95),
+          outlineColor: Color.fromCssColorString('#FFFFFF').withAlpha(0.85),
+          outlineWidth: 2.0,
+          scaleByDistance: new NearFarScalar(1.0e2, 1.4, 8.0e6, 0.85),
+          heightReference: HeightReference.CLAMP_TO_GROUND,
         },
         properties: {
           hotspot_data: h,
@@ -901,7 +1211,7 @@ export function MapView() {
     }
 
     ds.entities.resumeEvents();
-  }, [hotspots, activeFilters.showFireHotspots]);
+  }, [filteredHotspots, activeFilters.showFireHotspots]);
 
   // ── 7. Render INCOIS 72h Ocean Drift Simulation ───────────────────────────
   const activeDriftStep = getActiveDriftStep();
@@ -1047,8 +1357,8 @@ export function MapView() {
       {/* ── 3D WebGL Cesium Container ── */}
       <div ref={containerRef} className="w-full h-full" />
 
-      {/* ── Top-Right Tactical Camera Controls ── */}
-      <div className="absolute top-3 right-3 z-30 flex flex-col gap-1.5 pointer-events-auto">
+      {/* ── Top-Right Tactical Camera Controls (Positioned cleanly below Threat Feed toggle) ── */}
+      <div className="absolute top-12 right-3 z-30 flex flex-col gap-1.5 pointer-events-auto">
         <button
           type="button"
           onClick={() => viewerRef.current?.camera.zoomIn(viewerRef.current.camera.positionCartographic.height * 0.35)}
@@ -1114,204 +1424,221 @@ export function MapView() {
         <button
           type="button"
           onClick={() => setIsLayerDockOpen((prev) => !prev)}
-          className="self-start px-2.5 py-1.5 rounded-md font-mono text-xs font-bold flex items-center gap-2 shadow-xl border backdrop-blur-md transition-all hover:bg-navy-700/80"
-          style={{
-            background: 'rgba(7, 14, 27, 0.92)',
-            borderColor: 'var(--navy-400)',
-            color: 'var(--teal-300)',
-          }}
+          className="self-start px-3 py-1.5 rounded-lg font-mono text-xs font-semibold flex items-center gap-2.5 shadow-xl border border-slate-700/80 bg-slate-950/90 hover:bg-slate-900 text-slate-200 hover:text-white transition-all backdrop-blur-md"
         >
-          <span>☰</span>
-          <span>Surveillance Layers</span>
-          <span className="text-[10px] text-gray-400">{isLayerDockOpen ? '▲' : '▼'}</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#00E5FF]" />
+          <span className="tracking-wide">Surveillance Layers</span>
+          <span className="text-[10px] text-slate-400">{isLayerDockOpen ? '▲' : '▼'}</span>
         </button>
 
-        {/* Expanded Layer Panel */}
+        {/* Expanded Defense Command Panel */}
         {isLayerDockOpen && (
-          <div
-            className="p-3 rounded-lg shadow-2xl flex flex-col gap-2.5 backdrop-blur-md border animate-in fade-in zoom-in-95 duration-150"
-            style={{
-              background: 'rgba(7, 14, 27, 0.94)',
-              borderColor: 'var(--navy-500)',
-              width: '250px',
-            }}
-          >
+          <div className="w-[268px] p-3 rounded-xl bg-slate-950/92 backdrop-blur-xl border border-slate-800 border-t-cyan-500/50 shadow-[0_16px_40px_rgba(0,0,0,0.7)] flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150">
             {/* ── Tab 1: MARITIME CONTROLS ── */}
             {activeNavTab === 'maritime' && (
               <>
-                {/* Quick Sector Jumps */}
+                {/* Sector Waypoints */}
                 <div>
-                  <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                    <Compass className="w-3 h-3 text-cyan-400" />
-                    <span>Maritime Sectors (3D)</span>
+                  <div className="flex items-center justify-between text-[9px] font-mono tracking-widest text-slate-400 uppercase font-semibold mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <Compass className="w-3 h-3 text-cyan-400" />
+                      <span>SECTOR WAYPOINTS (3D)</span>
+                    </span>
+                    <span className="text-[8px] text-cyan-400/80 font-mono">WGS-84</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.ALL_INDIA)}
-                      className="px-1.5 py-1 rounded bg-navy-800 text-gray-300 hover:text-white hover:bg-navy-700 text-left truncate flex items-center gap-1"
+                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 text-left transition-all group"
                     >
-                      <MapPin className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
-                      <span className="truncate">All India EEZ</span>
+                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-cyan-300 flex items-center gap-1">
+                        <MapPin className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
+                        <span className="truncate">All India EEZ</span>
+                      </div>
+                      <div className="text-[8px] font-mono text-slate-500 pl-3.5">Overview</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.BOMBAY_HIGH)}
-                      className="px-1.5 py-1 rounded bg-navy-800 text-red-300 hover:text-white hover:bg-red-950/60 text-left truncate font-bold flex items-center gap-1"
+                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-500/40 text-left transition-all group"
                     >
-                      <Droplets className="w-2.5 h-2.5 text-red-400 shrink-0" />
-                      <span className="truncate">Bombay High</span>
+                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-rose-300 flex items-center gap-1">
+                        <Droplets className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                        <span className="truncate font-semibold">Bombay High</span>
+                      </div>
+                      <div className="text-[8px] font-mono text-rose-400/80 pl-3.5">Incident Zone</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.JNPT_APPROACH)}
-                      className="px-1.5 py-1 rounded bg-navy-800 text-gray-300 hover:text-white hover:bg-navy-700 text-left truncate flex items-center gap-1"
+                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/40 text-left transition-all group"
                     >
-                      <Navigation className="w-2.5 h-2.5 text-teal-400 shrink-0" />
-                      <span className="truncate">JNPT Approach</span>
+                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-cyan-300 flex items-center gap-1">
+                        <Navigation className="w-2.5 h-2.5 text-teal-400 shrink-0" />
+                        <span className="truncate">JNPT Approach</span>
+                      </div>
+                      <div className="text-[8px] font-mono text-slate-500 pl-3.5">Port Channel</div>
                     </button>
                     <button
                       type="button"
                       onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.KUTCH_SANCTUARY)}
-                      className="px-1.5 py-1 rounded bg-navy-800 text-purple-300 hover:text-white hover:bg-purple-950/60 text-left truncate flex items-center gap-1"
+                      className="px-2 py-1.5 rounded-md bg-slate-900/70 hover:bg-purple-950/40 border border-slate-800 hover:border-purple-500/40 text-left transition-all group"
                     >
-                      <Shield className="w-2.5 h-2.5 text-purple-400 shrink-0" />
-                      <span className="truncate">Kutch Sanctuary</span>
+                      <div className="text-[10.5px] font-medium text-slate-200 group-hover:text-purple-300 flex items-center gap-1">
+                        <Shield className="w-2.5 h-2.5 text-purple-400 shrink-0" />
+                        <span className="truncate">Kutch Sanctuary</span>
+                      </div>
+                      <div className="text-[8px] font-mono text-slate-500 pl-3.5">Sanctuary</div>
                     </button>
                   </div>
                 </div>
 
-                {/* Layer Controls (Maritime Only - Fire/Thermal removed) */}
-                <div className="flex flex-col gap-1.5 text-xs pt-2 border-t border-navy-700">
-                  <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest mb-0.5 flex items-center justify-between">
-                    <span>MARITIME LAYERS</span>
+                {/* Layer Hardware-Style Micro-Switches */}
+                <div className="flex flex-col gap-2 pt-2.5 border-t border-slate-800/80">
+                  <div className="flex items-center justify-between text-[9px] font-mono tracking-widest text-slate-400 uppercase font-semibold">
+                    <span>SURVEILLANCE LAYERS</span>
                     <span className="text-[8px] text-cyan-400 font-mono">
-                      {isZoomedOut ? '● HEAT MAP VIEW' : '● TACTICAL ARROWS'}
+                      {isZoomedOut ? 'HEAT GRADIENT' : 'TACTICAL FLEET'}
                     </span>
                   </div>
 
-                  <button
-                    type="button"
+                  {/* AIS Vessels Switch */}
+                  <div
                     onClick={() => toggleFilter('showVessels')}
-                    className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-slate-900/60 hover:bg-slate-850/80 border border-slate-800/80 hover:border-slate-700 transition-all cursor-pointer select-none group"
                   >
-                    <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
+                    <div className="flex items-center gap-2">
                       <Navigation className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>AIS Vessels (3D Arrows)</span>
-                    </span>
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        activeFilters.showVessels
-                          ? 'text-navy-950 bg-cyan-400'
-                          : 'text-gray-500 bg-navy-800'
-                      }`}
-                    >
-                      {activeFilters.showVessels ? 'ON' : 'OFF'}
-                    </span>
-                  </button>
+                      <div>
+                        <div className="text-[11px] font-medium text-slate-200 group-hover:text-white">AIS Vessels</div>
+                        <div className="text-[8.5px] font-mono text-slate-500">Directional Vectors</div>
+                      </div>
+                    </div>
+                    <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center p-0.5 ${
+                      activeFilters.showVessels ? 'bg-cyan-500/25 border border-cyan-400/80' : 'bg-slate-800 border border-slate-700'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full transition-transform ${
+                        activeFilters.showVessels ? 'translate-x-4 bg-cyan-400 shadow-[0_0_8px_#00E5FF]' : 'translate-x-0 bg-slate-500'
+                      }`} />
+                    </div>
+                  </div>
 
-                  <button
-                    type="button"
+                  {/* Spill Zones Switch */}
+                  <div
                     onClick={() => toggleFilter('showSpillZones')}
-                    className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-slate-900/60 hover:bg-slate-850/80 border border-slate-800/80 hover:border-slate-700 transition-all cursor-pointer select-none group"
                   >
-                    <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
-                      <Droplets className="w-3.5 h-3.5 text-red-400" />
-                      <span>Spill Zones (Blinking Slick)</span>
-                    </span>
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        activeFilters.showSpillZones
-                          ? 'text-white bg-red-500'
-                          : 'text-gray-500 bg-navy-800'
-                      }`}
-                    >
-                      {activeFilters.showSpillZones ? 'ON' : 'OFF'}
-                    </span>
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <Droplets className="w-3.5 h-3.5 text-rose-400" />
+                      <div>
+                        <div className="text-[11px] font-medium text-slate-200 group-hover:text-white">Oil Spill Slicks</div>
+                        <div className="text-[8.5px] font-mono text-slate-500">Sentinel-1 Radar</div>
+                      </div>
+                    </div>
+                    <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center p-0.5 ${
+                      activeFilters.showSpillZones ? 'bg-rose-500/25 border border-rose-400/80' : 'bg-slate-800 border border-slate-700'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full transition-transform ${
+                        activeFilters.showSpillZones ? 'translate-x-4 bg-rose-400 shadow-[0_0_8px_#F43F5E]' : 'translate-x-0 bg-slate-500'
+                      }`} />
+                    </div>
+                  </div>
 
-                  <button
-                    type="button"
+                  {/* MPA Zones Switch */}
+                  <div
                     onClick={() => toggleFilter('showMPABoundaries')}
-                    className="flex items-center justify-between cursor-pointer select-none py-1 px-1.5 rounded hover:bg-white/5 transition-colors w-full"
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-slate-900/60 hover:bg-slate-850/80 border border-slate-800/80 hover:border-slate-700 transition-all cursor-pointer select-none group"
                   >
-                    <span className="flex items-center gap-1.5 text-[11px] text-gray-200">
+                    <div className="flex items-center gap-2">
                       <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>MPA Zones</span>
-                    </span>
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        activeFilters.showMPABoundaries
-                          ? 'text-navy-950 bg-emerald-400'
-                          : 'text-gray-500 bg-navy-800'
-                      }`}
-                    >
-                      {activeFilters.showMPABoundaries ? 'ON' : 'OFF'}
-                    </span>
-                  </button>
+                      <div>
+                        <div className="text-[11px] font-medium text-slate-200 group-hover:text-white">MPA Zones</div>
+                        <div className="text-[8.5px] font-mono text-slate-500">Marine Reserves</div>
+                      </div>
+                    </div>
+                    <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center p-0.5 ${
+                      activeFilters.showMPABoundaries ? 'bg-emerald-500/25 border border-emerald-400/80' : 'bg-slate-800 border border-slate-700'
+                    }`}>
+                      <div className={`w-3 h-3 rounded-full transition-transform ${
+                        activeFilters.showMPABoundaries ? 'translate-x-4 bg-emerald-400 shadow-[0_0_8px_#10B981]' : 'translate-x-0 bg-slate-500'
+                      }`} />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Autonomous Sentinel-1C Ingestion Status & Sync */}
-                <div className="pt-2 border-t border-navy-700 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between text-[9px] font-mono text-gray-400">
-                    <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {/* Autonomous Sentinel-1C Ingestion Status & Actions */}
+                <div className="pt-2.5 border-t border-slate-800/80 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 px-0.5">
+                    <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981] animate-pulse" />
                       S1C STREAM: ACTIVE
                     </span>
-                    <span>15m AUTO</span>
+                    <span className="text-slate-500">15m AUTO</span>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleSimulateSpillDemo}
                     disabled={isSimulating}
-                    className="w-full py-1.5 px-2 rounded text-[11px] font-mono font-bold tracking-wide flex items-center justify-center gap-1.5 transition-all shadow border border-red-500/80 bg-red-950/80 text-red-200 hover:bg-red-900"
+                    className="w-full py-2 px-2.5 rounded-lg text-[10px] font-mono font-semibold tracking-wider flex items-center justify-between transition-all bg-slate-900/90 hover:bg-rose-950/40 border border-slate-700/80 hover:border-rose-500/60 text-slate-200 hover:text-rose-200 group"
                     title="Force Sentinel-1C C-SAR Orbit #142 Hydrocarbon Slick Ingestion & ML Attribution Sync"
                   >
-                    <Radio className="w-3.5 h-3.5 text-red-400" />
-                    <span>{isSimulating ? 'Syncing Sentinel-1C...' : 'Sync SAR Orbit #142'}</span>
+                    <span className="flex items-center gap-2">
+                      <Radio className="w-3.5 h-3.5 text-rose-400 group-hover:animate-pulse" />
+                      <span>{isSimulating ? 'SYNCING S-1C...' : 'SYNC SAR ORBIT #142'}</span>
+                    </span>
+                    <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      LIVE
+                    </span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => toggleDriftSim()}
-                    className="w-full py-1.5 px-2 rounded text-[11px] font-mono font-bold tracking-wide flex items-center justify-center gap-1.5 transition-all border"
-                    style={{
-                      background: isDriftSimActive
-                        ? 'rgba(245, 158, 11, 0.25)'
-                        : 'rgba(15, 31, 61, 0.8)',
-                      borderColor: isDriftSimActive ? 'var(--amber-500)' : 'var(--navy-500)',
-                      color: isDriftSimActive ? 'var(--amber-300)' : 'var(--text-secondary)',
-                    }}
+                    className={`w-full py-2 px-2.5 rounded-lg text-[10px] font-mono font-semibold tracking-wider flex items-center justify-between transition-all border ${
+                      isDriftSimActive
+                        ? 'bg-amber-500/20 border-amber-500/80 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                        : 'bg-slate-900/90 hover:bg-slate-850 border-slate-700/80 hover:border-amber-500/50 text-slate-200'
+                    }`}
                   >
-                    <Waves className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{isDriftSimActive ? 'Close Drift HUD' : 'INCOIS 72h Drift Sim'}</span>
+                    <span className="flex items-center gap-2">
+                      <Waves className="w-3.5 h-3.5 text-amber-400" />
+                      <span>INCOIS 72H DRIFT SIM</span>
+                    </span>
+                    <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded ${
+                      isDriftSimActive ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}>
+                      {isDriftSimActive ? 'RUNNING' : 'STANDBY'}
+                    </span>
                   </button>
                 </div>
               </>
             )}
 
-            {/* ── Tab 2: THERMAL ZONE CONTROLS (Only Fire/Thermal toggle) ── */}
+            {/* ── Tab 2: THERMAL ZONE CONTROLS (V2 Intelligence Engine) ── */}
             {activeNavTab === 'thermal' && (
               <>
                 <div>
-                  <div className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                    <Flame className="w-3 h-3 text-amber-400" />
-                    <span>THERMAL ZONE INTELLIGENCE</span>
+                  <div className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    <span>THERMAL ZONE INTELLIGENCE V2</span>
                   </div>
                   <p className="text-[10px] text-gray-400 leading-tight">
-                    NASA VIIRS active thermal hotspots and industrial gas flaring classification.
+                    NASA VIIRS active hotspots + Sovereign Boundary + Bharatmaps RFA Forest &amp; Mining Belts.
                   </p>
                 </div>
 
-                {/* Only this toggle in thermal zone */}
+                {/* Primary Layer Toggle */}
                 <div className="pt-2 border-t border-navy-700 flex flex-col gap-2">
                   <div className="flex items-center justify-between p-2 rounded bg-navy-800/90 border border-amber-500/40">
                     <div className="flex items-center gap-2">
                       <Flame className="w-4 h-4 text-amber-400" />
                       <div>
                         <div className="text-[11px] font-bold text-white">Fire / Thermal Layer</div>
-                        <div className="text-[9px] text-amber-300/80">174 Active Hotspots</div>
+                        <div className="text-[9px] text-amber-300/80">
+                          {filteredHotspots.length} / {hotspots.length} Active Hotspots
+                        </div>
                       </div>
                     </div>
                     <button
@@ -1327,18 +1654,111 @@ export function MapView() {
                     </button>
                   </div>
 
-                  <div className="p-2 rounded bg-navy-900/60 border border-navy-700 text-[10px] font-mono flex flex-col gap-1 text-gray-300">
+                  {/* V2 Category Filter Chips */}
+                  <div className="flex flex-col gap-1">
+                    <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider">
+                      V2 Context Filters
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-[9px] font-mono">
+                      <button
+                        type="button"
+                        onClick={() => setThermalCategoryFilter('all')}
+                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                          thermalCategoryFilter === 'all'
+                            ? 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold'
+                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        ALL ({hotspots.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setThermalCategoryFilter('industrial')}
+                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                          thermalCategoryFilter === 'industrial'
+                            ? 'bg-orange-500/25 border-orange-400 text-orange-200 font-bold'
+                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 mr-1" />
+                        INDUSTRIAL ({thermalCounts.industrial})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setThermalCategoryFilter('wildfire')}
+                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                          thermalCategoryFilter === 'wildfire'
+                            ? 'bg-red-500/25 border-red-400 text-red-200 font-bold'
+                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-1" />
+                        FOREST ({thermalCounts.wildfire})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setThermalCategoryFilter('stubble')}
+                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                          thermalCategoryFilter === 'stubble'
+                            ? 'bg-yellow-500/25 border-yellow-400 text-yellow-200 font-bold'
+                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 mr-1" />
+                        STUBBLE ({thermalCounts.stubble})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setThermalCategoryFilter('gas_flare')}
+                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                          thermalCategoryFilter === 'gas_flare'
+                            ? 'bg-purple-500/25 border-purple-400 text-purple-200 font-bold'
+                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400 mr-1" />
+                        FLARE ({thermalCounts.gas_flare})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setThermalCategoryFilter('mining')}
+                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                          thermalCategoryFilter === 'mining'
+                            ? 'bg-amber-700/25 border-amber-600 text-amber-200 font-bold'
+                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-600 mr-1" />
+                        MINING ({thermalCounts.mining})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setThermalCategoryFilter('cpcb')}
+                        className={`col-span-2 px-1.5 py-1 rounded text-left transition-all border ${
+                          thermalCategoryFilter === 'cpcb'
+                            ? 'bg-rose-500/25 border-rose-400 text-rose-200 font-bold'
+                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-1" />
+                        CPCB CRITICALLY POLLUTED ({thermalCounts.cpcb})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Telemetry metadata */}
+                  <div className="p-2 rounded bg-navy-900/60 border border-navy-700 text-[9.5px] font-mono flex flex-col gap-1 text-gray-300">
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Sensor:</span>
-                      <span className="text-amber-300 font-bold">NASA VIIRS NRT</span>
+                      <span className="text-gray-400">Sensors:</span>
+                      <span className="text-amber-300 font-bold">NASA VIIRS SNPP + N20</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Max FRP:</span>
-                      <span className="text-red-400 font-bold">482 MW</span>
+                      <span className="text-gray-400">Forest GIS:</span>
+                      <span className="text-emerald-400 font-bold">Bharatmaps RFA (422k Polygons)</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Classes:</span>
-                      <span className="text-cyan-300">Industrial, Flare, Stubble</span>
+                      <span className="text-gray-400">Boundary:</span>
+                      <span className="text-cyan-300">Sovereign India Geofence</span>
                     </div>
                   </div>
                 </div>
@@ -1603,37 +2023,56 @@ export function MapView() {
                 </div>
               </div>
 
-              <div className="relative w-full h-32 bg-[#06101e] flex items-center justify-center overflow-hidden">
-                <img
-                  key={`${selectedVessel.mmsi}-${vesselSensor}`}
-                  src={`http://localhost:8000/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}&course=${selectedVessel.course_deg ?? 0}&speed=${selectedVessel.speed_knots ?? 12}`}
-                  alt={`Satellite pass of ${selectedVessel.vessel_name}`}
-                  className="w-full h-full object-cover transition-opacity duration-300"
-                  loading="eager"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    if (!target.src.includes('/api/v1/satellite/vessel-image')) {
-                      target.src = `/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}&course=${selectedVessel.course_deg ?? 0}&speed=${selectedVessel.speed_knots ?? 12}`;
-                    }
-                  }}
-                />
-                <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5">
-                  <div className="flex justify-between text-[7.5px] font-mono text-teal-400/90 drop-shadow">
-                    <span>10m/px · SWATH 250km</span>
-                    <span>
-                      {selectedVessel.lat.toFixed(3)}°N, {selectedVessel.lon.toFixed(3)}°E
-                    </span>
+              {(() => {
+                const fallbackDataUrl = generateTacticalSatelliteDataUrl(
+                  selectedVessel.lat,
+                  selectedVessel.lon,
+                  selectedVessel.mmsi,
+                  vesselSensor,
+                  selectedVessel.course_deg ?? 0,
+                  selectedVessel.speed_knots ?? 12
+                );
+                return (
+                  <div
+                    className="relative w-full h-32 bg-[#06101e] flex items-center justify-center overflow-hidden"
+                    style={{
+                      backgroundImage: `url(${fallbackDataUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
+                    <img
+                      key={`${selectedVessel.mmsi}-${vesselSensor}`}
+                      src={getVesselSatelliteApiUrl(selectedVessel, vesselSensor)}
+                      alt={`Satellite pass of ${selectedVessel.vessel_name}`}
+                      className="w-full h-full object-cover transition-opacity duration-300"
+                      loading="eager"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src !== fallbackDataUrl) {
+                          target.src = fallbackDataUrl;
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5">
+                      <div className="flex justify-between text-[7.5px] font-mono text-teal-400/90 drop-shadow">
+                        <span>10m/px · SWATH 250km</span>
+                        <span>
+                          {selectedVessel.lat.toFixed(3)}°N, {selectedVessel.lon.toFixed(3)}°E
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-end text-[7.5px] font-mono">
+                        <span className="bg-black/70 px-1 py-0.5 rounded text-[7px] text-teal-300 border border-teal-500/30">
+                          🎯 RECON ACQUIRED
+                        </span>
+                        <span className="text-gray-400 bg-black/60 px-1 rounded text-[6.5px]">
+                          Copernicus CDSE
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-end text-[7.5px] font-mono">
-                    <span className="bg-black/70 px-1 py-0.5 rounded text-[7px] text-teal-300 border border-teal-500/30">
-                      🎯 RECON ACQUIRED
-                    </span>
-                    <span className="text-gray-400 bg-black/60 px-1 rounded text-[6.5px]">
-                      Copernicus CDSE
-                    </span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
 
             {/* GFW Track Replay Button */}
@@ -1658,21 +2097,103 @@ export function MapView() {
         </div>
       )}
 
-      {/* ── Hotspot Hover Tooltip ── */}
+      {/* ── Hotspot Hover Tooltip (V2 Spatial Intelligence) ── */}
       {hoveredHotspot && hoveredHotspotPos && (
         <div
-          className="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-full mb-2"
+          className="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-full mb-3 max-w-xs w-72"
           style={{
             left: `${hoveredHotspotPos.x}px`,
             top: `${hoveredHotspotPos.y}px`,
           }}
         >
-          <div className="p-2 rounded bg-gray-900 border border-amber-500 text-white font-mono text-[10px] shadow-xl backdrop-blur-md">
-            <div className="font-bold text-amber-400 uppercase">
-              {hoveredHotspot.fire_type} Hotspot
+          <div className="p-3 rounded-lg bg-navy-950/95 border border-amber-500/70 text-white font-mono text-[11px] shadow-2xl backdrop-blur-md space-y-1.5">
+            {/* Header Badge */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-navy-700">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-2 h-2 rounded-full animate-pulse"
+                  style={{
+                    backgroundColor:
+                      hoveredHotspot.fire_type === 'wildfire'
+                        ? '#EF4444'
+                        : hoveredHotspot.fire_type === 'industrial'
+                        ? '#F97316'
+                        : hoveredHotspot.fire_type === 'stubble'
+                        ? '#EAB308'
+                        : hoveredHotspot.fire_type === 'gas_flare'
+                        ? '#A855F7'
+                        : '#EA580C',
+                  }}
+                />
+                <span className="font-bold text-amber-300 uppercase tracking-wider text-[11px]">
+                  {hoveredHotspot.fire_type === 'wildfire'
+                    ? 'FOREST / WILDFIRE'
+                    : hoveredHotspot.fire_type === 'industrial'
+                    ? 'INDUSTRIAL BLAZE'
+                    : hoveredHotspot.fire_type === 'stubble'
+                    ? 'STUBBLE BURNING'
+                    : hoveredHotspot.fire_type === 'gas_flare'
+                    ? 'GAS FLARING'
+                    : hoveredHotspot.fire_type === 'mining'
+                    ? 'MINING THERMAL'
+                    : 'THERMAL ANOMALY'}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                {hoveredHotspot.classification_score ? `${hoveredHotspot.classification_score}%` : '85%'}
+              </span>
             </div>
-            <div>FRP: {(hoveredHotspot.frp ?? 0).toFixed(1)} MW</div>
-            <div>Confidence: {hoveredHotspot.confidence}</div>
+
+            {/* FRP & Brightness Grid */}
+            <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-300">
+              <div>
+                <span className="text-gray-400">FRP: </span>
+                <span className="font-bold text-rose-400">{(hoveredHotspot.frp ?? 0).toFixed(1)} MW</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Temp: </span>
+                <span className="font-bold text-white">{(hoveredHotspot.brightness ?? 320).toFixed(1)} K</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Sensor: </span>
+                <span className="font-semibold text-cyan-300">{hoveredHotspot.satellite || 'VIIRS'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Conf: </span>
+                <span className="font-semibold text-emerald-400 uppercase">{hoveredHotspot.confidence || 'HIGH'}</span>
+              </div>
+            </div>
+
+            {/* V2 Classification Context / Reason */}
+            {hoveredHotspot.classification_reason && (
+              <div className="pt-1 text-[10px] text-amber-200/90 bg-black/40 p-1.5 rounded border border-navy-700/60 leading-tight">
+                <span className="text-gray-400 font-bold block mb-0.5">PREDICTED CONTEXT:</span>
+                <span>{hoveredHotspot.classification_reason}</span>
+              </div>
+            )}
+
+            {/* CPCB CPA Cluster Proximity */}
+            {hoveredHotspot.near_cpcb_cluster && (
+              <div className="text-[10px] text-rose-300 bg-rose-950/40 p-1.5 rounded border border-rose-500/40 flex items-center justify-between">
+                <span>CPCB CRITICAL CLUSTER:</span>
+                <span className="font-bold text-rose-200">{hoveredHotspot.cpcb_cpa_name || 'Active CPA'}</span>
+              </div>
+            )}
+
+            {/* Statutory Enforcement Agency & Recommended Action */}
+            {hoveredHotspot.responding_agency && (
+              <div className="pt-1 text-[9px] border-t border-navy-700/80 space-y-0.5 text-gray-300">
+                <div>
+                  <span className="text-gray-400">Enforcement: </span>
+                  <span className="text-emerald-300 font-semibold">{hoveredHotspot.responding_agency}</span>
+                </div>
+                {hoveredHotspot.recommended_action && (
+                  <div className="text-gray-400 text-[8.5px] italic leading-tight">
+                    {hoveredHotspot.recommended_action}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

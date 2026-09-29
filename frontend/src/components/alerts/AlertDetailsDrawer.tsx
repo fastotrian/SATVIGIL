@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAlertStore } from '../../store/alertStore';
 import { RISK_COLORS } from '../../constants/riskColors';
+import { getVesselSatelliteApiUrl, generateTacticalSatelliteDataUrl } from '../../utils/satelliteImage';
 
 export function AlertDetailsDrawer() {
   const { selectedVessel, selectVessel, openDossier } = useAlertStore();
@@ -110,36 +111,55 @@ export function AlertDetailsDrawer() {
             </div>
           </div>
 
-          <div className="relative w-full h-44 bg-[#06101e] flex items-center justify-center overflow-hidden">
-            <img
-              key={`${selectedVessel.mmsi}-${vesselSensor}`}
-              src={`http://localhost:8000/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}&course=${selectedVessel.course_deg ?? 0}&speed=${selectedVessel.speed_knots ?? 12}`}
-              alt={`Satellite pass of ${selectedVessel.vessel_name}`}
-              className="w-full h-full object-cover transition-opacity duration-300"
-              loading="eager"
-              onError={(e) => {
-                const target = e.currentTarget;
-                if (!target.src.includes('/api/v1/satellite/vessel-image')) {
-                  target.src = `/api/v1/satellite/vessel-image?lat=${selectedVessel.lat}&lon=${selectedVessel.lon}&mmsi=${selectedVessel.mmsi}&sensor=${vesselSensor}&course=${selectedVessel.course_deg ?? 0}&speed=${selectedVessel.speed_knots ?? 12}`;
-                }
-              }}
-            />
-            {/* Tactical Overlay */}
-            <div className="absolute inset-0 pointer-events-none p-2 flex flex-col justify-between">
-              <div className="flex justify-between text-[8px] font-mono text-teal-400/90 drop-shadow">
-                <span>GSD: 10m · SWATH: 250km</span>
-                <span>{selectedVessel.lat.toFixed(4)}°N, {selectedVessel.lon.toFixed(4)}°E</span>
+          {(() => {
+            const fallbackDataUrl = generateTacticalSatelliteDataUrl(
+              selectedVessel.lat,
+              selectedVessel.lon,
+              selectedVessel.mmsi,
+              vesselSensor,
+              selectedVessel.course_deg ?? 0,
+              selectedVessel.speed_knots ?? 12
+            );
+            return (
+              <div
+                className="relative w-full h-44 bg-[#06101e] flex items-center justify-center overflow-hidden"
+                style={{
+                  backgroundImage: `url(${fallbackDataUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              >
+                <img
+                  key={`${selectedVessel.mmsi}-${vesselSensor}`}
+                  src={getVesselSatelliteApiUrl(selectedVessel, vesselSensor)}
+                  alt={`Satellite pass of ${selectedVessel.vessel_name}`}
+                  className="w-full h-full object-cover transition-opacity duration-300"
+                  loading="eager"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (target.src !== fallbackDataUrl) {
+                      target.src = fallbackDataUrl;
+                    }
+                  }}
+                />
+                {/* Tactical Overlay */}
+                <div className="absolute inset-0 pointer-events-none p-2 flex flex-col justify-between">
+                  <div className="flex justify-between text-[8px] font-mono text-teal-400/90 drop-shadow">
+                    <span>GSD: 10m · SWATH: 250km</span>
+                    <span>{selectedVessel.lat.toFixed(4)}°N, {selectedVessel.lon.toFixed(4)}°E</span>
+                  </div>
+                  <div className="flex justify-between items-end text-[8px] font-mono">
+                    <span className="bg-black/70 px-1.5 py-0.5 rounded text-[8px] text-teal-300 border border-teal-500/40">
+                      🎯 TARGET ACQUIRED
+                    </span>
+                    <span className="text-gray-400 bg-black/60 px-1 rounded text-[7px]">
+                      Copernicus Process API
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-end text-[8px] font-mono">
-                <span className="bg-black/70 px-1.5 py-0.5 rounded text-[8px] text-teal-300 border border-teal-500/40">
-                  🎯 TARGET ACQUIRED
-                </span>
-                <span className="text-gray-400 bg-black/60 px-1 rounded text-[7px]">
-                  Copernicus Process API
-                </span>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         {/* Status Pills */}

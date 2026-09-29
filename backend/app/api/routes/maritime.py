@@ -174,14 +174,88 @@ def parse_vessel(raw_vessel: dict) -> VesselResponse:
     )
 
 
+def is_in_india_oceanic_zone(lat: float, lon: float) -> bool:
+    """
+    Validate whether a coordinate lies strictly within the Indian Oceanic Maritime Zone:
+    - Arabian Sea & Lakshadweep Sea (West Coast)
+    - Bay of Bengal & Coromandel/Odisha Coast (East Coast)
+    - Andaman & Nicobar Sea (Southeast)
+    - Indian Ocean Southern Transit Corridor (South of Kanyakumari / Sri Lanka)
+    Strictly excludes terrestrial points on the Indian landmass or foreign land.
+    """
+    # 1. Broad geographic bounding envelope
+    if not (4.5 <= lat <= 24.5 and 66.0 <= lon <= 95.0):
+        return False
+
+    # 2. Exclude Indian mainland landmass (except coastal marine buffer zones where lat <= 22.0 and lon >= 87.0)
+    try:
+        from app.services.fire.geo_intelligence import geo_engine
+        if geo_engine.is_within_india(lat, lon):
+            if not (lat <= 22.0 and 87.0 <= lon <= 90.0):
+                return False
+    except Exception:
+        pass
+
+    # 3. Northern inland terrestrial barrier (Pakistan / Rajasthan / northern Gujarat)
+    if lat > 23.8:
+        if lat > 23.6 or lon > 68.8:
+            return False
+
+    # 4. Central & Southern Indian peninsula (lat 8.2°N to 20.5°N)
+    if 8.2 <= lat <= 20.5:
+        # Interpolate west and east coastlines
+        if lat < 10.0:
+            coast_west = 77.5 - ((lat - 8.2) / 1.8) * (77.5 - 76.1)
+            coast_east = 77.5 + ((lat - 8.2) / 1.8) * (79.8 - 77.5)
+        elif lat < 13.0:
+            coast_west = 76.1 - ((lat - 10.0) / 3.0) * (76.1 - 74.7)
+            coast_east = 79.8 + ((lat - 10.0) / 3.0) * (80.2 - 79.8)
+        elif lat < 16.5:
+            coast_west = 74.7 - ((lat - 13.0) / 2.5) * (74.7 - 73.7) if lat < 15.5 else 73.7 - ((lat - 15.5) / 1.0) * (73.7 - 73.4)
+            coast_east = 80.2 + ((lat - 13.0) / 3.5) * (82.2 - 80.2)
+        elif lat < 19.3:
+            coast_west = 73.05  # Harbor approach up to 73.05°E
+            coast_east = 82.2 + ((lat - 16.5) / 1.5) * (83.3 - 82.2) if lat < 18.0 else 83.3 + ((lat - 18.0) / 1.3) * (85.0 - 83.3)
+        else:
+            coast_west = 72.85
+            coast_east = 85.0 + ((lat - 19.3) / 1.2) * (86.7 - 85.0)
+
+        if coast_west < lon < coast_east:
+            return False
+
+    # 5. Northern Gujarat & Central-East India (20.5°N to 23.5°N)
+    if 20.5 < lat <= 23.5:
+        if 73.1 < lon < 86.8:
+            return False
+        if 21.1 <= lat <= 22.2 and 70.3 <= lon <= 71.8:
+            return False
+        if lat >= 23.1 and 69.4 <= lon <= 71.5:
+            return False
+
+    # 6. Inland Bangladesh & West Bengal interior
+    if lat > 22.0 and 89.2 < lon < 92.5:
+        return False
+
+    # 7. Mainland Myanmar
+    if lat > 16.0 and lon > 94.0:
+        return False
+
+    # 8. Sri Lanka island interior
+    if 6.8 <= lat <= 9.2 and 80.0 <= lon <= 81.3:
+        return False
+
+    return True
+
+
 @router.get("/vessels", response_model=VesselListResponse)
 async def get_vessels(
     dark_only: bool = Query(False, description="Filter for dark vessels with AIS transponder off"),
     min_risk: Optional[float] = Query(None, ge=0.0, le=1.0, description="Minimum risk score filter"),
 ):
     """
-    Fetch active vessels in Indian waters with live behavioral risk scores.
+    Fetch active vessels in Indian oceanic zone with live behavioral risk scores.
     Combines live GFW vessels with strategic demo vessels (e.g., MT GUJARAT PRIDE).
+    Strictly filters for the Indian Oceanic Zone and limits to 100-200 vessels.
     """
     demo_vessels = load_fallback_vessels()
     raw_vessels = await fetch_ais_vessels()
@@ -196,16 +270,43 @@ async def get_vessels(
             seen_mmsi.add(mmsi)
             all_raw.append(v)
 
+    # 1. Parse and validate vessels
     vessels = [parse_vessel(v) for v in all_raw]
 
-    # Apply filters
+    # 2. Strict Indian Oceanic Zone filter (Arabian Sea, Bay of Bengal, Indian Ocean corridor)
+    vessels = [v for v in vessels if is_in_india_oceanic_zone(v.lat, v.lon)]
+
+    # 3. Apply optional filters
     if dark_only:
         vessels = [v for v in vessels if v.is_dark]
     if min_risk is not None:
         vessels = [v for v in vessels if v.risk_score >= min_risk]
 
-    # Cap to top 1500 vessels for lightning-fast WebGL rendering
-    vessels = vessels[:1500]
+    # 4. Limit to 100 - 200 vessels (target ~150 priority & sampled traffic)
+    # Ensure critical/dark/suspect vessels (e.g. MT GUJARAT PRIDE) are always retained
+    vessels.sort(
+        key=lambda v: (
+            1 if v.mmsi == "419082341" else 0,
+            1 if v.is_dark else 0,
+            1 if v.risk_score >= 0.7 else 0,
+            v.risk_score,
+        ),
+        reverse=True,
+    )
+
+    if len(vessels) > 160:
+        critical_vessels = [
+            v for v in vessels if v.is_dark or v.risk_score >= 0.6 or v.mmsi == "419082341"
+        ]
+        regular_vessels = [v for v in vessels if v not in critical_vessels]
+        target_count = 150
+        needed_regular = max(80, min(140, target_count - len(critical_vessels)))
+        if len(regular_vessels) > needed_regular:
+            stride = max(1, len(regular_vessels) // needed_regular)
+            sampled_regular = regular_vessels[::stride][:needed_regular]
+        else:
+            sampled_regular = regular_vessels
+        vessels = critical_vessels + sampled_regular
 
     return VesselListResponse(
         vessels=vessels,

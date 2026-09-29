@@ -47,21 +47,21 @@ export function DashboardHeader() {
       style={{ background: 'var(--navy-950)', borderBottom: '1px solid var(--navy-500)' }}
     >
       {/* ── Top Bar with Brand, Central 3-Tab Navigation, and Utilities ── */}
-      <div className="h-14 px-4 py-1.5 flex items-center justify-between gap-4">
+      <div className="relative h-14 px-4 py-1.5 flex items-center justify-between gap-2 sm:gap-4">
 
         {/* Left: Branding */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <SatIcon />
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span
-                className="font-bold text-base tracking-[0.16em] uppercase"
+                className="font-bold text-sm sm:text-base tracking-[0.16em] uppercase"
                 style={{ color: 'var(--teal-400)', letterSpacing: '0.18em' }}
               >
                 SATVIGIL
               </span>
               <span
-                className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-widest border"
+                className="hidden sm:inline text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-widest border"
                 style={{
                   background: 'rgba(0,212,232,0.08)',
                   borderColor: 'rgba(0,212,232,0.35)',
@@ -71,60 +71,60 @@ export function DashboardHeader() {
                 DEFENSE &amp; SURVEILLANCE
               </span>
             </div>
-            <span className="text-[10px] text-gray-400 tracking-wide">
+            <span className="hidden xl:inline text-[10px] text-gray-400 tracking-wide">
               Satellite Early Warning &amp; Multi-Hazard Command
             </span>
           </div>
         </div>
 
-        {/* Center: 3 Navigation Bar Buttons (Maritime, Thermal Zone, Geological) */}
-        <nav className="flex items-center gap-1.5 p-1 rounded-lg border border-navy-700 bg-navy-900/90 shadow-inner">
+        {/* Center: 3 Navigation Bar Buttons (Mathematically centered, zero shifting) */}
+        <nav className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-1.5 p-1 rounded-lg border border-navy-700 bg-navy-900/90 shadow-inner z-10 pointer-events-auto">
           <button
             type="button"
             onClick={() => setNavTab('maritime')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-mono text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-md font-mono text-[11px] sm:text-xs font-bold transition-all ${
               activeNavTab === 'maritime'
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-navy-800 border border-transparent'
             }`}
           >
-            <Ship className="w-3.5 h-3.5 text-cyan-400" />
+            <Ship className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span>MARITIME</span>
           </button>
 
           <button
             type="button"
             onClick={() => setNavTab('thermal')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-mono text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-md font-mono text-[11px] sm:text-xs font-bold transition-all ${
               activeNavTab === 'thermal'
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-navy-800 border border-transparent'
             }`}
           >
-            <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>THERMAL ZONE</span>
           </button>
 
           <button
             type="button"
             onClick={() => setNavTab('geological')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md font-mono text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-md font-mono text-[11px] sm:text-xs font-bold transition-all ${
               activeNavTab === 'geological'
                 ? 'bg-rose-500/20 text-rose-300 border border-rose-400/60 shadow-[0_0_12px_rgba(244,63,94,0.25)]'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-navy-800 border border-transparent'
             }`}
           >
-            <Mountain className="w-3.5 h-3.5 text-rose-400" />
+            <Mountain className="w-3.5 h-3.5 text-rose-400 shrink-0" />
             <span>GEOLOGICAL</span>
           </button>
         </nav>
 
         {/* Right: Thermal Toggle (when in thermal zone) + Utilities */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
           {/* Thermal Zone Only Toggle */}
           {activeNavTab === 'thermal' && (
-            <div className="flex items-center gap-2 px-2.5 py-1 rounded border border-amber-500/40 bg-amber-950/30">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded border border-amber-500/40 bg-amber-950/30">
+              <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="text-[11px] font-mono text-amber-300 font-bold">FIRE / THERMAL:</span>
               <button
                 type="button"
@@ -142,7 +142,7 @@ export function DashboardHeader() {
 
           {/* Geological Status Pill */}
           {activeNavTab === 'geological' && (
-            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded border border-rose-500/40 bg-rose-950/30">
+            <div className="hidden 2xl:flex items-center gap-2 px-2.5 py-1 rounded border border-rose-500/40 bg-rose-950/30">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
               <span className="text-[11px] font-mono text-rose-300 font-bold">
                 LANDSLIDE DANGER ZONES: ACTIVE

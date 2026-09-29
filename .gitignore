@@ -1,6 +1,13 @@
-# Environment
+# Environment (DO NOT COMMIT SECRETS)
 .env
+.env.*
+!.env.example
 *.env.local
+
+# Large spatial datasets (>50MB) - Local only
+boundaries/*.geojsonl
+boundaries/*.jsonl
+*.geojsonl
 
 # Python
 __pycache__/
