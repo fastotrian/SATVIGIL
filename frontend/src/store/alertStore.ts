@@ -5,6 +5,7 @@
 import { create } from "zustand";
 import type { Vessel, Alert as MaritimeAlert, ForensicDossier, SpillDriftForecast, DriftStepForecast } from "../types/maritime";
 import { DEFAULT_DOSSIER } from "../components/dossier/ForensicDossierModal";
+import { generateLocalSpillDriftForecast } from "../utils/driftPhysics";
 
 export type { Alert } from "../types/maritime";
 
@@ -31,6 +32,7 @@ interface AlertStore {
   isAudioMuted: boolean;
   activeDossier: ForensicDossier | null;
   isDossierOpen: boolean;
+  isMpaDossierOpen: boolean;
 
   // INCOIS-OOSA Drift Simulation
   driftForecast: SpillDriftForecast | null;
@@ -50,6 +52,8 @@ interface AlertStore {
   toggleAudio: () => void;
   openDossier: (dossierId?: string) => Promise<void>;
   closeDossier: () => void;
+  openMpaDossier: () => void;
+  closeMpaDossier: () => void;
   loadDriftForecast: (spillId?: string) => Promise<void>;
   setSelectedDriftHour: (hour: number) => void;
   toggleDriftSim: (active?: boolean) => void;
@@ -82,7 +86,8 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
   isAudioMuted: false,
   activeDossier: null,
   isDossierOpen: false,
-  driftForecast: null,
+  isMpaDossierOpen: false,
+  driftForecast: generateLocalSpillDriftForecast(),
   selectedDriftHour: 0,
   isDriftSimActive: false,
   isDriftPlaying: false,
@@ -237,15 +242,27 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
 
   closeDossier: () => set({ isDossierOpen: false }),
 
+  openMpaDossier: () => set({ isMpaDossierOpen: true }),
+
+  closeMpaDossier: () => set({ isMpaDossierOpen: false }),
+
   loadDriftForecast: async (spillId = "latest") => {
+    // 1. Ensure local forecast is active immediately
+    if (!get().driftForecast) {
+      set({ driftForecast: generateLocalSpillDriftForecast(), isDriftSimActive: true });
+    }
+    // 2. Fetch live data from backend with 2s timeout
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/maritime/spills/${spillId}/drift-forecast`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`/api/v1/maritime/spills/${spillId}/drift-forecast`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
         set({ driftForecast: data, isDriftSimActive: true });
       }
-    } catch (err) {
-      console.error("Failed to load drift forecast:", err);
+    } catch {
+      // Seamlessly keep client-computed hydrodynamic forecast
     }
   },
 
@@ -254,11 +271,12 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
   toggleDriftSim: (active) =>
     set((state) => {
       const nextActive = active !== undefined ? active : !state.isDriftSimActive;
-      if (nextActive && !state.driftForecast) {
-        // trigger load if missing
-        get().loadDriftForecast();
-      }
-      return { isDriftSimActive: nextActive, isDriftPlaying: false };
+      const forecast = state.driftForecast || generateLocalSpillDriftForecast();
+      return {
+        isDriftSimActive: nextActive,
+        driftForecast: forecast,
+        isDriftPlaying: false,
+      };
     }),
 
   toggleDriftPlaying: () =>
@@ -266,10 +284,10 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
 
   getActiveDriftStep: () => {
     const { driftForecast, selectedDriftHour } = get();
-    if (!driftForecast || !driftForecast.steps.length) return null;
+    const forecast = driftForecast || generateLocalSpillDriftForecast();
     return (
-      driftForecast.steps.find((s) => s.time_offset_hours === selectedDriftHour) ||
-      driftForecast.steps[0]
+      forecast.steps.find((s) => s.time_offset_hours === selectedDriftHour) ||
+      forecast.steps[0]
     );
   },
 

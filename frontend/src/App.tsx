@@ -13,6 +13,7 @@ import { DashboardHeader } from "./components/dashboard/DashboardHeader";
 import { OpsLogFooter } from "./components/dashboard/OpsLogFooter";
 import { AlertDetailsDrawer } from "./components/alerts/AlertDetailsDrawer";
 import { ForensicDossierModal } from "./components/dossier/ForensicDossierModal";
+import { MpaBreachDossierModal } from "./components/dossier/MpaBreachDossierModal";
 import { useAlertStore } from "./store/alertStore";
 import { connectWebSocket } from "./services/websocket";
 import { playAlarm } from "./services/soundEffects";
@@ -87,6 +88,9 @@ export default function App() {
 
       {/* Forensic Evidentiary Legal Dossier Modal (Root Level Overlay) */}
       <ForensicDossierModal />
+
+      {/* Forensic Marine Protected Area (MPA) Sanctuary Breach Dossier Modal */}
+      <MpaBreachDossierModal />
     </div>
   );
 }

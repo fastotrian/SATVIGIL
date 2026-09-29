@@ -48,6 +48,7 @@ function CompactAlertCard({
   onTarget,
   onAck,
   onDossier,
+  onMpaDossier,
 }: {
   alert: Alert;
   isSelected: boolean;
@@ -55,9 +56,11 @@ function CompactAlertCard({
   onTarget: () => void;
   onAck: () => void;
   onDossier: () => void;
+  onMpaDossier?: () => void;
 }) {
   const meta = getAlertMeta(alert.alert_type);
   const risk = getRiskCfg(alert.risk_level);
+  const isMpa = alert.alert_type === 'ILLEGAL_FISHING' || alert.title.toLowerCase().includes('mpa');
   const isSpillOrDark = alert.alert_type === 'OIL_SPILL' || alert.alert_type === 'DARK_VESSEL';
 
   return (
@@ -120,6 +123,16 @@ function CompactAlertCard({
             </span>
 
             <div className="flex items-center gap-1.5">
+              {isMpa && onMpaDossier && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onMpaDossier(); }}
+                  className="font-mono text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-500/50 bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 transition-colors"
+                >
+                  🛡️ MPA Dossier
+                </button>
+              )}
+
               {isSpillOrDark && (
                 <button
                   type="button"
@@ -161,7 +174,7 @@ function CompactAlertCard({
 
 // ── Main Threat Panel ─────────────────────────────────────────────────────
 export function AlertPanel({ isCollapsed, onToggleCollapse }: { isCollapsed?: boolean; onToggleCollapse?: () => void }) {
-  const { alerts, setAlerts, acknowledgeAlert, vessels, selectVessel, openDossier } = useAlertStore();
+  const { alerts, setAlerts, acknowledgeAlert, vessels, selectVessel, openDossier, openMpaDossier } = useAlertStore();
   const [filterType, setFilterType] = useState<string>('ALL');
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>('ALERT-SPILL-001');
 
@@ -286,6 +299,11 @@ export function AlertPanel({ isCollapsed, onToggleCollapse }: { isCollapsed?: bo
               }}
               onAck={() => acknowledgeAlert(alert.id)}
               onDossier={() => openDossier(alert.id)}
+              onMpaDossier={() => {
+                const v = vessels.find((ves) => ves.mmsi === alert.vessel_mmsi);
+                if (v) selectVessel(v);
+                openMpaDossier();
+              }}
             />
           ))
         )}

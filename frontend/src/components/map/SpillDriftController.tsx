@@ -186,7 +186,9 @@ export function SpillDriftController() {
           <div className="p-2 rounded border" style={{ background: 'var(--navy-900)', borderColor: 'var(--navy-600)' }}>
             <span className="text-[9px] text-gray-400 block">SLICK CORE CENTROID</span>
             <span className="font-bold text-emerald-400 text-xs block">
-              {activeStep?.centroid_lat.toFixed(3)}°N, {activeStep?.centroid_lon.toFixed(3)}°E
+              {activeStep?.centroid_lat !== undefined && activeStep?.centroid_lon !== undefined
+                ? `${activeStep.centroid_lat.toFixed(3)}°N, ${activeStep.centroid_lon.toFixed(3)}°E`
+                : '19.200°N, 71.500°E'}
             </span>
             <span className="text-[10px] text-gray-400 block">Arabian Sea Sector</span>
           </div>

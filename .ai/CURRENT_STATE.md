@@ -345,6 +345,38 @@
         5. Enhanced button interaction states in `AlertDetailsDrawer.tsx` (`active:scale-[0.98] cursor-pointer hover:brightness-125`).
     - **Verification**:
       - Clean production build with `tsc && vite build` (1,930 modules transformed in 9.56s, zero errors).
+  - **PART 50:** ✅ Thermal Zone & Geological Hazard Layers Typography Scaling & Tactical UI Polish:
+    - **Thermal Zone Intelligence V2 Upgrade**:
+      - Scaled typography across the Thermal panel to eliminate tiny clinical text: section title to `text-[12px] font-bold`, description to `text-[11px] leading-normal`, layer title to `text-[13px] font-semibold`, subtext to `text-[10.5px] font-mono`, and context filter chips to `text-[11px] font-mono`.
+      - Replaced tiny dots (`w-1.5 h-1.5`) with visible `w-2 h-2` status dots.
+      - Styled primary toggle and filter cards with rich dark navy glass (`bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-900/40`), ensuring clear contrast against the map canvas.
+      - Upgraded telemetry metadata box to `text-[11px]` with formatted label/value rows.
+    - **Geological Hazard Zones (Landslides) Upgrade**:
+      - Scaled header to `text-[12px] font-mono font-bold text-rose-400` and description to `text-[11px] text-slate-300`.
+      - Enlarged sector card titles (`text-[12.5px] font-bold`), sub-labels (`text-[10.5px] font-mono text-cyan-200/80`), and risk badges (`text-[9.5px] font-mono font-bold px-2 py-0.5`).
+      - Applied consistent navy translucent glass (`bg-[#0c2349]/80 hover:bg-[#123366] border border-cyan-900/40 hover:border-rose-500/60`).
+    - **Verification**:
+      - Clean production build with `tsc && vite build` (1,930 modules transformed in 8.20s, zero errors).
+  - **PART 51:** ✅ INCOIS-OOSA 72h Dynamic Trajectory Simulation, Official Authority Email Dispatcher, & Dedicated MPA Breach Prosecution Dossier:
+    - **INCOIS-OOSA 72h Ocean Drift Simulation Fix**:
+      - *Root Cause*: `loadDriftForecast()` made a hardcoded call to `http://localhost:8000/...` with no fallback. When offline or during cold start, `driftForecast` was null, `getActiveDriftStep()` returned null, the HUD rendered empty coordinates `°N, °E`, and `MapView.tsx` skipped rendering the drift corridor, leaving only the static origin slick.
+      - *Fix*:
+        1. Created `frontend/src/utils/driftPhysics.ts` implementing a deterministic client-side Fay spreading and hydrodynamic drift physics model (1.15 kts @ 118° ESE + 3% wind leeway, generating 24-point expanding GeoJSON polygons for 0, 6, 12, 18, 24, 36, 48, 72h).
+        2. Initialized `driftForecast` in `alertStore.ts` with local physics fallback, ensuring immediate zero-latency simulation and live backend synchronization.
+        3. In `MapView.tsx`, hide the static origin slick when `isDriftSimActive` is running, and render the active drift step polygon in high-contrast pulsing crimson/amber (`#EF4444` / `#F59E0B`) with dynamic centroid telemetry billboard markers that visibly traverse the ocean.
+        4. Safe-guarded `SpillDriftController.tsx` centroid coordinates display against missing data.
+    - **Official Pre-Written Email Dispatcher (`EmailAuthorityModal.tsx`)**:
+      - Added interactive email modal pre-configured with official recipient authorities (Coast Guard Western Command, DG Shipping, State Forest Dept, CPCB), urgent legal subject lines, and cryptographic evidence citations.
+      - Integrated dual-action dispatch: one-click system mail client launcher (`mailto:`) and clipboard copy with toast feedback.
+      - Added to both Oil Spill and MPA Dossier headers and footers.
+    - **Dedicated MPA Sanctuary Breach Prosecution Dossier (`MpaBreachDossierModal.tsx`)**:
+      - Built a dedicated forensic legal dossier window specifically for Marine Protected Area violations (e.g. `FV KUTCH FISHERMAN` inside *Gulf of Kutch Marine National Park*).
+      - Configured statutory citations under **Wildlife (Protection) Act, 1972 (Sections 27, 33A, 51)** and **CRZ-IA / Environment (Protection) Act, 1986**, with non-bailable offense parameters, vessel confiscation, and ₹25,00,000 fine directives.
+      - Rendered 4 forensic tabs: Sanctuary Geofence Evidence, Trawling Kinematics & Dwell, Statutory Penalties, and Interceptor ICGS C-438 Seizure Directive.
+      - Integrated "Print / Save Legal PDF" export and email authority transmission.
+      - Dynamically switched buttons in `AlertDetailsDrawer.tsx` and `AlertPanel.tsx` (`🛡️ Generate MPA Sanctuary Breach Dossier` vs `⚖️ Generate Legal Prosecution Dossier`).
+    - **Verification**:
+      - Clean production build with `tsc && vite build` (1,933 modules transformed in 3.74s, zero errors).
 
 ---
 

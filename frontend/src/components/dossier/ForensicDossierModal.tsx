@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAlertStore } from '../../store/alertStore';
 import type { ForensicDossier } from '../../types/maritime';
+import { EmailAuthorityModal } from './EmailAuthorityModal';
 
 // Hardcoded fallback in case backend is loading
 export const DEFAULT_DOSSIER: ForensicDossier = {
@@ -99,6 +100,7 @@ export function ForensicDossierModal() {
   const { isDossierOpen, activeDossier, closeDossier } = useAlertStore();
   const [activeTab, setActiveTab] = useState<'evidence' | 'attribution' | 'legal' | 'tactical'>('evidence');
   const [dispatched, setDispatched] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
   if (!isDossierOpen) return null;
 
@@ -114,69 +116,79 @@ export function ForensicDossierModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
-      {/* Modal Container */}
-      <div
-        className="w-full max-w-5xl rounded-xl border shadow-2xl overflow-hidden flex flex-col my-auto transition-all animate-in fade-in zoom-in-95 duration-200"
-        style={{
-          background: 'var(--navy-950)',
-          borderColor: 'var(--navy-500)',
-          maxHeight: '92vh',
-        }}
-      >
-        {/* Top Government Emblem Banner */}
+    <>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+        {/* Modal Container */}
         <div
-          className="px-6 py-4 border-b flex flex-wrap items-center justify-between gap-4"
+          className="w-full max-w-5xl rounded-xl border shadow-2xl overflow-hidden flex flex-col my-auto transition-all animate-in fade-in zoom-in-95 duration-200"
           style={{
-            background: 'linear-gradient(90deg, #0A1628 0%, #0F2347 50%, #0A1628 100%)',
+            background: 'var(--navy-950)',
             borderColor: 'var(--navy-500)',
+            maxHeight: '92vh',
           }}
         >
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded border flex items-center justify-center text-xl font-bold bg-[#060E1C] border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(0,212,232,0.3)]">
-              ⚖️
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30">
-                  {dossier.classification}
-                </span>
-                <span className="text-[10px] font-mono text-gray-400">
-                  REF: {dossier.dossier_id}
-                </span>
+          {/* Top Government Emblem Banner */}
+          <div
+            className="px-6 py-4 border-b flex flex-wrap items-center justify-between gap-4"
+            style={{
+              background: 'linear-gradient(90deg, #0A1628 0%, #0F2347 50%, #0A1628 100%)',
+              borderColor: 'var(--navy-500)',
+            }}
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded border flex items-center justify-center text-xl font-bold bg-[#060E1C] border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(0,212,232,0.3)]">
+                ⚖️
               </div>
-              <h1 className="text-base font-extrabold text-white tracking-wide mt-0.5">
-                FORENSIC OIL SPILL EVIDENTIARY DOSSIER
-              </h1>
-              <p className="text-[11px] text-gray-300 font-mono">
-                {dossier.issuing_authority}
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30">
+                    {dossier.classification}
+                  </span>
+                  <span className="text-[10px] font-mono text-gray-400">
+                    REF: {dossier.dossier_id}
+                  </span>
+                </div>
+                <h1 className="text-base font-extrabold text-white tracking-wide mt-0.5">
+                  FORENSIC OIL SPILL EVIDENTIARY DOSSIER
+                </h1>
+                <p className="text-[11px] text-gray-300 font-mono">
+                  {dossier.issuing_authority}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsEmailModalOpen(true)}
+                className="px-3.5 py-1.5 rounded text-xs font-mono font-bold flex items-center gap-1.5 transition-colors border shadow bg-cyan-950/80 border-cyan-500/60 text-cyan-300 hover:bg-cyan-900"
+              >
+                <span>✉️</span>
+                <span>Email Authorities</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="px-3.5 py-1.5 rounded text-xs font-mono font-bold flex items-center gap-1.5 transition-colors border"
+                style={{
+                  background: 'rgba(0, 212, 232, 0.15)',
+                  borderColor: 'var(--teal-500)',
+                  color: 'var(--teal-400)',
+                }}
+              >
+                <span>🖨️</span>
+                <span>Print / Save Legal PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={closeDossier}
+                className="w-8 h-8 rounded flex items-center justify-center text-gray-400 hover:text-white bg-navy-900 hover:bg-navy-800 transition-colors border border-navy-700"
+              >
+                ✕
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-3.5 py-1.5 rounded text-xs font-mono font-bold flex items-center gap-1.5 transition-colors border"
-              style={{
-                background: 'rgba(0, 212, 232, 0.15)',
-                borderColor: 'var(--teal-500)',
-                color: 'var(--teal-400)',
-              }}
-            >
-              <span>🖨️</span>
-              <span>Print / Save Legal PDF</span>
-            </button>
-            <button
-              type="button"
-              onClick={closeDossier}
-              className="w-8 h-8 rounded flex items-center justify-center text-gray-400 hover:text-white bg-navy-900 hover:bg-navy-800 transition-colors border border-navy-700"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
 
         {/* Executive Target Banner */}
         <div
@@ -545,6 +557,15 @@ export function ForensicDossierModal() {
           <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => setIsEmailModalOpen(true)}
+              className="px-4 py-2 rounded text-xs font-mono font-bold transition-all flex items-center gap-1.5 shadow bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-300"
+            >
+              <span>✉️</span>
+              <span>Email Notice to Authorities</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleDispatch}
               className="px-4 py-2 rounded text-xs font-mono font-bold transition-colors flex items-center gap-1.5 shadow"
               style={{
@@ -573,5 +594,20 @@ export function ForensicDossierModal() {
         </div>
       </div>
     </div>
+
+    {/* Official Email Authority Modal */}
+    <EmailAuthorityModal
+      isOpen={isEmailModalOpen}
+      onClose={() => setIsEmailModalOpen(false)}
+      type="oil_spill"
+      vesselName={dossier.culprit_vessel.name}
+      mmsi={dossier.culprit_vessel.mmsi}
+      lat={dossier.location.lat}
+      lon={dossier.location.lon}
+      incidentId={dossier.incident_id}
+      sha256={dossier.evidence_sha256_hash}
+      extraDetail={`${dossier.satellite_sar.slick_area_km2} km²`}
+    />
+  </>
   );
 }

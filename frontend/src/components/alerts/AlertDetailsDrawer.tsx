@@ -4,7 +4,7 @@ import { RISK_COLORS } from '../../constants/riskColors';
 import { getVesselSatelliteApiUrl, generateTacticalSatelliteDataUrl } from '../../utils/satelliteImage';
 
 export function AlertDetailsDrawer() {
-  const { selectedVessel, selectVessel, openDossier } = useAlertStore();
+  const { selectedVessel, selectVessel, openDossier, openMpaDossier } = useAlertStore();
   const [vesselSensor, setVesselSensor] = useState<'sentinel1' | 'sentinel2'>('sentinel1');
 
   if (!selectedVessel) return null;
@@ -279,18 +279,33 @@ export function AlertDetailsDrawer() {
         className="p-3.5 border-t space-y-2"
         style={{ background: 'var(--navy-900)', borderColor: 'var(--navy-500)' }}
       >
-        <button
-          type="button"
-          onClick={() => openDossier('latest')}
-          className="w-full font-bold text-xs py-2 px-3 rounded transition-all flex justify-center items-center gap-1.5 shadow border active:scale-[0.98] cursor-pointer hover:brightness-125"
-          style={{
-            background: 'linear-gradient(90deg, rgba(0, 212, 232, 0.25), rgba(0, 212, 232, 0.5))',
-            borderColor: 'var(--teal-500)',
-            color: 'var(--teal-300)',
-          }}
-        >
-          <span>⚖️ Generate Legal Prosecution Dossier</span>
-        </button>
+        {selectedVessel.in_mpa ? (
+          <button
+            type="button"
+            onClick={() => openMpaDossier()}
+            className="w-full font-bold text-xs py-2 px-3 rounded transition-all flex justify-center items-center gap-1.5 shadow border active:scale-[0.98] cursor-pointer hover:brightness-125"
+            style={{
+              background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.5))',
+              borderColor: '#10B981',
+              color: '#6EE7B7',
+            }}
+          >
+            <span>🛡️ Generate MPA Sanctuary Breach Dossier</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => openDossier('latest')}
+            className="w-full font-bold text-xs py-2 px-3 rounded transition-all flex justify-center items-center gap-1.5 shadow border active:scale-[0.98] cursor-pointer hover:brightness-125"
+            style={{
+              background: 'linear-gradient(90deg, rgba(0, 212, 232, 0.25), rgba(0, 212, 232, 0.5))',
+              borderColor: 'var(--teal-500)',
+              color: 'var(--teal-300)',
+            }}
+          >
+            <span>⚖️ Generate Legal Prosecution Dossier</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => selectVessel(null)}

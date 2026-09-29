@@ -35,6 +35,8 @@ import {
   defined,
   HeightReference,
   PropertyBag,
+  LabelStyle,
+  VerticalOrigin,
 } from 'cesium';
 
 import {
@@ -1228,9 +1230,17 @@ export function MapView() {
     ds.entities.removeAll();
     ds.show = isDriftSimActive;
 
+    // Toggle static spills visibility so only the active moving drift slick is shown
+    if (spillsDataSourceRef.current) {
+      spillsDataSourceRef.current.show = !isDriftSimActive && activeFilters.showSpillZones;
+    }
+    if (activeSpillDataSourceRef.current) {
+      activeSpillDataSourceRef.current.show = !isDriftSimActive && activeFilters.showSpillZones;
+    }
+
     if (!isDriftSimActive || !driftForecast) return;
 
-    // A. Trajectory line
+    // A. Trajectory line corridor
     if (driftForecast.trajectory_points?.length > 1) {
       const linePositions = driftForecast.trajectory_points.map((p) =>
         Cartesian3.fromDegrees(p.lon, p.lat, 20)
@@ -1240,34 +1250,41 @@ export function MapView() {
         name: 'drift-trajectory-corridor',
         polyline: {
           positions: linePositions,
-          width: 3.0,
+          width: 3.5,
           material: new PolylineDashMaterialProperty({
             color: Color.fromCssColorString('#F59E0B'),
-            dashLength: 14.0,
+            dashLength: 16.0,
           }),
         },
       });
     }
 
-    // B. Active time step polygon
+    // B. Active moving time-step slick polygon
     if (activeDriftStep?.geojson_polygon) {
       const coords = (activeDriftStep.geojson_polygon as any).coordinates[0];
       if (coords?.length) {
-        const polyPositions = coords.map((c: number[]) => Cartesian3.fromDegrees(c[0], c[1], 10));
+        const polyPositions = coords.map((c: number[]) => Cartesian3.fromDegrees(c[0], c[1], 15));
 
         ds.entities.add({
           name: `drift-step-${activeDriftStep.time_offset_hours}`,
           polygon: {
             hierarchy: polyPositions,
-            material: Color.fromCssColorString('#F59E0B').withAlpha(0.45),
-            outline: true,
-            outlineColor: Color.fromCssColorString('#FCD34D'),
-            outlineWidth: 2.5,
+            material: new ColorMaterialProperty(
+              new CallbackProperty(() => {
+                const flash = Math.sin(Date.now() / 180) > 0;
+                return flash
+                  ? Color.fromCssColorString('#EF4444').withAlpha(0.85)
+                  : Color.fromCssColorString('#DC2626').withAlpha(0.60);
+              }, false)
+            ),
+            outline: new ConstantProperty(true),
+            outlineColor: new ConstantProperty(Color.fromCssColorString('#F59E0B')),
+            outlineWidth: new ConstantProperty(3.5),
           },
         });
       }
 
-      // C. Centroid Pulse Marker
+      // C. Centroid Pulse Marker & Dynamic Telemetry Label
       ds.entities.add({
         name: 'drift-centroid-pulse',
         position: Cartesian3.fromDegrees(
@@ -1276,10 +1293,20 @@ export function MapView() {
           35
         ),
         point: {
-          pixelSize: 12,
-          color: Color.fromCssColorString('#FBBF24'),
-          outlineColor: Color.fromCssColorString('#060E1C'),
+          pixelSize: 14,
+          color: Color.fromCssColorString('#F59E0B'),
+          outlineColor: Color.fromCssColorString('#FFFFFF'),
           outlineWidth: 2,
+        },
+        label: {
+          text: `DRIFT T+${activeDriftStep.time_offset_hours}H · ${activeDriftStep.area_km2.toFixed(2)} km²\n${activeDriftStep.centroid_lat.toFixed(3)}°N, ${activeDriftStep.centroid_lon.toFixed(3)}°E`,
+          font: 'bold 11px monospace',
+          fillColor: Color.fromCssColorString('#FCD34D'),
+          outlineColor: Color.fromCssColorString('#0B132B'),
+          outlineWidth: 3,
+          style: LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: VerticalOrigin.BOTTOM,
+          pixelOffset: new Cartesian2(0, -18),
         },
       });
     }
@@ -1625,23 +1652,23 @@ export function MapView() {
             {activeNavTab === 'thermal' && (
               <>
                 <div>
-                  <div className="text-[9px] font-mono font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="text-[12px] font-mono font-bold text-amber-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-amber-400" />
                     <span>THERMAL ZONE INTELLIGENCE V2</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 leading-tight">
+                  <p className="text-[11px] text-slate-300 leading-normal">
                     NASA VIIRS active hotspots + Sovereign Boundary + Bharatmaps RFA Forest &amp; Mining Belts.
                   </p>
                 </div>
 
                 {/* Primary Layer Toggle */}
-                <div className="pt-2 border-t border-navy-700 flex flex-col gap-2">
-                  <div className="flex items-center justify-between p-2 rounded bg-navy-800/90 border border-amber-500/40">
-                    <div className="flex items-center gap-2">
-                      <Flame className="w-4 h-4 text-amber-400" />
+                <div className="pt-2.5 border-t border-cyan-900/40 flex flex-col gap-2">
+                  <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] border border-amber-500/40 transition-all">
+                    <div className="flex items-center gap-2.5">
+                      <Flame className="w-4 h-4 text-amber-400 shrink-0" />
                       <div>
-                        <div className="text-[11px] font-bold text-white">Fire / Thermal Layer</div>
-                        <div className="text-[9px] text-amber-300/80">
+                        <div className="text-[13px] font-semibold text-white">Fire / Thermal Layer</div>
+                        <div className="text-[10.5px] font-mono text-amber-200/90">
                           {filteredHotspots.length} / {hotspots.length} Active Hotspots
                         </div>
                       </div>
@@ -1649,10 +1676,10 @@ export function MapView() {
                     <button
                       type="button"
                       onClick={() => toggleFilter('showFireHotspots')}
-                      className={`px-2.5 py-1 rounded text-[10px] font-mono font-bold transition-all shadow ${
+                      className={`px-3 py-1.5 rounded-md text-[11px] font-mono font-bold transition-all shadow ${
                         activeFilters.showFireHotspots
-                          ? 'bg-amber-400 text-navy-950 font-bold'
-                          : 'bg-navy-900 text-gray-400 border border-navy-600'
+                          ? 'bg-amber-400 text-slate-950 font-bold'
+                          : 'bg-slate-800 text-slate-400 border border-slate-600'
                       }`}
                     >
                       {activeFilters.showFireHotspots ? 'ON' : 'OFF'}
@@ -1660,18 +1687,18 @@ export function MapView() {
                   </div>
 
                   {/* V2 Category Filter Chips */}
-                  <div className="flex flex-col gap-1">
-                    <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="text-[11px] font-mono font-bold text-cyan-300 uppercase tracking-wider">
                       V2 Context Filters
                     </div>
-                    <div className="grid grid-cols-2 gap-1 text-[9px] font-mono">
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
                       <button
                         type="button"
                         onClick={() => setThermalCategoryFilter('all')}
-                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                        className={`px-2.5 py-1.5 rounded-lg text-left transition-all border ${
                           thermalCategoryFilter === 'all'
                             ? 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold'
-                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                            : 'bg-[#0c2349]/80 border-cyan-900/40 text-slate-300 hover:text-white hover:bg-[#123366]'
                         }`}
                       >
                         ALL ({hotspots.length})
@@ -1679,91 +1706,94 @@ export function MapView() {
                       <button
                         type="button"
                         onClick={() => setThermalCategoryFilter('industrial')}
-                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                        className={`px-2.5 py-1.5 rounded-lg text-left transition-all border flex items-center ${
                           thermalCategoryFilter === 'industrial'
                             ? 'bg-orange-500/25 border-orange-400 text-orange-200 font-bold'
-                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                            : 'bg-[#0c2349]/80 border-cyan-900/40 text-slate-300 hover:text-white hover:bg-[#123366]'
                         }`}
                       >
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 mr-1" />
-                        INDUSTRIAL ({thermalCounts.industrial})
+                        <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5 shrink-0" />
+                        <span className="truncate">INDUSTRIAL ({thermalCounts.industrial})</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setThermalCategoryFilter('wildfire')}
-                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                        className={`px-2.5 py-1.5 rounded-lg text-left transition-all border flex items-center ${
                           thermalCategoryFilter === 'wildfire'
                             ? 'bg-red-500/25 border-red-400 text-red-200 font-bold'
-                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                            : 'bg-[#0c2349]/80 border-cyan-900/40 text-slate-300 hover:text-white hover:bg-[#123366]'
                         }`}
                       >
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-1" />
-                        FOREST ({thermalCounts.wildfire})
+                        <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5 shrink-0" />
+                        <span className="truncate">FOREST ({thermalCounts.wildfire})</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setThermalCategoryFilter('stubble')}
-                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                        className={`px-2.5 py-1.5 rounded-lg text-left transition-all border flex items-center ${
                           thermalCategoryFilter === 'stubble'
                             ? 'bg-yellow-500/25 border-yellow-400 text-yellow-200 font-bold'
-                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                            : 'bg-[#0c2349]/80 border-cyan-900/40 text-slate-300 hover:text-white hover:bg-[#123366]'
                         }`}
                       >
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400 mr-1" />
-                        STUBBLE ({thermalCounts.stubble})
+                        <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 mr-1.5 shrink-0" />
+                        <span className="truncate">STUBBLE ({thermalCounts.stubble})</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setThermalCategoryFilter('gas_flare')}
-                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                        className={`px-2.5 py-1.5 rounded-lg text-left transition-all border flex items-center ${
                           thermalCategoryFilter === 'gas_flare'
                             ? 'bg-purple-500/25 border-purple-400 text-purple-200 font-bold'
-                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                            : 'bg-[#0c2349]/80 border-cyan-900/40 text-slate-300 hover:text-white hover:bg-[#123366]'
                         }`}
                       >
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400 mr-1" />
-                        FLARE ({thermalCounts.gas_flare})
+                        <span className="inline-block w-2 h-2 rounded-full bg-purple-400 mr-1.5 shrink-0" />
+                        <span className="truncate">FLARE ({thermalCounts.gas_flare})</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setThermalCategoryFilter('mining')}
-                        className={`px-1.5 py-1 rounded text-left transition-all border ${
+                        className={`px-2.5 py-1.5 rounded-lg text-left transition-all border flex items-center ${
                           thermalCategoryFilter === 'mining'
-                            ? 'bg-amber-700/25 border-amber-600 text-amber-200 font-bold'
-                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                            ? 'bg-amber-700/25 border-amber-500 text-amber-200 font-bold'
+                            : 'bg-[#0c2349]/80 border-cyan-900/40 text-slate-300 hover:text-white hover:bg-[#123366]'
                         }`}
                       >
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-600 mr-1" />
-                        MINING ({thermalCounts.mining})
+                        <span className="inline-block w-2 h-2 rounded-full bg-amber-600 mr-1.5 shrink-0" />
+                        <span className="truncate">MINING ({thermalCounts.mining})</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setThermalCategoryFilter('cpcb')}
-                        className={`col-span-2 px-1.5 py-1 rounded text-left transition-all border ${
+                        className={`col-span-2 px-2.5 py-2 rounded-lg text-left transition-all border flex items-center justify-between ${
                           thermalCategoryFilter === 'cpcb'
                             ? 'bg-rose-500/25 border-rose-400 text-rose-200 font-bold'
-                            : 'bg-navy-900/60 border-navy-700 text-gray-400 hover:text-gray-200'
+                            : 'bg-[#0c2349]/80 border-cyan-900/40 text-slate-300 hover:text-white hover:bg-[#123366]'
                         }`}
                       >
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-500 mr-1" />
-                        CPCB CRITICALLY POLLUTED ({thermalCounts.cpcb})
+                        <span className="flex items-center gap-1.5">
+                          <span className="inline-block w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                          <span className="text-[11px] font-bold">CPCB CRITICALLY POLLUTED</span>
+                        </span>
+                        <span className="text-[11px] font-bold font-mono">({thermalCounts.cpcb})</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Telemetry metadata */}
-                  <div className="p-2 rounded bg-navy-900/60 border border-navy-700 text-[9.5px] font-mono flex flex-col gap-1 text-gray-300">
+                  <div className="p-2.5 rounded-lg bg-[#071328]/80 border border-cyan-900/50 text-[11px] font-mono flex flex-col gap-1.5 text-slate-200">
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Sensors:</span>
+                      <span className="text-slate-400">Sensors:</span>
                       <span className="text-amber-300 font-bold">NASA VIIRS SNPP + N20</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Forest GIS:</span>
-                      <span className="text-emerald-400 font-bold">Bharatmaps RFA (422k Polygons)</span>
+                      <span className="text-slate-400">Forest GIS:</span>
+                      <span className="text-emerald-300 font-bold">Bharatmaps RFA (422k Polygons)</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Boundary:</span>
-                      <span className="text-cyan-300">Sovereign India Geofence</span>
+                      <span className="text-slate-400">Boundary:</span>
+                      <span className="text-cyan-300 font-semibold">Sovereign India Geofence</span>
                     </div>
                   </div>
                 </div>
@@ -1774,30 +1804,30 @@ export function MapView() {
             {activeNavTab === 'geological' && (
               <>
                 <div>
-                  <div className="text-[9px] font-mono font-bold text-rose-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                    <Mountain className="w-3 h-3 text-rose-400" />
+                  <div className="text-[12px] font-mono font-bold text-rose-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <Mountain className="w-4 h-4 text-rose-400" />
                     <span>GEOLOGICAL HAZARD ZONES</span>
                   </div>
-                  <p className="text-[10px] text-gray-400 leading-tight">
+                  <p className="text-[11px] text-slate-300 leading-normal">
                     Critical landslide and debris-flow risk zones mapped across India (GSI/NDMA).
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-1.5 pt-2 border-t border-navy-700">
-                  <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest mb-0.5">
+                <div className="flex flex-col gap-2 pt-2.5 border-t border-cyan-900/40">
+                  <div className="text-[11px] font-mono font-bold text-cyan-300 uppercase tracking-wider mb-0.5">
                     LANDSLIDE SECTORS
                   </div>
 
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.CHAMOLI_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between"
+                    className="px-3 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between group"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-white">Chamoli &amp; Joshimath</div>
-                      <div className="text-[9px] text-cyan-200/70">Uttarakhand · Flash Rockslide</div>
+                      <div className="text-[12.5px] font-bold text-white group-hover:text-rose-200">Chamoli &amp; Joshimath</div>
+                      <div className="text-[10.5px] font-mono text-cyan-200/80">Uttarakhand · Flash Rockslide</div>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
+                    <span className="px-2 py-0.5 rounded text-[9.5px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
                       CRITICAL
                     </span>
                   </button>
@@ -1805,13 +1835,13 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.WAYANAD_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between"
+                    className="px-3 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between group"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-white">Wayanad Meppadi</div>
-                      <div className="text-[9px] text-cyan-200/70">Kerala · Monsoon Mudslide</div>
+                      <div className="text-[12.5px] font-bold text-white group-hover:text-rose-200">Wayanad Meppadi</div>
+                      <div className="text-[10.5px] font-mono text-cyan-200/80">Kerala · Monsoon Mudslide</div>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
+                    <span className="px-2 py-0.5 rounded text-[9.5px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
                       CRITICAL
                     </span>
                   </button>
@@ -1819,13 +1849,13 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.KULLU_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-amber-500/60 transition-all flex items-center justify-between"
+                    className="px-3 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] text-left border border-cyan-900/40 hover:border-amber-500/60 transition-all flex items-center justify-between group"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-white">Kullu-Manali Valley</div>
-                      <div className="text-[9px] text-cyan-200/70">Himachal · Bank Slumping</div>
+                      <div className="text-[12.5px] font-bold text-white group-hover:text-amber-200">Kullu-Manali Valley</div>
+                      <div className="text-[10.5px] font-mono text-cyan-200/80">Himachal · Bank Slumping</div>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    <span className="px-2 py-0.5 rounded text-[9.5px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                       HIGH
                     </span>
                   </button>
@@ -1833,13 +1863,13 @@ export function MapView() {
                   <button
                     type="button"
                     onClick={() => jumpToWaypoint(SECTOR_WAYPOINTS.SIKKIM_LANDSLIDE)}
-                    className="px-2 py-1.5 rounded-lg bg-[#0b1c38]/80 hover:bg-[#102a54] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between"
+                    className="px-3 py-2 rounded-lg bg-[#0c2349]/80 hover:bg-[#123366] text-left border border-cyan-900/40 hover:border-rose-500/60 transition-all flex items-center justify-between group"
                   >
                     <div>
-                      <div className="text-[11px] font-bold text-white">Sikkim Teesta Basin</div>
-                      <div className="text-[9px] text-cyan-200/70">Sikkim · Moraine Dam Failure</div>
+                      <div className="text-[12.5px] font-bold text-white group-hover:text-rose-200">Sikkim Teesta Basin</div>
+                      <div className="text-[10.5px] font-mono text-cyan-200/80">Sikkim · Moraine Dam Failure</div>
                     </div>
-                    <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
+                    <span className="px-2 py-0.5 rounded text-[9.5px] font-mono font-bold bg-red-500/20 text-red-300 border border-red-500/40">
                       CRITICAL
                     </span>
                   </button>
