@@ -58,7 +58,7 @@ export function DashboardHeader() {
                 className="font-bold text-xl sm:text-base tracking-[0.16em] uppercase"
                 style={{ color: 'var(--teal-400)', letterSpacing: '0.18em' }}
               >
-                SATVIGIL
+                HAVERSINE
               </span>
             </div>
             
