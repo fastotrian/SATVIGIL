@@ -633,7 +633,7 @@ async def fetch_vessel_satellite_snapshot(
                 "client_id": client_id,
                 "client_secret": client_secret,
             }
-            async with httpx.AsyncClient(timeout=1.5) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 t_resp = await client.post(token_url, data=oauth_payload)
                 if t_resp.status_code == 200:
                     token = t_resp.json().get("access_token")
