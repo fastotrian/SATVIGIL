@@ -67,6 +67,7 @@ import type { ThermalHotspot } from '../../types/fire';
 import { VesselTrackPlayer, TrackPlaybackControls } from './VesselTrackPlayer';
 import { SpillSARPopup } from './SpillSARPopup';
 import { SpillDriftController } from './SpillDriftController';
+import { HotspotSatellitePopup } from './HotspotSatellitePopup';
 import {
   createSatelliteImageryProvider,
   createSatelliteReferenceProvider,
@@ -463,6 +464,7 @@ export function MapView() {
   const [thermalCategoryFilter, setThermalCategoryFilter] = useState<string>('all');
   const [hoveredHotspot, setHoveredHotspot] = useState<ThermalHotspot | null>(null);
   const [hoveredHotspotPos, setHoveredHotspotPos] = useState<{ x: number; y: number } | null>(null);
+  const [selectedHotspot, setSelectedHotspot] = useState<ThermalHotspot | null>(null);
 
   const filteredHotspots = useMemo(() => {
     // Strictly filter out any thermal hotspots located in the oceanic / marine zone
@@ -760,7 +762,17 @@ export function MapView() {
           return;
         }
 
-        // Clicked a geological landslide zone
+                  // Clicked a thermal hotspot
+          if (entity.properties && entity.properties.hasProperty('hotspot_data')) {
+            const h = entity.properties.getValue(viewer.clock.currentTime).hotspot_data as ThermalHotspot;
+            setSelectedHotspot(h);
+            selectVessel(null);
+            setSarPopupSpill(null);
+            setSelectedHazardZone(null);
+            return;
+          }
+
+          // Clicked a geological landslide zone
         if (entity.properties && entity.properties.hasProperty('hazard_type')) {
           const rawProps = entity.properties.getValue(viewer.clock.currentTime);
           setSelectedHazardZone(rawProps);
@@ -2279,7 +2291,11 @@ export function MapView() {
 
       {/* ── SAR Image Popup (spill click) ── */}
       {sarPopupSpill && (
-        <SpillSARPopup
+        {selectedHotspot && ( 
+        <HotspotSatellitePopup hotspot={selectedHotspot} onClose={() => setSelectedHotspot(null)} /> 
+      )}
+
+      <SpillSARPopup
           spill={sarPopupSpill}
           screenX={sarPopupScreenPos.x + 20}
           screenY={sarPopupScreenPos.y - 30}
