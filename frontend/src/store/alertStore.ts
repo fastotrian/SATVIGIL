@@ -9,7 +9,7 @@ import { generateLocalSpillDriftForecast } from "../utils/driftPhysics";
 
 export type { Alert } from "../types/maritime";
 
-export type NavTab = 'maritime' | 'thermal' | 'geological';
+export type NavTab = 'maritime' | 'thermal' | 'geological' | 'agri';
 
 export interface ActiveFilters {
   showVessels: boolean;
@@ -118,8 +118,7 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
             showGeologicalZones: false,
           },
         };
-      } else {
-        // geological
+      } else if (tab === 'geological') {
         return {
           activeNavTab: 'geological',
           activeFilters: {
@@ -131,7 +130,20 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
             showGeologicalZones: true,
           },
         };
+      } else if (tab === 'agri') {
+        return {
+          activeNavTab: 'agri',
+          activeFilters: {
+            ...state.activeFilters,
+            showVessels: false,
+            showSpillZones: false,
+            showMPABoundaries: false,
+            showFireHotspots: false,
+            showGeologicalZones: false,
+          },
+        };
       }
+      return state;
     }),
 
   setAlerts: (alerts) => set({ alerts }),

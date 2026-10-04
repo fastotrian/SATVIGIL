@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.routes import alerts, maritime, fire, landslide, pollution, health, satellite
+from app.api.routes import alerts, maritime, fire, landslide, pollution, health, satellite, agri
 from app.tasks.scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -67,3 +67,4 @@ app.include_router(fire.router,       prefix="/api/v1/fire",     tags=["Fire"])
 app.include_router(landslide.router,  prefix="/api/v1/landslide",tags=["Landslide"])
 app.include_router(pollution.router,  prefix="/api/v1/pollution",tags=["Pollution"])
 app.include_router(satellite.router,  prefix="/api/v1/satellite",tags=["Satellite"])
+app.include_router(agri.router,       prefix="/api/v1/agri",     tags=["agri"])

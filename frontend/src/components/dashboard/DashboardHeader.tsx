@@ -3,7 +3,7 @@
  * Command center top bar with telemetry indicators, sensor badges, quick sector jump pills, and live UTC clock.
  */
 import React, { useEffect, useState } from 'react';
-import { Ship, Flame, Mountain, Volume2, VolumeX } from 'lucide-react';
+import { Ship, Flame, Mountain, Volume2, VolumeX, Wheat } from 'lucide-react';
 import { useAlertStore } from '../../store/alertStore';
 
 // ── Live UTC Clock ─────────────────────────────────────────────────────────
@@ -104,6 +104,19 @@ export function DashboardHeader() {
           >
             <Mountain className="w-3.5 h-3.5 text-rose-400 shrink-0" />
             <span>GEOLOGICAL</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setNavTab('agri')}
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-md font-mono text-[11px] sm:text-xs font-bold transition-all ${
+              activeNavTab === 'agri'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/60 shadow-[0_0_12px_rgba(52,211,153,0.25)]'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-navy-800 border border-transparent'
+            }`}
+          >
+            <Wheat className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>AGRI INTEL</span>
           </button>
         </nav>
 

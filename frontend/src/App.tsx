@@ -14,12 +14,13 @@ import { OpsLogFooter } from "./components/dashboard/OpsLogFooter";
 import { AlertDetailsDrawer } from "./components/alerts/AlertDetailsDrawer";
 import { ForensicDossierModal } from "./components/dossier/ForensicDossierModal";
 import { MpaBreachDossierModal } from "./components/dossier/MpaBreachDossierModal";
+import { AgriIntelView } from "./components/agri/AgriIntelView";
 import { useAlertStore } from "./store/alertStore";
 import { connectWebSocket } from "./services/websocket";
 import { playAlarm } from "./services/soundEffects";
 
 export default function App() {
-  const { setAlerts, addAlert, isAudioMuted } = useAlertStore();
+  const { activeNavTab, setAlerts, addAlert, isAudioMuted } = useAlertStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -52,8 +53,12 @@ export default function App() {
       {/* ── Center Workspace: Map + Collapsible Threat Feed ── */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Full Map Canvas */}
-        <div className="flex-1 relative h-full">
-          <MapView />
+        <div className="flex-1 relative h-full flex flex-col overflow-hidden">
+          {activeNavTab === 'agri' ? (
+            <AgriIntelView />
+          ) : (
+            <MapView />
+          )}
         </div>
 
         {/* Actionable Threat Feed (Right Panel) */}

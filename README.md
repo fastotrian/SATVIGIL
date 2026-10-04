@@ -193,4 +193,4 @@ MIT License — see [LICENSE](LICENSE).
 
 ---
 
-*SATVIGIL — Built for SIH 2026 | NTRO PS 142*
+*SATVIGIL — Built for SIH 2026 | NTRO PS 143 + PS 162*

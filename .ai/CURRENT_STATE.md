@@ -5,10 +5,40 @@
 
 ---
 
-## 🕒 Last Updated: 2026-09-29 (Sprint 5 — Instant Satellite SAR Reconnaissance & C4ISR Floating Dock Redesign)
+## 🕒 Last Updated: 2026-10-04 (AGRI INTEL Click State Bug Fix)
 
-> **Active Plan:** Full PS 143 build order with color system, Gemini model assignments,
-> and part-by-part checkpoints is in `implementation_plan.md` (Antigravity artifact).
+> **Bug Fix:** Fixed AGRI INTEL Tab Unclickable Issue
+> - **Root Cause:** In `frontend/src/store/alertStore.ts`, the `setNavTab` action had an `if / else if / else` structure where only `'maritime'` and `'thermal'` were explicitly matched, with the default `else` block resetting `activeNavTab` to `'geological'`. When clicking the `AGRI INTEL` tab (`setNavTab('agri')`), it matched neither condition, fell into the `else` branch, and set `activeNavTab` to `'geological'`. Consequently, `activeNavTab === 'agri'` was never truthy, and `AgriIntelView` never mounted.
+> - **Fix Applied:** In `frontend/src/store/alertStore.ts`, updated `setNavTab` to explicitly branch for `tab === 'geological'` and `tab === 'agri'`. When `tab === 'agri'`, `activeNavTab` is correctly set to `'agri'`, and all map overlay filters are cleanly toggled off.
+> - **Verification:** TypeScript checks (`npx tsc --noEmit`) and production builds (`npm run build`) passed with 0 errors.
+
+> **Completed Plan:** AGRI INTEL Tab Implementation Plan (PS 26142 - Deep Learning Super Resolution Mapping & Agricultural Intelligence)
+> - **TASK 1:** ✅ Backend `agri.py` Route & Endpoints (FastAPI):
+>   - Created `backend/app/api/routes/agri.py` with 3 core mock endpoints:
+>     - `GET /api/v1/agri/ndvi`: Crop health monitoring with zone stats (Amritsar, Ludhiana, Bathinda, Fazilka, Vidarbha, Kutch) and weekly trend array.
+>     - `GET /api/v1/agri/fields`: AI-based field boundary mapping with GeoJSON coordinates, average area, fragmentation percentage, and crop health status.
+>     - `GET /api/v1/agri/damage`: Pre/post disaster damage assessment with before/after dates, affected hectares, estimated economic loss (₹ Cr), and crop breakdown.
+>   - Mounted router in `backend/app/main.py` (`/api/v1/agri`).
+> - **TASK 2:** ✅ Frontend Types, Store & Tab Button:
+>   - Created `frontend/src/types/agri.ts` with `NdviZone`, `NdviResponse`, `AgriField`, `FieldsResponse`, `CropBreakdown`, and `DamageResponse`.
+>   - Updated `NavTab` union in `frontend/src/store/alertStore.ts` to include `'agri'`.
+>   - Added `Wheat` icon and `AGRI INTEL` tab button with emerald styling (`text-emerald-300`, `border-emerald-400/60`, `bg-emerald-500/20`) in `frontend/src/components/dashboard/DashboardHeader.tsx`.
+> - **TASK 3:** ✅ App Routing + AgriIntelView Shell:
+>   - Created `frontend/src/components/agri/AgriIntelView.tsx` with 3-panel responsive grid architecture (Left column: CropHealthPanel, Right column top: FieldBoundaryPanel, Right column bottom: DamageAssessmentPanel).
+>   - Updated `frontend/src/App.tsx` with conditional tab view switching (`activeNavTab === 'agri' ? <AgriIntelView /> : <MapView />`).
+> - **TASK 4:** ✅ CropHealthPanel (NDVI Vegetation Telemetry):
+>   - Created `frontend/src/components/agri/CropHealthPanel.tsx`.
+>   - Integrated live green pulse dot header, 4 status cards (Healthy, Moderate, Stressed, Critical), surveillance zone cards with dynamic NDVI progress bars, color scales (>0.5 emerald, 0.3-0.5 amber, 0.1-0.3 orange, <0.1 rose), and Recharts `<BarChart>` 4-week temporal trend.
+> - **TASK 5:** ✅ FieldBoundaryPanel (AI Cadastral Delineation):
+>   - Created `frontend/src/components/agri/FieldBoundaryPanel.tsx`.
+>   - Interactive vector cadastral map centered on Ludhiana (`30.90°N, 75.85°E`) with pan/zoom controls, ESRGAN 0.5m/px super-resolution toggle, field polygon color states, and click popup displaying parcel telemetry.
+> - **TASK 6:** ✅ DamageAssessmentPanel (Disaster Evaluation & Loss Breakdown):
+>   - Created `frontend/src/components/agri/DamageAssessmentPanel.tsx`.
+>   - Interactive pre/post disaster split-screen slider (mouse draggable with dynamic CSS clip-path), disaster event switcher (`FLOOD | DROUGHT | CYCLONE`), severity indicator, economic loss estimates (₹ Cr), and crop-wise damage intensity progress bars.
+> - **TESTING & VALIDATION:**
+>   - Authored `backend/tests/unit/test_agri_routes.py` with 3 automated unit tests; 100% passing (`3 passed in 5.26s`).
+>   - TypeScript compilation verified (`npx tsc --noEmit` -> 0 errors).
+>   - Production build verified (`npm run build` -> 0 errors).
 > - **PART 1:** ✅ Constants (`riskColors.ts`, `constants.py`) & shared types (`maritime.ts`) complete.
 > - **PART 2:** ✅ Schemas, real maritime API routes, and AIS simulator complete (`simulate_ais_feed.py`, `ais_demo_scenario.json`).
 > - **PART 3:** ✅ Complete Frontend UI Layer (Map, Header, Alert Panel, Zustand Store; verified Vite build).
