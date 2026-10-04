@@ -245,7 +245,7 @@ export function DamageAssessmentPanel({ onClose, isRightDrawer = false }: Damage
             }}
           />
           <div className="z-10 self-end bg-rose-950/90 text-rose-300 border border-rose-500/60 px-1.5 py-0.5 rounded text-[10px] font-bold">
-            POST-EVENT ({data.date_after})
+            POST-EVENT (Time To: {data.date_after})
           </div>
           <div className="z-10 self-end text-[9px] text-rose-400/80 font-mono">
             Inundation / Necrosis
@@ -271,7 +271,7 @@ export function DamageAssessmentPanel({ onClose, isRightDrawer = false }: Damage
             }}
           />
           <div className="z-10 self-start bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 px-1.5 py-0.5 rounded text-[10px] font-bold">
-            PRE-EVENT ({data.date_before})
+            PRE-EVENT (Time From: {data.date_before})
           </div>
           <div className="z-10 self-start text-[9px] text-emerald-400/80 font-mono">
             Healthy Canopy Baseline

@@ -1,0 +1,59 @@
+# Module 1 (CDSE Sentinel-2 L2A ingestion) - NON-SECRET defaults.
+# Credentials are read only from environment variables or <repo>/secrets/cdse.env
+# (both are git-ignored). Do NOT put usernames / passwords / tokens in this file.
+
+module: sentinel2_ingestion
+version: "1.0"
+
+cdse:
+  catalog_url: "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
+  token_url:   "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+  client_id:   "cdse-public"
+
+# Where downloaded Sentinel-2 products land on disk. Relative to the project
+# root; the pipeline creates this directory if missing.
+data_dir: data/external/sentinel2_l2a
+
+download:
+  timeout_s: 300
+  max_retries: 3
+  backoff_s: 5.0
+  chunk_bytes: 1048576               # 1 MiB
+  free_space_safety_bytes: 536870912 # 512 MiB
+  verify_sha_after_download: true
+
+request_defaults:
+  max_cloud_cover: 30.0
+  max_results: 50
+
+ranking_policy: >-
+  1) lowest cloudCover
+  2) greatest AOI intersection ratio
+  3) acquisition time closest to target_date (midpoint of [start, end] if not supplied)
+  4) product_id ascending
+
+# Prebuilt AOIs. Additional AOIs can be added here; do NOT hardcode them in
+# source. Values reused from the existing Sentinel-1 InSAR search scripts
+# (scripts/search_wayanad_*.py) so all modules agree on Wayanad's bbox.
+aois:
+  wayanad_kerala:
+    label: "Wayanad, Kerala"
+    bbox: {west: 75.70, south: 11.50, east: 76.20, north: 11.95}
+    notes: |
+      Same bbox already used by the Sentinel-1 InSAR ingestion scripts.
+      Intended for controlled test-scene ingestion only.
+
+# The live smoke test uses this AOI + date range by default; both can be
+# overridden on the CLI.
+#
+# Note: peak monsoon over the Western Ghats (July-August) has ~100% cloud
+# cover over Wayanad, so a tight July window with max_cloud<=40 returns
+# zero L2A products. The pre/post-monsoon window below still surrounds the
+# July 30 2024 event and yields a small number of clear-enough tiles for a
+# meaningful smoke test.
+smoke_test:
+  aoi_ref: wayanad_kerala
+  start:  "2024-06-01T00:00:00Z"
+  end:    "2024-11-30T23:59:59Z"
+  max_cloud_cover: 50.0
+  target_date: "2024-07-30T05:36:00Z"   # anchor near the July 30 event

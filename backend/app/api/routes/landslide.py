@@ -1,10 +1,11 @@
 """
 SATVIGIL — Landslide API Route
-Static Mock for Demo Purposes (Wayanad & Joshimath SAR InSAR deformation)
+Static Mock for Demo Purposes (Wayanad & Joshimath SAR InSAR deformation) + Live Prediction Endpoint
 """
 from fastapi import APIRouter
-from pydantic import BaseModel
 from typing import List, Any
+from app.schemas.landslide import LandslideAnalyzeRequest, LandslideAnalyzeResponse
+from app.services.landslide.landslide_service import LandslideService
 
 router = APIRouter()
 
@@ -67,3 +68,29 @@ async def get_landslide_risk_areas():
             }
         ]
     }
+
+@router.post("/analyze", response_model=LandslideAnalyzeResponse)
+async def analyze_landslide_risk(request: LandslideAnalyzeRequest):
+    """
+    Triggers the end-to-end LandslideGuard pipeline (Monitoring & Prediction)
+    for a given detection polygon.
+    """
+    service = LandslideService.get_instance()
+    result = service.run_analysis(
+        coordinates=request.coordinates,
+        detection_date=request.detection_date,
+        detection_confidence=request.detection_confidence
+    )
+    
+    # Map the output to LandslideAnalyzeResponse
+    return LandslideAnalyzeResponse(
+        operation_id=result["operation_id"],
+        site_id=result["site_id"],
+        status=result["integration_status"],
+        started_at=result["operation_started_at"],
+        completed_at=result["operation_completed_at"],
+        detection=result["detection"],
+        monitoring=result["monitoring"],
+        prediction=result["prediction"],
+        checks=result["checks"]
+    )

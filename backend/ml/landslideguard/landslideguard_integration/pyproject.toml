@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "landslideguard-integration"
+version = "0.1.0"
+description = "LandslideGuard integration layer — contract schemas, site registry, and the Monitoring V2 production inference wrapper. Detection/Monitoring/Prediction models stay frozen; this package only wraps and connects them."
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Stage pytest tmp dirs on D: (ample space); C: is near-full and would trip the
+# providers' disk-safety guard during download-path tests. Does not change any
+# assertion — disk-safety refusal is still explicitly tested with a forced
+# threshold.
+addopts = "-q --basetemp=.pytest_tmp"

@@ -1,0 +1,62 @@
+# Production Detection configuration (V1 is FROZEN).
+# Do NOT edit model/threshold values without re-doing Stage-2 validation.
+
+model:
+  name: V1
+  architecture: unet_v1_bf16
+  checkpoint: checkpoints/detection/best_model.pth
+  threshold: 0.60                        # LOCKED (validation-selected in Stage 2)
+  input_channels: 14
+  tile_size: 128
+
+preprocessing:
+  normalization_statistics: outputs/detection/data_verification/normalization_statistics.json
+  # Channel order is defined in code (src/detection/geospatial.py::V1_CHANNEL_NAMES):
+  # 0..11: S2 B1, B2, B3, B4, B5, B6, B7, B8, B8A, B9, B11, B12
+  # 12:    Slope (degrees; derived from DEM via Horn's method if not supplied)
+  # 13:    DEM (metres, ALOS PALSAR)
+  nan_replacement: 0.0
+  std_floor: 1.0e-6
+
+tiling:
+  tile: 128
+  stride: 128                            # non-overlapping; set < 128 for overlap
+  batch_size: 8
+  pad_mode: reflect
+
+postprocessing:
+  enabled: true
+  min_area_pixels: 32                    # remove < 32-pixel components (32 px ~ 3200 m^2 at 10 m/px)
+  max_hole_pixels: 8                     # fill background holes < 8 px inside a landslide
+
+polygonization:
+  connectivity: 2                        # 8-connected
+  min_area_px: 8
+  output_crs: "EPSG:4326"
+
+hardware:
+  device: auto                           # auto | cpu | cuda
+  amp: true                              # only used on cuda
+
+output:
+  save_probability: true
+  save_mask: true
+  save_geojson: true
+  save_geotiff: true                     # requires rasterio
+  save_visualization: true
+
+sentinel2:
+  target_resolution_m: 10.0
+  band_resampling: bilinear
+  dem_resampling: bilinear
+  slope_method: horn
+
+paths:
+  outputs_root: outputs/detection
+  probability_maps: outputs/detection/probability_maps
+  masks: outputs/detection/masks
+  polygons: outputs/detection/polygons
+  inference_results: outputs/detection/inference
+  monitoring_handoff: outputs/detection/monitoring_handoff
+  visualizations: outputs/detection/visualizations
+  reports: outputs/detection/reports

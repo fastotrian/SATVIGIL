@@ -40,6 +40,7 @@ export function HotspotSatellitePopup({ hotspot, onClose }: HotspotSatellitePopu
         {/* Info */}
         <div className="text-[11px] font-mono text-gray-300 space-y-1">
           <div><span className="text-gray-500">Location:</span> {hotspot.latitude.toFixed(4)}°N, {hotspot.longitude.toFixed(4)}°E</div>
+          <div><span className="text-gray-500">Detection Time:</span> <span className="text-white">{hotspot.acquired_at ? new Date(hotspot.acquired_at).toLocaleString() : 'Live'}</span></div>
           <div><span className="text-gray-500">Type:</span> <span className="text-amber-400 font-bold">{hotspot.fire_type || 'Unknown'}</span></div>
           <div><span className="text-gray-500">FRP:</span> {hotspot.frp} MW</div>
         </div>

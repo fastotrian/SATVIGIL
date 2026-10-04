@@ -50,3 +50,7 @@ redis_data/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
+
+# LandslideGuard integration cache
+backend/ml/landslideguard/landslideguard_integration/cache/
+*.parquet

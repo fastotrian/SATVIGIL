@@ -1,0 +1,49 @@
+{
+    "project": "LandslideGuard",
+    "module": "Monitoring",
+    "version": "V2",
+    "model": {
+        "architecture": "SimpleTCNV2",
+        "input_channels": 1,
+        "hidden_channels": 16,
+        "forecast_horizon": 3,
+        "input_window": 12,
+        "dropout": 0.1,
+        "kernel_size_1": 3,
+        "dilation_1": 1,
+        "kernel_size_2": 3,
+        "dilation_2": 2
+    },
+    "input": {
+        "feature": "disp",
+        "input_type": "historical displacement only"
+    },
+    "training": {
+        "loss": "HuberLoss",
+        "optimizer": "AdamW",
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "batch_size": 64,
+        "max_epochs": 100,
+        "early_stopping_patience": 10
+    },
+    "normalization": {
+        "method": "training_only_zscore",
+        "train_mean": -25.179719641317867,
+        "train_std": 21.53874876040455
+    },
+    "split": {
+        "method": "chronological per slope unit",
+        "train_target_times": "through t42",
+        "validation_target_times": "t43-t51",
+        "test_target_times": "t52-t61"
+    },
+    "results": {
+        "best_epoch": 61,
+        "best_validation_loss": 0.02587071628054051,
+        "test_MAE": 7.877058952925825,
+        "test_RMSE": 8.954511993376338,
+        "test_R2": 0.874546886757773
+    },
+    "status": "FROZEN V2 BASELINE"
+}

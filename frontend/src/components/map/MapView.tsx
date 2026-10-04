@@ -54,6 +54,7 @@ import {
   Eye,
   Info,
   Compass,
+  Activity,
 } from 'lucide-react';
 
 import { useAlertStore } from '../../store/alertStore';
@@ -451,6 +452,8 @@ export function MapView() {
   const [vesselSensor, setVesselSensor] = useState<'sentinel1' | 'sentinel2'>('sentinel1');
   const [isZoomedOut, setIsZoomedOut] = useState(false);
   const [selectedHazardZone, setSelectedHazardZone] = useState<any | null>(null);
+  const [isAnalyzingLandslide, setIsAnalyzingLandslide] = useState(false);
+  const [landslideAnalysisResult, setLandslideAnalysisResult] = useState<any | null>(null);
 
   // GFW vessel track playback state
   const [showTrackPlayer, setShowTrackPlayer] = useState(false);
@@ -501,6 +504,39 @@ export function MapView() {
 
   // Basemap style state: 'satellite' (Google Earth style) or 'dark' (Tactical Dark Canvas)
   const [basemapTheme, setBasemapTheme] = useState<'satellite' | 'dark'>('satellite');
+
+  const handleAnalyzeLandslide = async () => {
+    if (!selectedHazardZone) return;
+    setIsAnalyzingLandslide(true);
+    setLandslideAnalysisResult(null);
+    try {
+      const resp = await fetch('http://localhost:8000/api/v1/landslide/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coordinates: [
+            [79.45, 30.35],
+            [79.60, 30.35],
+            [79.60, 30.60],
+            [79.45, 30.60],
+            [79.45, 30.35]
+          ],
+          detection_date: new Date().toISOString().split('T')[0],
+          detection_confidence: 0.92
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setLandslideAnalysisResult(data);
+      } else {
+        console.error('Failed to analyze landslide risk');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAnalyzingLandslide(false);
+    }
+  };
 
   // ── 1. Initialize Cesium 3D WebGL Viewer ──────────────────────────────────
   useEffect(() => {
@@ -1894,7 +1930,7 @@ export function MapView() {
 
       {/* ── Geological Hazard Zone Popup (when a danger zone is clicked) ── */}
       {selectedHazardZone && (
-        <div className="absolute bottom-12 left-4 z-30 pointer-events-auto max-w-sm p-4 rounded-lg bg-navy-900/95 border border-rose-500/60 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95">
+        <div className="absolute bottom-12 left-4 z-30 pointer-events-auto max-w-md p-4 rounded-lg bg-navy-900/95 border border-rose-500/60 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95">
           <div className="flex items-center justify-between border-b border-navy-700 pb-2 mb-2">
             <div className="flex items-center gap-2">
               <Mountain className="w-4 h-4 text-rose-400" />
@@ -1911,7 +1947,7 @@ export function MapView() {
           <div className="flex flex-col gap-1.5 text-xs font-mono">
             <div className="flex justify-between">
               <span className="text-gray-400">Risk Level:</span>
-              <span className="text-rose-400 font-bold px-1.5 py-0.2 rounded bg-rose-950/60 border border-rose-500/40">
+              <span className="text-rose-400 font-bold px-1.5 py-0.5 rounded bg-rose-950/60 border border-rose-500/40">
                 {selectedHazardZone.risk_level}
               </span>
             </div>
@@ -1930,6 +1966,44 @@ export function MapView() {
             <p className="text-[11px] text-gray-300 mt-1 leading-normal font-sans border-t border-navy-800 pt-1.5">
               {selectedHazardZone.description}
             </p>
+          </div>
+          
+          <div className="mt-3 pt-3 border-t border-navy-700">
+            <button
+              onClick={handleAnalyzeLandslide}
+              disabled={isAnalyzingLandslide}
+              className="w-full bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-1.5 px-3 rounded flex items-center justify-center gap-2 text-xs transition-colors"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              {isAnalyzingLandslide ? 'RUNNING AI PIPELINE...' : 'RUN PIPELINE (TCN + XGBOOST)'}
+            </button>
+
+            {landslideAnalysisResult && (
+              <div className="mt-3 bg-navy-950 p-2 rounded border border-navy-700 animate-in fade-in">
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-gray-400 text-xs font-mono">Prediction Risk Score:</span>
+                  <span className={`text-xs font-bold font-mono ${landslideAnalysisResult.prediction.alert.prediction.flag ? 'text-rose-500' : 'text-emerald-400'}`}>
+                    {landslideAnalysisResult.prediction.alert.prediction.score.toFixed(4)}
+                  </span>
+                </div>
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-gray-400 text-xs font-mono">Displacement T+1:</span>
+                  <span className="text-amber-400 text-xs font-mono">
+                    {landslideAnalysisResult.monitoring.decision_support.forecast.t1.value.toFixed(2)} mm
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400 text-xs font-mono">Velocity vector:</span>
+                  <span className="text-cyan-400 text-xs font-mono">
+                    {landslideAnalysisResult.monitoring.decision_support.derived.velocity.toFixed(3)}
+                  </span>
+                </div>
+                <div className="mt-2 text-[10px] text-gray-500 flex justify-between border-t border-navy-800 pt-1">
+                  <span>Op: {landslideAnalysisResult.operation_id}</span>
+                  <span>{landslideAnalysisResult.status}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2204,6 +2278,10 @@ export function MapView() {
               <div>
                 <span className="text-gray-400">Sensor: </span>
                 <span className="font-semibold text-cyan-300">{hoveredHotspot.satellite || 'VIIRS'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Time: </span>
+                <span className="font-semibold text-gray-200">{hoveredHotspot.acquired_at ? new Date(hoveredHotspot.acquired_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Live'}</span>
               </div>
               <div>
                 <span className="text-gray-400">Conf: </span>

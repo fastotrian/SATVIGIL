@@ -1,0 +1,36 @@
+# LandslideGuard SAR/InSAR engine — target reproducible environment (Phase 9A)
+#
+# STATUS: SPECIFICATION ONLY — NOT YET PROVISIONED.
+# Phase 9A is BLOCKED on storage (see phase9a_engine_setup_report.md), so this
+# environment has not been created. It records the intended, reproducible install
+# method for ISCE3 + MintPy so that provisioning is deterministic once >= ~15 GB
+# of free space is available on a Linux-accessible working disk.
+#
+# Provision (inside WSL2 Ubuntu, once storage is safe) with:
+#     mamba env create -f environment.yml     # or: conda env create -f environment.yml
+#
+# Rationale for conda-forge (NOT pip / NOT SNAP):
+#   * isce3 is a compiled C++/CUDA library distributed on conda-forge; there is no
+#     reliable pip wheel. conda-forge resolves the GDAL/HDF5/PROJ ABI stack for us.
+#   * MintPy is available on conda-forge and pins compatible geospatial deps.
+#   * SNAP is intentionally excluded — it is not a core dependency of this pipeline.
+name: lsg-sar
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11          # ISCE3 + MintPy both well-supported on 3.11 as of writing
+  - isce3                # Sentinel-1 SLC -> InSAR products (pin exact version at install)
+  - mintpy               # deformation time-series (smallbaselineApp.py)
+  # --- core scientific/geospatial stack (pulled transitively, pinned for reproducibility) ---
+  - numpy
+  - scipy
+  - gdal
+  - hdf5
+  - h5py
+  - pyproj
+  - shapely
+  - rasterio
+  - matplotlib
+  - pip
+# NOTE: exact versions must be frozen with `conda env export --no-builds` into
+# environment.lock.yml immediately after a successful, verified install.

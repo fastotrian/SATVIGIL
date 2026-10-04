@@ -111,7 +111,7 @@ export function CropHealthPanel({ onClose, onSelectZone, isCompact = false }: Cr
               <span className="text-[10px] text-emerald-400/90 font-normal">[SENTINEL-2 NDVI]</span>
             </h2>
             <div className="text-[10px] text-gray-400">
-              Region: <span className="text-gray-200">{data.region}</span> ({data.date})
+              <span className="text-gray-200">{data.region}</span> | Time From: 4 Wks Ago - Time To: {data.date}
             </div>
           </div>
         </div>

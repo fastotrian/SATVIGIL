@@ -5,7 +5,22 @@
 
 ---
 
-## 🕒 Last Updated: 2026-10-05 (AGRI INTEL Full-Size 3D Globe & Dynamic Domain Panel Repositioning)
+## 🕒 Last Updated: 2026-10-05 (LandslideGuard AI Pipeline Integration)
+
+> **COMPLETED IMPLEMENTATION — LandslideGuard End-to-End Orchestrator Integration**
+> - **Backend Model Ingestion & Service Wrapper:**
+>   - Copied `LandslideGuard_Minimal_Package` to `backend/ml/landslideguard`.
+>   - Created `LandslideService` (`backend/app/services/landslide/landslide_service.py`) encapsulating `OperationalOrchestrator`, `SiteRegistry`, `MonitoringForecaster`, and `LivePredictionService`.
+> - **API Schema & Routing (`backend/app/api/routes/landslide.py`):**
+>   - Created `LandslideAnalyzeRequest` and `LandslideAnalyzeResponse` Pydantic schemas mapping the `integrated_result/1.0` payload.
+>   - Implemented `POST /api/v1/landslide/analyze` endpoint. Takes `detection_polygon` coordinates, constructs a `DetectionFixture`, and executes the TCN + XGBoost pipeline.
+> - **Frontend Geological HUD (`MapView.tsx`):**
+>   - Augmented the `GEOLOGICAL` mode Hazard Zone popup with a live `RUN PIPELINE (TCN + XGBOOST)` button.
+>   - Integrated dynamic AI telemetry display showing the XGBoost Prediction Risk Score, TCN Displacement Forecast (T+1), and Kinematic Velocity Vector.
+> - **Quality Assurance & Build Verification:**
+>   - TypeScript and Vite production build passed cleanly (`npm run build`).
+
+## 🕒 Previous: 2026-10-05 (AGRI INTEL Full-Size 3D Globe & Dynamic Domain Panel Repositioning)
 
 > **COMPLETED IMPLEMENTATION — AGRI INTEL Full-Size 3D Globe & Unified Panel Layout**
 > - **Full-Size 3D Globe Matching Maritime, Thermal, and Geological Domains:**
@@ -601,6 +616,7 @@
 
 ## 🎯 Immediate Next Tasks (Sprint 3 Active Allocations)
 
+- [x] **Agri & Thermal Timestamp UI Enhancement:** Added explicit 'Time From' and 'Time To' labels to the Agri Intel Damage/Health panels and explicit 'Time'/'Detection Time' to the Thermal Hotspots tooltip and popup to precisely surface chronological event boundaries.
 - [x] **PS 143 (Oil Spill & Dark Vessel Attribution):** 100% Complete, Verified End-to-End, and merged to `main`.
 - [x] **Akshar Branch Merge (`feat/akshar-part1-backend-database-engine`):** Zero-conflict merge into `main`, pushed to `origin/main` on 2026-09-09.
 - **Track 1: Core Full-Stack Engineering (Akshar — Heavy Focus):**

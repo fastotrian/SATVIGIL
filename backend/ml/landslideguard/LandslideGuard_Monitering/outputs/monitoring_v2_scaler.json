@@ -1,0 +1,7 @@
+{
+    "method": "training_only_zscore",
+    "train_mean": -25.179719641317867,
+    "train_std": 21.53874876040455,
+    "formula": "(x - train_mean) / train_std",
+    "inverse_formula": "x = x_norm * train_std + train_mean"
+}
