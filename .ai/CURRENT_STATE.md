@@ -529,6 +529,7 @@
   - **Frontend (COMPLETED & MERGED):**
     - [x] `TASK-UI05`: Vessel & Alert slide-in detail drawer — `frontend/src/components/alerts/AlertDetailsDrawer.tsx`.
     - [x] `TASK-UI08`: Fire & Thermal Hotspots WebGL Map Layer — `MapView.tsx` hotspots GeoJSON source + circle layer.
+    - [x] `TASK-UI11`: Thermal Hotspot Satellite Reconnaissance with PyTorch EDSR Super-Resolution.
     - [x] `TASK-UI07`: Tactical audio alarms — `frontend/src/services/soundEffects.ts`.
   - **Next for Akshar (Sprint 3 continued):**
     - [ ] `TASK-UI10`: Wire AlertDetailsDrawer to Zustand store for click-to-open from AlertPanel.

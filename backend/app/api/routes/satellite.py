@@ -17,6 +17,7 @@ from app.services.satellite.copernicus_cdse import (
 from app.services.satellite.sar_spill_detector import (
     detect_oil_slick_from_sar,
 )
+from app.services.ml.super_resolution import apply_super_resolution
 
 router = APIRouter()
 
@@ -117,3 +118,39 @@ async def get_vessel_satellite_image(
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Satellite reconnaissance image generation error: {exc}")
+
+
+@router.get("/thermal-image")
+async def get_thermal_satellite_image(
+    lat: float = Query(..., description="Hotspot latitude"),
+    lon: float = Query(..., description="Hotspot longitude"),
+    enhance: bool = Query(False, description="Apply EDSR Super-Resolution")
+):
+    """
+    Returns an on-the-fly satellite reconnaissance snapshot centered on any thermal hotspot.
+    Applies Deep Learning Super-Resolution (EDSR) if enhance is True.
+    """
+    try:
+        image_bytes, provider = await fetch_vessel_satellite_snapshot(
+            lat=lat,
+            lon=lon,
+            mmsi=None,
+            sensor="sentinel2",
+            course=0.0,
+            speed=0.0,
+        )
+        
+        if enhance:
+            image_bytes = await apply_super_resolution(image_bytes)
+            
+        return Response(
+            content=image_bytes,
+            media_type="image/jpeg",
+            headers={
+                "X-Satellite-Provider": provider,
+                "X-Super-Resolution": "EDSR" if enhance else "None",
+                "Cache-Control": "public, max-age=3600",
+            }
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Thermal hotspot image generation error: {exc}")
