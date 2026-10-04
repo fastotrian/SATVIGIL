@@ -1,59 +1,27 @@
 import io
 import torch
-import torchvision.transforms as T
+import numpy as np
 from PIL import Image
-from app.services.ml.edsr_model import build_edsr
-from pathlib import Path
+from typing import Optional
+from app.services.agri.edsr_service import EDSRInferenceEngine
 
-# Load model globally on module import
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Adjust path based on execution environment
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-MODEL_PATH = BASE_DIR / "ml" / "models" / "edsr" / "best_model.pth"
-
-edsr_model = None
-
-def init_model():
-    global edsr_model
-    if edsr_model is not None:
-        return
-
-    if not MODEL_PATH.exists():
-        print(f"[Warning] Super-resolution model not found at {MODEL_PATH}")
-        return
-
-    ckpt = torch.load(MODEL_PATH, map_location=device, weights_only=False)
-    model_cfg = ckpt.get("model_config", {})
-    edsr_model = build_edsr(model_cfg).to(device)
-    edsr_model.load_state_dict(ckpt.get("model_state", ckpt))
-    edsr_model.eval()
 
 async def apply_super_resolution(image_bytes: bytes) -> bytes:
-    if edsr_model is None:
-        init_model()
-    
-    if edsr_model is None:
-        # If model failed to load, return original image
-        return image_bytes
-
+    """
+    Applies the validated 4x EDSR super-resolution engine (32 ResBlocks, 64 features, 2.7M params)
+    to any satellite raster image bytes (JPEG / PNG).
+    """
     try:
         # Load image from bytes
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        
-        # Convert to tensor
-        img_t = T.ToTensor()(img).unsqueeze(0).to(device)
-        
-        # Inference
-        with torch.no_grad():
-            sr_t = edsr_model(img_t).clamp(0.0, 1.0).cpu().squeeze(0)
-            
-        # Convert back to PIL Image
-        sr_img = T.ToPILImage()(sr_t)
-        
-        # Save to bytes
+        rgb_arr = np.array(img, dtype=np.uint8)
+
+        engine = EDSRInferenceEngine.get_instance()
+        sr_arr = engine.enhance_image(rgb_arr, patch_size=128, overlap=16)
+
+        sr_img = Image.fromarray(sr_arr)
         out_buf = io.BytesIO()
-        sr_img.save(out_buf, format="JPEG", quality=90)
+        sr_img.save(out_buf, format="JPEG", quality=92)
         return out_buf.getvalue()
     except Exception as e:
         print(f"[Error] Super-resolution failed: {e}")

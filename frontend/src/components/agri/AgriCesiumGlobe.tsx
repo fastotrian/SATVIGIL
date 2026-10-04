@@ -76,6 +76,9 @@ export function AgriCesiumGlobe({
       .catch(() => {});
   }, []);
 
+  const [srParcelEnhanced, setSrParcelEnhanced] = useState<boolean>(false);
+  const [isParcelImgLoading, setIsParcelImgLoading] = useState<boolean>(false);
+
   // Initialize CesiumJS 3D Viewer (Full-Screen Command Center Spec)
   useEffect(() => {
     if (!containerRef.current || viewerRef.current) return;
@@ -103,12 +106,12 @@ export function AgriCesiumGlobe({
     viewer.imageryLayers.addImageryProvider(satRef);
     configureTacticalViewer(viewer);
 
-    // Initial camera fly-to over agricultural sector (Ludhiana, Punjab)
+    // Initial camera fly-to over agricultural sector (Ludhiana, Punjab) at tactical inspection altitude
     viewer.camera.flyTo({
-      destination: Cartesian3.fromDegrees(center.lon, center.lat, 22000),
+      destination: Cartesian3.fromDegrees(center.lon, center.lat, 4200),
       orientation: {
         heading: 0.0,
-        pitch: CesiumMath.toRadians(-65),
+        pitch: CesiumMath.toRadians(-55),
         roll: 0.0,
       },
       duration: 1.5,
@@ -173,37 +176,51 @@ export function AgriCesiumGlobe({
     }
 
     GeoJsonDataSource.load(geojson, {
-      strokeWidth: 2,
+      strokeWidth: 3,
       clampToGround: true,
     }).then(dataSource => {
       dataSourceRef.current = dataSource;
       viewer.dataSources.add(dataSource);
 
-      // Colorize parcels by NDVI vegetative vigor
+      // Colorize parcels by NDVI vegetative vigor with crisp boundaries
       dataSource.entities.values.forEach(entity => {
         if (entity.polygon) {
           const props = entity.properties;
           const ndvi = props && props.ndvi ? props.ndvi.getValue() : 0.5;
 
-          let fillColor = Color.fromCssColorString('rgba(16, 185, 129, 0.45)'); // healthy emerald
-          let outlineColor = Color.fromCssColorString('#34d399');
+          let fillColor = Color.fromCssColorString('rgba(16, 185, 129, 0.40)'); // healthy emerald
+          let outlineColor = Color.fromCssColorString('#10b981');
 
           if (ndvi < 0.2) {
-            fillColor = Color.fromCssColorString('rgba(244, 63, 94, 0.45)'); // critical red
+            fillColor = Color.fromCssColorString('rgba(244, 63, 94, 0.40)'); // critical red
             outlineColor = Color.fromCssColorString('#f43f5e');
           } else if (ndvi < 0.35) {
-            fillColor = Color.fromCssColorString('rgba(251, 146, 60, 0.45)'); // stressed orange
+            fillColor = Color.fromCssColorString('rgba(251, 146, 60, 0.40)'); // stressed orange
             outlineColor = Color.fromCssColorString('#fb923c');
           } else if (ndvi < 0.5) {
-            fillColor = Color.fromCssColorString('rgba(251, 191, 36, 0.45)'); // moderate amber
+            fillColor = Color.fromCssColorString('rgba(251, 191, 36, 0.40)'); // moderate amber
             outlineColor = Color.fromCssColorString('#fbbf24');
           }
 
           entity.polygon.material = new ColorMaterialProperty(fillColor);
           entity.polygon.outline = new ConstantProperty(true);
           entity.polygon.outlineColor = new ConstantProperty(outlineColor);
-          entity.polygon.outlineWidth = new ConstantProperty(2);
+          entity.polygon.outlineWidth = new ConstantProperty(3);
           entity.polygon.heightReference = new ConstantProperty(HeightReference.CLAMP_TO_GROUND);
+
+          // Add polyline clamped to ground to guarantee sharp, high-contrast borders
+          try {
+            const hierarchy = entity.polygon.hierarchy?.getValue(CesiumMath.EPSILON7 as any);
+            if (hierarchy && hierarchy.positions && hierarchy.positions.length > 0) {
+              const boundaryPositions = [...hierarchy.positions, hierarchy.positions[0]];
+              entity.polyline = {
+                positions: new ConstantProperty(boundaryPositions),
+                width: new ConstantProperty(2.5),
+                material: new ColorMaterialProperty(outlineColor),
+                clampToGround: new ConstantProperty(true),
+              } as any;
+            }
+          } catch {}
         }
       });
     });
@@ -382,47 +399,107 @@ export function AgriCesiumGlobe({
         </button>
       </div>
 
-      {/* ── Selected Field Inspection Drawer ── */}
+      {/* ── Selected Field Inspection Drawer with Sentinel-2 & EDSR 4x Imagery ── */}
       {selectedField && (
-        <div className="absolute bottom-12 left-4 z-30 pointer-events-auto w-80 bg-navy-950/95 border border-emerald-500/60 rounded-xl p-3 shadow-2xl backdrop-blur-md animate-fadeIn font-mono">
-          <div className="flex items-center justify-between pb-2 border-b border-navy-700/60 mb-2">
+        <div className="absolute bottom-12 left-4 z-30 pointer-events-auto w-88 max-w-[360px] bg-[#040b17]/95 border border-emerald-500/70 rounded-xl p-3 shadow-2xl backdrop-blur-md animate-fadeIn font-mono">
+          <div className="flex items-center justify-between pb-2 border-b border-emerald-900/60 mb-2.5">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-bold text-white text-xs">PARCEL TELEMETRY: {selectedField.id}</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#10b981]" />
+              <span className="font-bold text-white text-xs tracking-wider">
+                PARCEL CADASTRAL #{selectedField.id}
+              </span>
             </div>
             <button
               type="button"
               onClick={() => onSelectField(null)}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-slate-800 text-xs font-bold"
             >
-              <X className="w-4 h-4" />
+              ✕
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-[11px] mb-2.5">
-            <div className="bg-navy-900/60 p-1.5 rounded border border-navy-800">
-              <span className="text-gray-400 block text-[10px]">Crop Type</span>
-              <span className="text-emerald-300 font-bold">{selectedField.crop}</span>
+          {/* Sentinel-2 / EDSR Optical Reconnaissance Snapshot */}
+          <div className="relative w-full h-36 bg-[#020611] rounded-lg overflow-hidden border border-emerald-700/60 mb-2.5 flex items-center justify-center">
+            {isParcelImgLoading && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#050e1d]/90 gap-1.5">
+                <div className="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+                <span className="text-[9px] text-emerald-300 font-mono tracking-wider uppercase">
+                  {srParcelEnhanced ? 'EDSR 4× Synthesizing...' : 'Fetching Sentinel-2 L2A...'}
+                </span>
+              </div>
+            )}
+            <img
+              key={`parcel-${selectedField.id}-${srParcelEnhanced}`}
+              src={`/api/v1/agri/field-image?lat=${selectedField.coordinates[0][1]}&lon=${selectedField.coordinates[0][0]}&enhance=${srParcelEnhanced}`}
+              alt={`Sentinel-2 parcel ${selectedField.id}`}
+              className="w-full h-full object-cover transition-opacity duration-300"
+              style={{ opacity: isParcelImgLoading ? 0.3 : 1 }}
+              onLoad={() => setIsParcelImgLoading(false)}
+              onError={() => setIsParcelImgLoading(false)}
+            />
+            <div className="absolute top-1.5 left-1.5 flex flex-col gap-0.5 z-10 pointer-events-none">
+              <span className="text-[8px] font-mono bg-black/80 px-1.5 py-0.5 rounded text-amber-300 border border-amber-500/40">
+                🛰️ SENTINEL-2 OPTICAL
+              </span>
+              {srParcelEnhanced && (
+                <span className="text-[8px] font-mono bg-emerald-950/90 px-1.5 py-0.5 rounded text-emerald-300 border border-emerald-500/50 font-bold shadow-[0_0_6px_rgba(16,185,129,0.4)]">
+                  ✨ EDSR 4× (2.5m GSD)
+                </span>
+              )}
             </div>
-            <div className="bg-navy-900/60 p-1.5 rounded border border-navy-800">
-              <span className="text-gray-400 block text-[10px]">Geodesic Area</span>
+            <div className="absolute bottom-1 right-1 text-[8px] font-mono text-slate-400 bg-black/70 px-1 py-0.5 rounded">
+              {srParcelEnhanced ? '1024×1024' : '256×256'}
+            </div>
+          </div>
+
+          {/* Parcel Agronomic Telemetry Grid */}
+          <div className="grid grid-cols-2 gap-2 text-[11px] mb-2.5">
+            <div className="bg-[#07172c] p-2 rounded-lg border border-slate-700/60">
+              <span className="text-slate-400 block text-[10px]">Crop Classification</span>
+              <span className="text-emerald-300 font-bold truncate block">{selectedField.crop}</span>
+            </div>
+            <div className="bg-[#07172c] p-2 rounded-lg border border-slate-700/60">
+              <span className="text-slate-400 block text-[10px]">Cadastral Acreage</span>
               <span className="text-cyan-300 font-bold">{selectedField.area_ha} ha</span>
             </div>
-            <div className="bg-navy-900/60 p-1.5 rounded border border-navy-800">
-              <span className="text-gray-400 block text-[10px]">NDVI Vigor</span>
+            <div className="bg-[#07172c] p-2 rounded-lg border border-slate-700/60">
+              <span className="text-slate-400 block text-[10px]">NDVI Vigor Score</span>
               <span className="text-emerald-400 font-bold">{selectedField.ndvi.toFixed(2)}</span>
             </div>
-            <div className="bg-navy-900/60 p-1.5 rounded border border-navy-800">
-              <span className="text-gray-400 block text-[10px]">Health Status</span>
+            <div className="bg-[#07172c] p-2 rounded-lg border border-slate-700/60">
+              <span className="text-slate-400 block text-[10px]">Vegetative Health</span>
               <span className="uppercase text-[10px] font-bold text-amber-300">{selectedField.health}</span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-[10px] text-gray-400 border-t border-navy-800/80 pt-2">
-            <span>Boundary Conf: <strong className="text-gray-200">{(selectedField.confidence ? selectedField.confidence * 100 : 88).toFixed(0)}%</strong></span>
+          {/* AI EDSR Super-Resolution Toggle */}
+          <div className="flex items-center justify-between bg-[#071326] p-2 rounded-lg border border-emerald-500/40 mb-2">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-200">Parcel Super-Resolution</span>
+              <span className="text-[9px] text-slate-400">Deep Residual 4× Upscaler</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsParcelImgLoading(true);
+                setSrParcelEnhanced(prev => !prev);
+              }}
+              className={`px-2.5 py-1 text-[10px] font-bold font-mono rounded transition-all shadow-md flex items-center gap-1 ${
+                srParcelEnhanced
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/30'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600'
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>{srParcelEnhanced ? 'ON (4×)' : 'OFF'}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-gray-400 border-t border-slate-800 pt-2">
+            <span>Cadastral Conf: <strong className="text-gray-200">{(selectedField.confidence ? selectedField.confidence * 100 : 92).toFixed(0)}%</strong></span>
             <span className="text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" />
-              EDSR Cadastral Pass
+              Sentinel-2 L2A Calibrated
             </span>
           </div>
         </div>

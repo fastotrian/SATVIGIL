@@ -13,6 +13,7 @@ from app.services.satellite.copernicus_cdse import (
     search_sentinel1_scenes,
     INDIAN_SAR_SECTORS,
     fetch_vessel_satellite_snapshot,
+    fetch_thermal_hotspot_satellite_snapshot,
 )
 from app.services.satellite.sar_spill_detector import (
     detect_oil_slick_from_sar,
@@ -131,13 +132,9 @@ async def get_thermal_satellite_image(
     Applies Deep Learning Super-Resolution (EDSR) if enhance is True.
     """
     try:
-        image_bytes, provider = await fetch_vessel_satellite_snapshot(
+        image_bytes, provider = await fetch_thermal_hotspot_satellite_snapshot(
             lat=lat,
             lon=lon,
-            mmsi=None,
-            sensor="sentinel2",
-            course=0.0,
-            speed=0.0,
         )
         
         if enhance:

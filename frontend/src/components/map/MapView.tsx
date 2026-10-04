@@ -2367,6 +2367,11 @@ export function MapView() {
         />
       )}
 
+      {/* ── Thermal Hotspot Satellite Popup ── */}
+      {selectedHotspot && (
+        <HotspotSatellitePopup hotspot={selectedHotspot} onClose={() => setSelectedHotspot(null)} />
+      )}
+
       {/* ── SAR Image Popup (spill click) ── */}
       {sarPopupSpill && (
         <SpillSARPopup
@@ -2378,10 +2383,6 @@ export function MapView() {
           }}
           onClose={() => setSarPopupSpill(null)}
         />
-      )}
-
-      {selectedHotspot && (
-        <HotspotSatellitePopup hotspot={selectedHotspot} onClose={() => setSelectedHotspot(null)} />
       )}
 
       {/* ── INCOIS 72h Ocean Drift Controller HUD ── */}
