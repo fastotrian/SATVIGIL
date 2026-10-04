@@ -2,6 +2,7 @@
  * SATVIGIL — Crop Health Monitor Panel (NDVI)
  * Displays Sentinel-2 NDVI vegetative health metrics, regional zone breakdowns,
  * and 4-week temporal vegetation decay trends across Indian agricultural corridors.
+ * Supports embedding inside the top-left floating Surveillance Dock for AGRI INTEL mode.
  */
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
@@ -12,7 +13,8 @@ import {
   Activity,
   Layers,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -27,7 +29,7 @@ import type { NdviResponse, NdviZone } from '../../types/agri';
 
 const FALLBACK_NDVI: NdviResponse = {
   region: 'Punjab & Central India',
-  date: '2024-10',
+  date: '2026-10',
   zones: [
     { id: 'PB-1', name: 'Amritsar', lat: 31.63, lon: 74.87, ndvi: 0.72, status: 'healthy', area_ha: 45200 },
     { id: 'PB-2', name: 'Ludhiana', lat: 30.90, lon: 75.85, ndvi: 0.55, status: 'moderate', area_ha: 38700 },
@@ -53,7 +55,13 @@ function getNdviColor(val: number): { text: string; bg: string; border: string; 
   return { text: 'text-rose-400', bg: 'bg-rose-500', border: 'border-rose-500/40', hex: '#f43f5e' };
 }
 
-export function CropHealthPanel() {
+interface CropHealthPanelProps {
+  onClose?: () => void;
+  onSelectZone?: (zone: NdviZone) => void;
+  isCompact?: boolean;
+}
+
+export function CropHealthPanel({ onClose, onSelectZone, isCompact = false }: CropHealthPanelProps) {
   const [data, setData] = useState<NdviResponse>(FALLBACK_NDVI);
   const [loading, setLoading] = useState(false);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
@@ -81,8 +89,15 @@ export function CropHealthPanel() {
     ndvi: val
   }));
 
+  const handleZoneClick = (zone: NdviZone) => {
+    setSelectedZone(selectedZone === zone.id ? null : zone.id);
+    if (onSelectZone) {
+      onSelectZone(zone);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-[#071326]/90 border border-emerald-500/30 rounded-xl p-3.5 shadow-xl backdrop-blur-md overflow-hidden font-mono text-xs">
+    <div className={`flex flex-col h-full bg-[#071326]/95 border border-emerald-500/40 rounded-xl p-3.5 shadow-2xl backdrop-blur-2xl overflow-hidden font-mono text-xs ${isCompact ? 'max-w-[340px]' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between pb-2.5 border-b border-navy-700/60 shrink-0">
         <div className="flex items-center gap-2">
@@ -93,7 +108,7 @@ export function CropHealthPanel() {
           <div>
             <h2 className="text-white font-bold tracking-wide text-xs flex items-center gap-1.5">
               <span>CROP HEALTH MONITOR</span>
-              <span className="text-[10px] text-emerald-400/80 font-normal">[SENTINEL-2 NDVI]</span>
+              <span className="text-[10px] text-emerald-400/90 font-normal">[SENTINEL-2 NDVI]</span>
             </h2>
             <div className="text-[10px] text-gray-400">
               Region: <span className="text-gray-200">{data.region}</span> ({data.date})
@@ -101,15 +116,27 @@ export function CropHealthPanel() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={fetchNdvi}
-          disabled={loading}
-          title="Refresh NDVI Telemetry"
-          className="p-1 rounded bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white transition-all disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={fetchNdvi}
+            disabled={loading}
+            title="Refresh NDVI Telemetry"
+            className="p-1 rounded bg-navy-800 hover:bg-navy-700 text-gray-300 hover:text-white transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
+          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close Panel"
+              className="p-1 rounded bg-navy-800 hover:bg-navy-700 text-gray-400 hover:text-white transition-all"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 4 Status Summary Cards */}
@@ -160,7 +187,7 @@ export function CropHealthPanel() {
           return (
             <div
               key={zone.id}
-              onClick={() => setSelectedZone(isSelected ? null : zone.id)}
+              onClick={() => handleZoneClick(zone)}
               className={`p-2 rounded-lg border transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-navy-800/90 border-emerald-400 shadow-md'

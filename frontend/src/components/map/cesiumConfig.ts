@@ -127,6 +127,30 @@ export const SECTOR_WAYPOINTS = {
     pitch: -88,
     roll: 0,
   },
+  AGRI_LUDHIANA: {
+    longitude: 75.8500,
+    latitude: 30.9000,
+    height: 25000,
+    heading: 0,
+    pitch: -65,
+    roll: 0,
+  },
+  AGRI_AMRITSAR: {
+    longitude: 74.8700,
+    latitude: 31.6300,
+    height: 35000,
+    heading: 0,
+    pitch: -65,
+    roll: 0,
+  },
+  AGRI_VIDARBHA: {
+    longitude: 78.4000,
+    latitude: 20.7000,
+    height: 60000,
+    heading: 0,
+    pitch: -65,
+    roll: 0,
+  },
 };
 
 /**

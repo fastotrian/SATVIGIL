@@ -5,7 +5,90 @@
 
 ---
 
-## 🕒 Last Updated: 2026-10-04 (AGRI INTEL Click State Bug Fix)
+## 🕒 Last Updated: 2026-10-05 (AGRI INTEL Full-Size 3D Globe & Dynamic Domain Panel Repositioning)
+
+> **COMPLETED IMPLEMENTATION — AGRI INTEL Full-Size 3D Globe & Unified Panel Layout**
+> - **Full-Size 3D Globe Matching Maritime, Thermal, and Geological Domains:**
+>   - Refactored `AgriIntelView.tsx` to mount `AgriCesiumGlobe.tsx` across the full workspace canvas (`w-full h-full relative overflow-hidden`), replacing the previous cramped 3-panel split.
+>   - The WebGL 3D globe now renders edge-to-edge with the same top-right camera navigation HUD, ESRI high-resolution satellite imagery, and georeferenced cadastral boundaries.
+> - **Crop Health Monitor Repositioned to Left Surveillance Layer Dock:**
+>   - Embedded `CropHealthPanel.tsx` directly into the top-left floating collapsible Surveillance Dock (`[Surveillance Layers (Crop Health)]`) inside `AgriCesiumGlobe.tsx`.
+>   - Appears exclusively in `AGRI INTEL` mode on the left at the exact position occupied by Maritime and Thermal surveillance docks.
+>   - Added Agri Sector Waypoint shortcuts (Ludhiana, Amritsar, Vidarbha) in `cesiumConfig.ts` and the dock header for 1-click camera fly-to.
+> - **Crop Damage Assessment Repositioned to Right Side (Replacing Threat Feed):**
+>   - Updated `frontend/src/App.tsx`:
+>     - In `activeNavTab === 'agri'` mode, the right-side collapsible panel mounts `DamageAssessmentPanel.tsx` with its interactive pre/post disaster split-screen slider, disaster switcher (Flood, Drought, Cyclone), economic loss stats, and crop breakdown.
+>     - In `maritime`, `thermal`, or `geological` modes, the right-side panel cleanly switches back to the standard maritime `AlertPanel.tsx` (Threat Feed).
+>     - Collapse/expand toggles are synchronized (`[◀ Crop Damage]` when collapsed, `[▶ Hide]` when expanded).
+> - **Quality Assurance & Build Verification:**
+>   - TypeScript and Vite production build verified (`npm run build` -> 0 errors in 10.70s).
+>   - All backend unit tests passing (`48 passed in 7.36s`).
+
+## 🕒 Previous: 2026-10-04 (AGRI INTEL EDSR 4x + CesiumJS 3D Globe Integration Complete)
+> - **EDSR Checkpoint Verified & Packaged:**
+>   - Discovered PyTorch checkpoint tree at `best_model/` (30MB, 138 tensor keys).
+>   - Correctly packaged to standard Torch Zip archive: `best_model.pth` (29.99MB) with `archive/` prefix, placed in both `scripts/best_model.pth` and `ml/checkpoints/best_model.pth`.
+>   - Checkpoint inspection verified:
+>     - Architecture: 32 ResBlocks, 64 features, 4x upsampler (two 2x PixelShuffles), residual scale 1.0.
+>     - Parameter count: **2,699,267 parameters**.
+>     - Trained with Charbonnier + Edge + SSIM + Perceptual loss, EMA decay 0.99, cosine scheduler.
+> - **Inference Architecture & Scripts Authored:**
+>   - `scripts/models/edsr.py` & `scripts/models/__init__.py`: Full PyTorch `EDSR` & `build_edsr()` module.
+>   - `scripts/utils/image_utils.py` & `scripts/utils/__init__.py`: High-speed PIL/NumPy/Tensor IO utilities.
+>   - `scripts/config.yaml`: Canonical model configuration with scale 4x.
+>   - **End-to-End Inference Validated:** Executed `python inference.py` on CUDA; successfully upsampled 64x64 test image to 256x256 RGB image with 0 errors.
+> - **Backend Agri Services (`backend/app/services/agri/`):**
+>   - `edsr_service.py`: Singleton `EDSRInferenceEngine` running on GPU/CPU with overlapping cosine-feathered tile reconstruction (`enhance_image`) to handle large satellite scenes without OOM.
+>   - `geo_calculator.py`: Calibrated Sentinel-2 NDVI calculation `(B08 - B04) / (B08 + B04)`, spherical geodesic polygon parcel area calculation (`compute_polygon_geodesic_area_ha`), and multi-temporal damage delta assessment (`compute_damage_delta`).
+>   - `backend/app/api/routes/agri.py`:
+>     - `GET /api/v1/agri/status`: Live EDSR engine telemetry (model loaded, device, scale, parameter count).
+>     - `GET /api/v1/agri/fields`: Dynamic field boundaries with geodesic area and GeoJSON export for Cesium.
+>     - `POST /api/v1/agri/fields/calculate-area`: On-the-fly geodesic area calculation for custom boundaries.
+>     - `POST /api/v1/agri/super-resolve`: Live upload endpoint for 4x EDSR enhancement of satellite tiles.
+>     - Backward compatibility preserved for `/ndvi` and `/damage` endpoints.
+> - **CesiumJS 3D Globe Cadastral Mapping Frontend:**
+>   - Created `frontend/src/components/agri/AgriCesiumGlobe.tsx`:
+>     - Renders high-resolution satellite imagery using ESRI World Imagery and boundaries reference layer.
+>     - Loads georeferenced field parcels via `GeoJsonDataSource` clamped to ground.
+>     - Dynamic NDVI color classification: Healthy emerald (>0.5), Moderate amber (0.3-0.5), Stressed orange (0.15-0.3), Critical red (<0.15).
+>     - Interactive 3D camera controls (Zoom In, Zoom Out, Reset North) and parcel click inspection with slide-up telemetry drawer.
+>     - Live EDSR model telemetry status badge and 2.5m/px resolution indicator.
+>   - Updated `frontend/src/components/agri/FieldBoundaryPanel.tsx` with dual-mode toggle: `[3D GLOBE]` (CesiumJS) and `[2D VECTOR]` (Fast SVG).
+>   - Updated `frontend/src/types/agri.ts` with `AgriStatusResponse` and parcel typing.
+> - **Verification & Quality Gates:**
+>   - Frontend build `npm run build` (`tsc && vite build`) passed with **0 errors** in 6.03s.
+>   - Backend unit tests (`pytest backend/tests/unit/`): **48 passed in 7.36s** (100% pass rate).
+
+## 🕒 Previous: 2026-10-04 (AGRI INTEL EDSR + CesiumJS Integration Plan — Phase 1 Audit Complete)
+> - **EDSR Capability Verdict (verified):**
+>   - ✅ Upsamples RGB images — confirmed by inference.py.
+>   - ❌ NOT compatible with Sentinel-2 NDVI (RGB-only, no NIR band).
+>   - ❌ NOT a field boundary detector, NDVI model, or damage classifier.
+>   - Strategy: Use EDSR on Sentinel-2 TCI RGB for visual enhancement only; compute NDVI from original Band 4 + Band 8 separately.
+> - **Existing Agri Components (verified):**
+>   - `AgriIntelView.tsx` (33 lines), `CropHealthPanel.tsx` (251 lines), `FieldBoundaryPanel.tsx` (408 lines — SVG canvas), `DamageAssessmentPanel.tsx` (341 lines) — all exist with mock/fallback data.
+>   - `backend/app/api/routes/agri.py` (80 lines) — 3 mock endpoints: `/ndvi`, `/fields`, `/damage`.
+>   - CesiumJS globe available in `MapView.tsx` (PART 35).
+> - **7-Phase Roadmap Defined:**
+>   - Phase 2: EDSR model files + inference validation.
+>   - Phase 3: Geospatial Sentinel-2 preprocessing + NDVI computation.
+>   - Phase 4: CesiumJS globe with BHUVAN cadastral real field polygons.
+>   - Phase 5: Real NDVI from PostGIS (replace mocks).
+>   - Phase 6: Crop damage assessment via NDVI delta.
+>   - Phase 7: Validation, optimization, SIH demo.
+> - **7 Decisions Requiring User Approval Before Coding:**
+>   1. EDSR architecture (write canonical paper version vs. user provides exact arch)?
+>   2. Checkpoint placement path?
+>   3. Field boundaries: BHUVAN real GeoJSON vs. synthetic for demo?
+>   4. Agri globe: reuse MapView CesiumJS (Option A) vs. embed 2nd Viewer (Option B)?
+>   5. EDSR scale factor (2×, 3×, 4×)?
+>   6. Primary demo region (Punjab vs. Vidarbha vs. both)?
+>   7. Async job runner: Celery vs. APScheduler?
+> - **New PostGIS Tables Planned:** `agri_fields`, `ndvi_readings`, `agri_jobs`.
+> - **New Backend Services Planned:** `sentinel2_fetcher.py`, `ndvi_processor.py`, `tile_splitter.py`, `sr_pipeline.py`, `field_loader.py`, `damage_detector.py`.
+> - **New Frontend Components Planned:** `AgriGlobePanel.tsx`, `FieldInspectionPanel.tsx`, `SrComparisonWidget.tsx`.
+
+## 🕒 Previous: 2026-10-04 (AGRI INTEL Click State Bug Fix)
 
 > **Bug Fix:** Fixed AGRI INTEL Tab Unclickable Issue
 > - **Root Cause:** In `frontend/src/store/alertStore.ts`, the `setNavTab` action had an `if / else if / else` structure where only `'maritime'` and `'thermal'` were explicitly matched, with the default `else` block resetting `activeNavTab` to `'geological'`. When clicking the `AGRI INTEL` tab (`setNavTab('agri')`), it matched neither condition, fell into the `else` branch, and set `activeNavTab` to `'geological'`. Consequently, `activeNavTab === 'agri'` was never truthy, and `AgriIntelView` never mounted.

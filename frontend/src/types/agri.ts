@@ -11,6 +11,7 @@ export interface NdviZone {
 export interface NdviResponse {
   region: string;
   date: string;
+  sensor?: string;
   zones: NdviZone[];
   trend_weekly: number[];
   summary: { healthy: number; moderate: number; stressed: number; critical: number; total_area_ha: number };
@@ -22,7 +23,8 @@ export interface AgriField {
   area_ha: number;
   crop: string;
   ndvi: number;
-  health: 'healthy' | 'moderate' | 'stressed';
+  health: 'healthy' | 'moderate' | 'stressed' | 'critical';
+  confidence?: number;
 }
 
 export interface FieldsResponse {
@@ -50,4 +52,17 @@ export interface DamageResponse {
   estimated_loss_crore: number;
   crop_breakdown: CropBreakdown[];
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+}
+
+export interface AgriStatusResponse {
+  status: string;
+  edsr_model: {
+    loaded: boolean;
+    device: string;
+    scale: number;
+    parameters: number;
+    architecture: string;
+  };
+  sentinel2_calibrated: boolean;
+  capabilities: string[];
 }
