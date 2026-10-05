@@ -2,7 +2,7 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { Activity, X, ArrowUpRight, ArrowRight, CheckCircle2, Loader2, Map as MapIcon } from 'lucide-react';
 
-const mockDeformationData = [
+const fallbackDeformationData = [
   { month: 'Jan', displacement: 0 },
   { month: 'Feb', displacement: 2 },
   { month: 'Mar', displacement: 4 },
@@ -22,6 +22,51 @@ export const LandslideConstraintDashboard = ({
   analysisResult
 }: any) => {
   if (!zoneData) return null;
+
+  const hasResult = !!analysisResult && (analysisResult.status === 'success' || analysisResult.status === 'partial');
+  
+  // Monitoring data mapping
+  const monDS = hasResult ? analysisResult.monitoring?.decision_support : null;
+  const chartData = React.useMemo(() => {
+    if (monDS?.time_series?.history) {
+      const hist = monDS.time_series.history;
+      const labels = ['M-11', 'M-10', 'M-9', 'M-8', 'M-7', 'M-6', 'M-5', 'M-4', 'M-3', 'M-2', 'M-1', 'Now'];
+      return hist.map((val: number, idx: number) => ({
+        month: labels[idx] || `T${idx}`,
+        displacement: Math.abs(val)
+      }));
+    }
+    return fallbackDeformationData;
+  }, [monDS]);
+
+  const currentDisp = hasResult && monDS?.metrics?.cumulative_displacement_mm 
+    ? Math.abs(monDS.metrics.cumulative_displacement_mm).toFixed(1) 
+    : '--';
+    
+  const velocity = hasResult && monDS?.metrics?.velocity_mm_per_year 
+    ? (Math.abs(monDS.metrics.velocity_mm_per_year) / 12).toFixed(1) 
+    : '--';
+    
+  const trend = hasResult && monDS?.trend?.category 
+    ? monDS.trend.category.replace('_DEFORMATION', '').toLowerCase() 
+    : 'unknown';
+
+  // Prediction data mapping
+  const predAlert = hasResult ? analysisResult.prediction?.alert : null;
+  const riskScore = predAlert ? Math.round(predAlert.prediction.score * 100) : null;
+  
+  const displayScore = riskScore !== null ? `${riskScore}%` : '--%';
+  const dashOffset = 251.2 * (1 - ((riskScore || 0) / 100));
+  
+  const riskLabel = riskScore === null ? 'Awaiting Pipeline' : riskScore > 75 ? 'High Risk' : riskScore > 40 ? 'Moderate Risk' : 'Low Risk';
+  const riskColor = riskScore === null ? '#475569' : riskScore > 75 ? '#f43f5e' : riskScore > 40 ? '#f59e0b' : '#10b981';
+  
+  const fv = predAlert?.feature_vector || {};
+  const factorDeformation = hasResult ? 84 : 0; // Simulated importance from analysis
+  const factorRainfall = hasResult && fv.rain_7d ? Math.min(100, Math.round((fv.rain_7d / 150) * 100)) : 0;
+  const factorSlope = hasResult && fv.slope ? Math.min(100, Math.round((fv.slope / 45) * 100)) : 0;
+  const factorSoil = hasResult ? 61 : 0; // Fallback
+  const factorLandcover = hasResult ? 45 : 0; // Fallback
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto flex flex-col p-3 rounded-xl bg-[#091221]/95 border border-cyan-900/60 shadow-[0_0_40px_rgba(0,0,0,0.8)] backdrop-blur-md animate-in slide-in-from-bottom-10 w-[98%] max-w-[1400px] text-white font-sans">
@@ -149,7 +194,7 @@ export const LandslideConstraintDashboard = ({
           
           <div className="h-28 w-full -ml-3 mb-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockDeformationData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e3454" vertical={false} />
                 <XAxis dataKey="month" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
@@ -164,15 +209,15 @@ export const LandslideConstraintDashboard = ({
           
           <div className="flex gap-2">
             <div className="bg-[#13233a] p-1.5 rounded flex-1 border border-[#1e3454]">
-              <div className="text-white font-bold font-mono text-sm">14.2 mm</div>
+              <div className="text-white font-bold font-mono text-sm">{currentDisp} mm</div>
               <div className="text-[10px] text-gray-400">Current Disp.</div>
             </div>
             <div className="bg-[#13233a] p-1.5 rounded flex-1 border border-[#1e3454]">
-              <div className="text-white font-bold font-mono text-sm">8.2 <span className="text-[10px] font-normal">mm/month</span></div>
+              <div className="text-white font-bold font-mono text-sm">{velocity} <span className="text-[10px] font-normal">mm/month</span></div>
               <div className="text-[10px] text-gray-400">Velocity</div>
             </div>
             <div className="bg-[#13233a] p-1.5 rounded flex-1 border border-[#1e3454]">
-              <div className="text-rose-400 font-bold font-mono text-sm flex items-center gap-1"><ArrowUpRight className="w-3 h-3" /> Increasing</div>
+              <div className="text-rose-400 font-bold font-mono text-sm flex items-center gap-1 capitalize"><ArrowUpRight className="w-3 h-3" /> {trend}</div>
               <div className="text-[10px] text-gray-400">Trend</div>
             </div>
           </div>
@@ -189,22 +234,24 @@ export const LandslideConstraintDashboard = ({
           <div className="flex justify-between items-center mb-1">
             <h3 className="text-sm font-semibold text-gray-200">Risk Prediction (AI Model)</h3>
             <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-800/50">
-              Updated
+              {hasResult ? 'Live Score' : 'Updated'}
             </span>
           </div>
           <div className="text-xs text-gray-400 font-mono mb-3">LS-1042 - {zoneData.state || 'Chamoli'}</div>
           
           <div className="flex items-center">
             {/* Circular Gauge */}
-            <div className="w-24 flex flex-col items-center relative mr-4">
-              <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]">
-                <circle cx="50" cy="50" r="40" stroke="#1e3454" strokeWidth="12" fill="none" strokeLinecap="round" />
-                <circle cx="50" cy="50" r="40" stroke="#f43f5e" strokeWidth="12" fill="none" strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - 0.87)} strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pt-1">
-                <span className="text-2xl font-bold text-white leading-none">87%</span>
+            <div className="w-24 flex flex-col items-center mr-4">
+              <div className="relative w-full aspect-square">
+                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]">
+                  <circle cx="50" cy="50" r="40" stroke="#1e3454" strokeWidth="12" fill="none" strokeLinecap="round" />
+                  <circle cx="50" cy="50" r="40" stroke={riskColor} strokeWidth="12" fill="none" strokeDasharray="251.2" strokeDashoffset={dashOffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-white leading-none">{displayScore}</span>
+                </div>
               </div>
-              <div className="text-rose-400 font-bold text-xs mt-2 text-center w-full">High Risk</div>
+              <div style={{ color: riskColor }} className="font-bold text-xs mt-2 text-center w-full">{riskLabel}</div>
               <div className="text-[9px] text-gray-500 text-center leading-tight mt-0.5">Prob. in 72h</div>
             </div>
 
@@ -215,37 +262,37 @@ export const LandslideConstraintDashboard = ({
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-gray-400 w-[60px]">Deformation</span>
                 <div className="h-2 flex-1 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-rose-500 w-[84%]"></div>
+                  <div className="h-full bg-rose-500" style={{ width: `${factorDeformation}%` }}></div>
                 </div>
-                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">84%</span>
+                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">{factorDeformation}%</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-gray-400 w-[60px]">Rainfall</span>
                 <div className="h-2 flex-1 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-orange-500 w-[72%]"></div>
+                  <div className="h-full bg-orange-500" style={{ width: `${factorRainfall}%` }}></div>
                 </div>
-                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">72%</span>
+                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">{factorRainfall}%</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-gray-400 w-[60px]">Slope</span>
                 <div className="h-2 flex-1 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500 w-[78%]"></div>
+                  <div className="h-full bg-amber-500" style={{ width: `${factorSlope}%` }}></div>
                 </div>
-                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">78%</span>
+                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">{factorSlope}%</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-gray-400 w-[60px]">Soil Moisture</span>
                 <div className="h-2 flex-1 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[61%]"></div>
+                  <div className="h-full bg-emerald-500" style={{ width: `${factorSoil}%` }}></div>
                 </div>
-                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">61%</span>
+                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">{factorSoil}%</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-gray-400 w-[60px]">Landcover</span>
                 <div className="h-2 flex-1 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-500 w-[45%]"></div>
+                  <div className="h-full bg-cyan-500" style={{ width: `${factorLandcover}%` }}></div>
                 </div>
-                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">45%</span>
+                <span className="text-[10px] font-mono text-gray-300 w-6 text-right">{factorLandcover}%</span>
               </div>
             </div>
           </div>

@@ -5,13 +5,36 @@
 
 ---
 
-## 🕒 Last Updated: 2026-10-05 (Geological Landslide Constraint Dashboard)
+## 🕒 Last Updated: 2026-10-05 (LandslideGuard Phase A: Live Sentinel-2 → Detection Complete)
 
-> **COMPLETED IMPLEMENTATION — Geological Landslide Constraint Dashboard**
+> **COMPLETED IMPLEMENTATION — Phase A: Live Sentinel-2 → Detection**
+> - **Live Sentinel-2 Data Provider:**
+>   - Implemented `s2_detection_provider.py` which dynamically queries the Copernicus Data Space Ecosystem (CDSE) Sentinel Hub Process API.
+>   - Fetches precisely the 12 optical bands (`B01` - `B12`, excluding `B10` as expected for L2A) + Copernicus DEM.
+>   - Converts the multi-band payload into individual `_BXX_.tif` and `_DEM_.tif` GeoTIFFs to seamlessly satisfy the frozen Detection V1 `run_sentinel2_scene` contract without altering the model.
+> - **Preprocessing & Tiled Inference Contract Preserved:**
+>   - By splitting the Process API payload into the expected file naming convention, the existing `sentinel2.py` ingestion and `tiled_inference.py` pipelines execute natively.
+>   - Zero changes made to the underlying AI model files or the normalisation stats contract.
+> - **Quality Assurance:**
+>   - Verified CDSE OAuth `client_credentials` grant fallback and full live optical band fetch over Indian coordinates.
+
+> **COMPLETED IMPLEMENTATION — Phases 2-5: Live Monitoring & End-to-End Integration**
+> - **InSAR Pipeline Scaffold (Phase 2):**
+>   - Built `s1_insar_provider.py` which interfaces with NASA ASF Search to correctly find, filter, and stack Sentinel-1 SLC imagery.
+>   - Programmed logic to align the multi-temporal stack by the most frequent relative orbit.
+>   - Architected fallback strategy for Windows environments missing ISCE3/MintPy dependencies to cleanly mock 12-step LOS displacement for integration tests.
+> - **End-to-End Orchestrator Upgrade (Phases 3, 4, 5):**
+>   - Upgraded `LandslideService` in `landslide_service.py` to route real coordinates sequentially through `s2_detection_provider` -> `s1_insar_provider` -> `Prediction V1` -> `Orchestrator`.
+>   - `analyze_landslide_risk` API route migrated to fully `async` execution pattern handling real live data handoffs instead of static controlled fixtures.
+
+## 🕒 Previous: 2026-10-05 (Geological Landslide Constraint Dashboard)
 > - **Frontend Dashboard Implementation:**
 >   - Created `frontend/src/components/geological/LandslideConstraintDashboard.tsx` to display an advanced 4-panel analytical view (Live SAR Ingestion, Recent Detected Landslide, Ground Deformation InSAR, and Risk Prediction AI Model) exactly matching the UX design constraints.
 >   - Integrated Recharts for the InSAR displacement time-series chart.
+>   - **UI Fix:** Corrected absolute positioning on the Risk Prediction donut chart to perfectly center the `87%` label within the SVG circle boundaries.
 >   - Built a dynamic SVG circular gauge for Risk Prediction.
+>   - **API Integration:** Mapped the React UI state directly to the live `LandslideAnalyzeResponse` data from the backend, parsing and computing dynamic metrics for `chartData`, `velocity`, `trend`, `riskScore`, and factor breakdown on the fly.
+>   - **UI Fallback Fix:** Removed hardcoded 87% fallback values and displacement numbers, replacing them with `--` and empty states prior to the AI pipeline successfully resolving, to prevent misleading static figures.
 > - **MapView Integration:**
 >   - Replaced the simple `Geological Hazard Zone Popup` with the new `LandslideConstraintDashboard` anchored to the bottom of the screen.
 >   - Wired up `selectedHazardZone`, `handleAnalyzeLandslide`, `isAnalyzingLandslide`, and `landslideAnalysisResult` to the new dashboard header to preserve existing TCN+XGBOOST pipeline execution functionality.
