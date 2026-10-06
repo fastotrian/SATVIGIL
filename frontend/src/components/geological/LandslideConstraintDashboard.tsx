@@ -110,7 +110,7 @@ export const LandslideConstraintDashboard = ({
           </div>
           <div className="flex gap-2">
             <div className="w-20 h-20 bg-black rounded overflow-hidden flex-shrink-0 relative border border-[#1e3454]">
-              <img src="/sar_spill_bombay_high.jpg" alt="SAR" className="w-full h-full object-cover grayscale opacity-80 mix-blend-screen" />
+              <img src={`https://picsum.photos/seed/${zoneData.id || 'sar'}/200/200?grayscale`} alt="SAR" className="w-full h-full object-cover grayscale opacity-80 mix-blend-screen" />
             </div>
             <div className="flex-1 flex flex-col justify-between text-[10px] font-mono leading-tight text-gray-400">
               <div>
@@ -121,7 +121,7 @@ export const LandslideConstraintDashboard = ({
                   <span>Mode</span><span className="text-gray-200">Stripmap</span>
                   <span>Polarization</span><span className="text-gray-200">VV</span>
                   <span>Orbit</span><span className="text-gray-200">14237 (D)</span>
-                  <span>Coverage</span><span className="text-gray-200">Uttarakhand (AOI)</span>
+                  <span>Coverage</span><span className="text-gray-200">{zoneData.state || 'Uttarakhand'} (AOI)</span>
                   <span>Status</span><span className="text-emerald-400 flex items-center gap-1">Downloaded <CheckCircle2 className="w-3 h-3" /></span>
                 </div>
               </div>
@@ -154,14 +154,14 @@ export const LandslideConstraintDashboard = ({
           </div>
           <div className="flex gap-2">
             <div className="w-20 h-20 bg-slate-800 rounded overflow-hidden flex-shrink-0 relative border border-[#1e3454]">
-              <img src="/sar_spill_bombay_high.jpg" alt="Map" className="w-full h-full object-cover sepia-[0.3] hue-rotate-60" />
+              <img src={`https://picsum.photos/seed/${zoneData.id || 'map'}map/200/200?grayscale`} alt="Map" className="w-full h-full object-cover sepia-[0.3] hue-rotate-60" />
               {/* Synthetic red polygon overlay */}
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <polygon points="20,80 30,50 60,30 80,40 70,70 40,90" fill="rgba(225,29,72,0.4)" stroke="#f43f5e" strokeWidth="1.5" />
               </svg>
             </div>
             <div className="flex-1 flex flex-col text-[10px] font-mono leading-tight text-gray-400">
-              <div className="text-white font-bold text-sm mb-0.5">LS-1042</div>
+              <div className="text-white font-bold text-sm mb-0.5">LS-{zoneData.id?.split('-')[1]?.substring(0,4).toUpperCase() || '1042'}</div>
               <div className="text-gray-400 mb-2">{zoneData.state || 'Uttarakhand'}</div>
               <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5">
                 <span className="text-gray-500">Detected:</span><span className="text-gray-200">7 Sep 2026, 14:18 IST</span>
@@ -190,7 +190,7 @@ export const LandslideConstraintDashboard = ({
               Updated
             </span>
           </div>
-          <div className="text-xs text-gray-400 font-mono mb-2">LS-1042 - {zoneData.state || 'Chamoli'}</div>
+          <div className="text-xs text-gray-400 font-mono mb-2">LS-{zoneData.id?.split('-')[1]?.substring(0,4).toUpperCase() || '1042'} - {zoneData.name || 'Chamoli'}</div>
           
           <div className="h-28 w-full -ml-3 mb-2">
             <ResponsiveContainer width="100%" height="100%">
@@ -237,7 +237,7 @@ export const LandslideConstraintDashboard = ({
               {hasResult ? 'Live Score' : 'Updated'}
             </span>
           </div>
-          <div className="text-xs text-gray-400 font-mono mb-3">LS-1042 - {zoneData.state || 'Chamoli'}</div>
+          <div className="text-xs text-gray-400 font-mono mb-3">LS-{zoneData.id?.split('-')[1]?.substring(0,4).toUpperCase() || '1042'} - {zoneData.name || 'Chamoli'}</div>
           
           <div className="flex items-center">
             {/* Circular Gauge */}

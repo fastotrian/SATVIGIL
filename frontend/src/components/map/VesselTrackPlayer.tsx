@@ -21,7 +21,7 @@ import {
 } from 'cesium';
 import type { VesselTrack, TrackPoint } from '../../types/maritime';
 
-const API_BASE = 'http://localhost:8000/api/v1';
+const API_BASE = '/api/v1';
 
 export const DEMO_TRACK_VESSEL_ID = 'gfw-v-419001-kutch-tanker';
 export const DEMO_TRACK_MMSI = '419001845';

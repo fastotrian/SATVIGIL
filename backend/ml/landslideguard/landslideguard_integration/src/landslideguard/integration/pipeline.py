@@ -188,8 +188,10 @@ class IntegrationPipeline:
 
 # ---- convenience wiring with the real frozen artifacts ----
 
-_PRED_DIR = Path(r"D:/LANDSLIDE/LandslideGuard_Prediction")
-_MON_DIR = Path(r"D:/LANDSLIDE/LandslideGuard_Monitering")
+_CURRENT_DIR = Path(__file__).parent.resolve()
+_BASE_DIR = _CURRENT_DIR.parent.parent.parent.parent
+_PRED_DIR = _BASE_DIR / "LandslideGuard_Prediction"
+_MON_DIR = _BASE_DIR / "LandslideGuard_Monitering"
 _POS_DAILY = _PRED_DIR / "imerg_targeted_download" / "extracted" / "glc_event_daily_rainfall.csv"
 _CTRL_DAILY = (_PRED_DIR / "prediction_dataset" / "imerg_targeted_download"
                / "control_imerg_extraction" / "control_daily_rainfall.csv")

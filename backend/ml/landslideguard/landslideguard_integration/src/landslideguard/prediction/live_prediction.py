@@ -32,7 +32,9 @@ from ..providers.base import RainfallProvider, TerrainProvider, coerce_event_tim
 from .feature_builder import PredictionFeatureBuilder, FROZEN_FEATURE_ORDER
 
 # Frozen locations (consistent with Phase 2 / Phase 3).
-_PRED_DIR = Path(r"D:/LANDSLIDE/LandslideGuard_Prediction")
+_CURRENT_DIR = Path(__file__).parent.resolve()
+_BASE_DIR = _CURRENT_DIR.parent.parent.parent.parent
+_PRED_DIR = _BASE_DIR / "LandslideGuard_Prediction"
 _MODEL_DIR = _PRED_DIR / "models" / "prediction_v1"
 _POS_DAILY = _PRED_DIR / "imerg_targeted_download" / "extracted" / "glc_event_daily_rainfall.csv"
 _CTRL_DAILY = (_PRED_DIR / "prediction_dataset" / "imerg_targeted_download"
@@ -40,7 +42,7 @@ _CTRL_DAILY = (_PRED_DIR / "prediction_dataset" / "imerg_targeted_download"
 _TILES = _PRED_DIR / "prediction_dataset" / "terrain_context" / "srtm_30m" / "tiles"
 _DOWNLOADS = _PRED_DIR / "prediction_dataset" / "terrain_context" / "srtm_30m" / "downloads"
 
-_DEFAULT_CACHE = Path(r"D:/LANDSLIDE/landslideguard_integration/cache")
+_DEFAULT_CACHE = _BASE_DIR / "landslideguard_integration" / "cache"
 
 
 def _load_frozen_predictor():

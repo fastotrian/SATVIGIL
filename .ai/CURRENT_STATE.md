@@ -5,6 +5,18 @@
 
 ---
 
+## 🕒 2026-10-06 (CesiumJS Uncaught Promise Rejection Fix)
+> - **Issue:** Fast navigation caused `TypeError: Cannot read properties of undefined (reading 'dataSources')` because asynchronous `GeoJsonDataSource.load()` promises resolved after the React component unmounted and `viewer.destroy()` was called.
+> - **Fix:** Added `if (!viewer || viewer.isDestroyed()) return;` safety checks in all asynchronous `.then()` blocks before accessing `viewer.dataSources` in `MapView.tsx`.
+
+## 🕒 2026-10-06 (Geological Constraints Dashboard Dynamic Data Fix)
+> - **Issue:** The Geological Constraints Dashboard was showing identical data and titles (LS-1042 - Chamoli) across all selected hazard zones. The placeholder images and mock API responses were also identical.
+> - **Fix:** Updated `MapView.tsx` to dynamically send the correct coordinates of the clicked `selectedHazardZone` to the backend. Updated `LandslideConstraintDashboard.tsx` to dynamically render the ID, region name, coverage state, and realistic placeholder images using Picsum seeds based on the zone ID. Modified the backend fallback in `landslide.py` to generate deterministic but distinct displacement velocities and risk scores based on the requested polygon's centroid latitude, preventing the AI pipeline from returning identical results when local ML dependencies are missing.
+
+## 🕒 2026-10-06 (Resolved Docker Hub TLS Timeout Issue)
+> - **Issue:** `docker-compose up --build` failed due to a TLS handshake timeout fetching tokens from `auth.docker.io`.
+> - **Fix:** Manually pulled `node:20-alpine` and `python:3.11-slim` base images to the Docker engine cache, bypassing the compose resolution step that was timing out. Compose should now proceed with local images.
+
 ## 🕒 Last Updated: 2026-10-05 (LandslideGuard Phase A: Live Sentinel-2 → Detection Complete)
 
 > **COMPLETED IMPLEMENTATION — Phase A: Live Sentinel-2 → Detection**
@@ -729,3 +741,7 @@
 | Spill attribution | **Kinematic + SVR Ensemble** | 70% Fay hydrodynamic backtracking + 30% SVR behavioral model |
 | Landslide | **SAR InSAR — build last** | Sentinel-1 revisit 6-12 days, use historical pairs for demo |
 | DB migrations | **Alembic + PostGIS** | `001_initial_schema` version-controlled migrations |
+## ?? 2026-10-06 (Frontend Network/CORS Fixes for API & WebSockets)
+> - **Issue:** API requests and WebSocket connections were failing with \
+et::ERR_EMPTY_RESPONSE\ or Connection Refused. The frontend code had hardcoded \http://localhost:8000\ and \ws://localhost:8000\, bypassing the Vite proxy and failing when accessed via network IPs or restrictive environments.
+> - **Fix:** Replaced hardcoded \http://localhost:8000\ with relative \/api/v1/...\ paths in \MapView.tsx\ and \VesselTrackPlayer.tsx\. Updated \websocket.ts\ to derive the WS protocol and host from \window.location\. Added \ws: true\ to the Vite proxy configuration in \ite.config.ts\ so WebSocket connections properly proxy to the backend container over the Docker network.

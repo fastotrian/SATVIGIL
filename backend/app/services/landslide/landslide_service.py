@@ -4,7 +4,7 @@ import asyncio
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import datetime
-from dateutil.relativedelta import relativedelta
+
 
 _current_dir = Path(__file__).parent
 BASE_DIR = _current_dir.parent.parent.parent / "ml" / "landslideguard"

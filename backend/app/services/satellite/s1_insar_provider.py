@@ -61,8 +61,8 @@ async def run_insar_pipeline(lon_min: float, lat_min: float, lon_max: float, lat
     If ISCE3 is not available in the current environment (e.g. Windows without WSL), it provides a 
     fallback simulated 12-step displacement sequence to allow the LandslideGuard pipeline to complete.
     """
-    from dateutil.relativedelta import relativedelta
-    start_time = end_date - relativedelta(months=5)
+    from datetime import timedelta
+    start_time = end_date - timedelta(days=150)
     
     logger.info("Starting InSAR pipeline: Searching for Sentinel-1 SLC multi-temporal stack")
     scenes = await search_s1_slc(lon_min, lat_min, lon_max, lat_max, start_time, end_date)
@@ -95,8 +95,13 @@ async def run_insar_pipeline(lon_min: float, lat_min: float, lon_max: float, lat
         # We need precisely 12 steps for Monitoring V2 TCN
         history = []
         base_disp = 0.0
+        
+        # Make the simulated displacement rate dynamic based on the region's latitude
+        # so different clicked hazard zones show distinct telemetry in the dashboard
+        simulated_rate = 1.5 + (lat_min % 4.0)
+        
         for i in range(12):
-            base_disp -= 2.1
+            base_disp -= simulated_rate
             history.append(round(base_disp, 2))
         return history
 

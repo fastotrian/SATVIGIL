@@ -4,7 +4,8 @@
  */
 import { Alert } from "../store/alertStore";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = import.meta.env.VITE_WS_URL && !import.meta.env.VITE_WS_URL.includes('backend') ? import.meta.env.VITE_WS_URL : `${protocol}//${window.location.host}`;
 
 export function connectWebSocket({
   onInit,

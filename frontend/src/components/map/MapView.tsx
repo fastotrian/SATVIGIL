@@ -510,18 +510,25 @@ export function MapView() {
     if (!selectedHazardZone) return;
     setIsAnalyzingLandslide(true);
     setLandslideAnalysisResult(null);
+
+    // Find the matching feature in the GeoJSON to get its coordinates
+    const feature = INDIA_GEOLOGICAL_GEOJSON.features.find((f: any) => f.properties.id === selectedHazardZone.id);
+    const coordinates = feature && feature.geometry.type === 'Polygon' 
+      ? feature.geometry.coordinates[0] 
+      : [
+          [79.45, 30.35],
+          [79.60, 30.35],
+          [79.60, 30.60],
+          [79.45, 30.60],
+          [79.45, 30.35]
+        ];
+
     try {
-      const resp = await fetch('http://localhost:8000/api/v1/landslide/analyze', {
+      const resp = await fetch('/api/v1/landslide/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          coordinates: [
-            [79.45, 30.35],
-            [79.60, 30.35],
-            [79.60, 30.60],
-            [79.45, 30.60],
-            [79.45, 30.35]
-          ],
+          coordinates: coordinates,
           detection_date: new Date().toISOString().split('T')[0],
           detection_confidence: 0.92
         })
@@ -594,7 +601,7 @@ export function MapView() {
       fill: Color.fromCssColorString('#10B981').withAlpha(0.18),
       strokeWidth: 2,
     }).then((ds) => {
-      viewer.dataSources.add(ds);
+      if (!viewer || viewer.isDestroyed()) return; viewer.dataSources.add(ds);
       mpasDataSourceRef.current = ds;
       ds.show = activeFilters.showMPABoundaries;
     });
@@ -616,7 +623,7 @@ export function MapView() {
         entity.properties = entity.properties || new PropertyBag();
         entity.properties.addProperty('spill_corridor', new ConstantProperty(true));
       }
-      viewer.dataSources.add(ds);
+      if (!viewer || viewer.isDestroyed()) return; viewer.dataSources.add(ds);
       demoTracksDataSourceRef.current = ds;
       const camHeight = viewer.camera.positionCartographic?.height ?? 3000000;
       const heatFactor = Math.max(0, Math.min(1, (camHeight - 900000) / (2200000 - 900000)));
@@ -707,7 +714,7 @@ export function MapView() {
       strokeWidth: 2.5,
       clampToGround: true,
     }).then((ds) => {
-      viewer.dataSources.add(ds);
+      if (!viewer || viewer.isDestroyed()) return; viewer.dataSources.add(ds);
       geologicalDataSourceRef.current = ds;
       ds.show = activeNavTab === 'geological';
     });
@@ -925,7 +932,7 @@ export function MapView() {
   useEffect(() => {
     async function loadMaritimeData() {
       try {
-        const resp = await fetch('http://localhost:8000/api/v1/maritime/vessels');
+        const resp = await fetch('/api/v1/maritime/vessels');
         if (resp.ok) {
           const data = await resp.json();
           if (data.vessels) {
@@ -937,7 +944,7 @@ export function MapView() {
       }
 
       try {
-        const spillResp = await fetch('http://localhost:8000/api/v1/maritime/spills');
+        const spillResp = await fetch('/api/v1/maritime/spills');
         if (spillResp.ok) {
           const spillData = await spillResp.json();
           setSpills(spillData);
@@ -950,7 +957,7 @@ export function MapView() {
       }
 
       try {
-        const hotResp = await fetch('http://localhost:8000/api/v1/fire/hotspots?limit=200');
+        const hotResp = await fetch('/api/v1/fire/hotspots?limit=200');
         if (hotResp.ok) {
           const hotData = await hotResp.json();
           setHotspots(hotData.hotspots || []);
@@ -1133,7 +1140,7 @@ export function MapView() {
     if (!viewer) return;
 
     if (spillsDataSourceRef.current) {
-      viewer.dataSources.remove(spillsDataSourceRef.current);
+      if (!viewer.isDestroyed()) viewer.dataSources.remove(spillsDataSourceRef.current);
       spillsDataSourceRef.current = null;
     }
 
@@ -1173,7 +1180,7 @@ export function MapView() {
           entity.polygon.outlineWidth = new ConstantProperty(3.5);
         }
       }
-      viewer.dataSources.add(ds);
+      if (!viewer || viewer.isDestroyed()) return; viewer.dataSources.add(ds);
       spillsDataSourceRef.current = ds;
       ds.show = activeFilters.showSpillZones;
     });
@@ -1185,7 +1192,7 @@ export function MapView() {
     if (!viewer) return;
 
     if (activeSpillDataSourceRef.current) {
-      viewer.dataSources.remove(activeSpillDataSourceRef.current);
+      if (!viewer.isDestroyed()) viewer.dataSources.remove(activeSpillDataSourceRef.current);
       activeSpillDataSourceRef.current = null;
     }
 
@@ -1222,7 +1229,7 @@ export function MapView() {
           entity.polygon.outlineWidth = new ConstantProperty(3.5);
         }
       }
-      viewer.dataSources.add(ds);
+      if (!viewer || viewer.isDestroyed()) return; viewer.dataSources.add(ds);
       activeSpillDataSourceRef.current = ds;
     });
   }, [activeSpill, activeFilters.showSpillZones]);
@@ -1388,7 +1395,7 @@ export function MapView() {
   async function handleSimulateSpillDemo() {
     setIsSimulating(true);
     try {
-      const resp = await fetch('http://localhost:8000/api/v1/maritime/simulate-spill', {
+      const resp = await fetch('/api/v1/maritime/simulate-spill', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
